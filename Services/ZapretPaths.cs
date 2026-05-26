@@ -33,10 +33,20 @@ public sealed class ZapretPaths
         }
     }
 
+    public static string GetBundledZapretPath()
+    {
+        var baseDir = AppContext.BaseDirectory.TrimEnd('\\', '/');
+        return Path.Combine(baseDir, "zapret");
+    }
+
     public static string DetectRoot(string? savedPath = null)
     {
         if (IsValidZapretRoot(savedPath))
             return Path.GetFullPath(savedPath!);
+
+        var bundled = GetBundledZapretPath();
+        if (IsValidZapretRoot(bundled))
+            return Path.GetFullPath(bundled);
 
         var dir = AppContext.BaseDirectory.TrimEnd('\\', '/');
         for (var i = 0; i < 8; i++)

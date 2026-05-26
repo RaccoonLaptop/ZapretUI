@@ -25,8 +25,11 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         _settings = AppSettings.Load();
-        if (!EnsureZapretPath())
+        _paths = new ZapretPaths(_settings.ZapretRoot);
+
+        if (!_paths.IsValid)
         {
+            UiHelpers.ShowError("Компоненты zapret не установлены. Перезапустите программу — загрузка начнётся автоматически.");
             Application.Current.Shutdown();
             return;
         }
@@ -136,38 +139,6 @@ public partial class MainWindow : Window
     public void RunSecuritySetup()
     {
         ShowSecuritySetup();
-    }
-
-    private bool EnsureZapretPath()
-    {
-        var root = ZapretPaths.DetectRoot(_settings.ZapretRoot);
-        _paths = new ZapretPaths(root);
-
-        if (_paths.IsValid)
-        {
-            _settings.ZapretRoot = _paths.Root;
-            _settings.Save();
-            return true;
-        }
-
-        UiHelpers.ShowInfo(
-            "Не найдена папка zapret (нужны service.bat и bin\\).\n\n" +
-            "Укажите папку с Flowseal/zapret-discord-youtube.");
-
-        var picked = FolderPicker.PickFolder(
-            "Выберите папку zapret (где лежит service.bat)",
-            Path.GetDirectoryName(root));
-
-        if (picked is null || !ZapretPaths.IsValidZapretRoot(picked))
-        {
-            UiHelpers.ShowError("Папка zapret не выбрана или неверна. Программа не может работать без неё.");
-            return false;
-        }
-
-        _settings.ZapretRoot = picked;
-        _settings.Save();
-        _paths = new ZapretPaths(picked);
-        return true;
     }
 
     private void InitServices()
