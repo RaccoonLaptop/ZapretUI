@@ -1,7 +1,10 @@
+using System.Diagnostics;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using ZapretUI.Helpers;
 using ZapretUI.Services;
 
@@ -12,273 +15,208 @@ public partial class HomePage : UserControl
     private readonly ZapretPaths _paths;
     private readonly StrategyService _strategy;
     private readonly AppSettings _settings;
-    private readonly UpdateService _updates;
-    private readonly AppSelfUpdateService _appUpdater;
+    private readonly ProcessRunner _runner;
     private ComboBox _strategyCombo = null!;
-    private TextBlock _updateStatus = null!;
-    private TextBlock _appUpdateStatus = null!;
     private Ellipse _statusIndicator = null!;
     private TextBlock _statusLabel = null!;
+    private TextBox _logBox = null!;
 
     public HomePage(ZapretPaths paths, StrategyService strategy, AppSettings settings)
     {
         _paths = paths;
         _strategy = strategy;
         _settings = settings;
-        _updates = new UpdateService(paths);
-        _appUpdater = new AppSelfUpdateService(settings, paths.Root);
+        _runner = new ProcessRunner();
+        _runner.SetZapretRoot(paths.Root);
+        _runner.OutputReceived += line => ConsoleLog.Instance.Write(line);
         BuildUi();
-        _ = CheckZapretUpdatesAsync();
-        _ = CheckAppUpdatesAsync(silent: true);
+        ConsoleLog.Instance.LineAdded += OnLogLine;
+        Unloaded += (_, _) => ConsoleLog.Instance.LineAdded -= OnLogLine;
     }
 
     private void BuildUi()
     {
-        var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-        var root = new StackPanel();
+        var root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        root.Children.Add(new TextBlock
+        var header = new StackPanel { Margin = new Thickness(0, 0, 0, 32) };
+        header.Children.Add(new TextBlock
         {
-            Text = "Главная",
-            FontSize = 28,
-            FontWeight = FontWeights.Bold,
-            Margin = new Thickness(0, 0, 0, 8)
+            Text = "Обход блокировок",
+            FontSize = 32,
+            FontWeight = FontWeights.Bold
         });
-        root.Children.Add(new TextBlock
+        header.Children.Add(new TextBlock
         {
-            Text = "Управление обходом DPI — Zapret + конфиги Flowseal",
+            Text = "Выберите стратегию и нажмите «Запустить»",
+            FontSize = 16,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-            Margin = new Thickness(0, 0, 0, 16)
+            Margin = new Thickness(0, 8, 0, 0)
         });
+        Grid.SetRow(header, 0);
+        root.Children.Add(header);
 
-        foreach (var hint in new SystemHintsService(_paths).GetHints())
-            root.Children.Add(CreateHintBanner(hint));
+        var center = new StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            MaxWidth = 480
+        };
 
-        var securityPanel = new StackPanel { Name = "SecurityPanel" };
-        root.Children.Add(securityPanel);
-        _ = LoadSecurityStatusAsync(securityPanel);
+        var statusRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 24)
+        };
+        _statusIndicator = new Ellipse
+        {
+            Width = 14,
+            Height = 14,
+            Fill = (Brush)Application.Current.FindResource("ErrorBrush"),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        _statusLabel = new TextBlock
+        {
+            Text = "Остановлен",
+            FontSize = 18,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(10, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        statusRow.Children.Add(_statusIndicator);
+        statusRow.Children.Add(_statusLabel);
+        center.Children.Add(statusRow);
 
-        var card = CreateCard();
-        var cardContent = new StackPanel();
-
-        cardContent.Children.Add(new TextBlock { Text = "Текущая стратегия", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 12) });
-
-        _strategyCombo = new ComboBox { MinWidth = 400, HorizontalAlignment = HorizontalAlignment.Left };
+        _strategyCombo = new ComboBox
+        {
+            MinWidth = 400,
+            FontSize = 15,
+            Margin = new Thickness(0, 0, 0, 20)
+        };
         foreach (var s in _paths.GetStrategyFiles())
             _strategyCombo.Items.Add(s);
-        if (!string.IsNullOrEmpty(_settings.LastStrategy))
+        SelectDefaultStrategy();
+        center.Children.Add(_strategyCombo);
+
+        var startBtn = new Button
+        {
+            Content = "▶   ЗАПУСТИТЬ",
+            Style = (Style)Application.Current.FindResource("PrimaryButton"),
+            FontSize = 18,
+            Padding = new Thickness(48, 16, 48, 16),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 12)
+        };
+        startBtn.Click += async (_, _) => await StartAsync();
+        center.Children.Add(startBtn);
+
+        var stopBtn = new Button
+        {
+            Content = "Остановить",
+            Style = (Style)Application.Current.FindResource("SecondaryButton"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 16)
+        };
+        stopBtn.Click += async (_, _) => await StopAsync();
+        center.Children.Add(stopBtn);
+
+        var toolsRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        var diagBtn = new Button
+        {
+            Content = "Диагностика",
+            Style = (Style)Application.Current.FindResource("SecondaryButton"),
+            Margin = new Thickness(0, 0, 8, 0)
+        };
+        diagBtn.Click += async (_, _) => await RunDiagnosticsAsync();
+        var testBtn = new Button
+        {
+            Content = "Тест стратегий",
+            Style = (Style)Application.Current.FindResource("SecondaryButton")
+        };
+        testBtn.Click += async (_, _) => await RunTestsAsync();
+        toolsRow.Children.Add(diagBtn);
+        toolsRow.Children.Add(testBtn);
+        center.Children.Add(toolsRow);
+
+        Grid.SetRow(center, 1);
+        root.Children.Add(center);
+
+        _logBox = new TextBox
+        {
+            Height = 100,
+            IsReadOnly = true,
+            TextWrapping = TextWrapping.Wrap,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            FontFamily = new FontFamily("Consolas"),
+            FontSize = 12,
+            Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
+            BorderBrush = (Brush)Application.Current.FindResource("BorderBrush"),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(8)
+        };
+        Grid.SetRow(_logBox, 2);
+        root.Children.Add(_logBox);
+
+        Content = root;
+
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        timer.Tick += (_, _) => RefreshStatus();
+        timer.Start();
+        RefreshStatus();
+    }
+
+    private void SelectDefaultStrategy()
+    {
+        var preferred = new[] { "general.bat", "general (SIMPLE FAKE).bat" };
+        foreach (var name in preferred)
+        {
+            if (_strategyCombo.Items.Contains(name))
+            {
+                _strategyCombo.SelectedItem = name;
+                return;
+            }
+        }
+        if (!string.IsNullOrEmpty(_settings.LastStrategy) && _strategyCombo.Items.Contains(_settings.LastStrategy))
             _strategyCombo.SelectedItem = _settings.LastStrategy;
         else if (_strategyCombo.Items.Count > 0)
             _strategyCombo.SelectedIndex = 0;
-        cardContent.Children.Add(_strategyCombo);
-
-        var btnRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 20, 0, 0) };
-        var startBtn = new Button { Content = "▶  Запустить", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 12, 0) };
-        startBtn.Click += async (_, _) => await StartAsync();
-        var stopBtn = new Button { Content = "⏹  Остановить", Style = (Style)Application.Current.FindResource("SecondaryButton") };
-        stopBtn.Click += async (_, _) => await StopAsync();
-        btnRow.Children.Add(startBtn);
-        btnRow.Children.Add(stopBtn);
-        cardContent.Children.Add(btnRow);
-
-        var statusRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
-        _statusIndicator = new Ellipse { Width = 12, Height = 12, Fill = (Brush)Application.Current.FindResource("ErrorBrush"), VerticalAlignment = VerticalAlignment.Center };
-        _statusLabel = new TextBlock { Text = " winws.exe не запущен", VerticalAlignment = VerticalAlignment.Center };
-        statusRow.Children.Add(_statusIndicator);
-        statusRow.Children.Add(_statusLabel);
-        cardContent.Children.Add(statusRow);
-
-        card.Child = cardContent;
-        root.Children.Add(card);
-
-        var updateCard = CreateCard();
-        var updateContent = new StackPanel();
-        updateContent.Children.Add(new TextBlock { Text = "Zapret UI (программа)", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 8) });
-        _appUpdateStatus = new TextBlock
-        {
-            Text = $"Версия {AppSelfUpdateService.GetLocalVersion()}",
-            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-            TextWrapping = TextWrapping.Wrap
-        };
-        updateContent.Children.Add(_appUpdateStatus);
-        var appUpdateBtn = new Button
-        {
-            Content = "Проверить и установить обновление",
-            Style = (Style)Application.Current.FindResource("SecondaryButton"),
-            Margin = new Thickness(0, 8, 0, 0),
-            HorizontalAlignment = HorizontalAlignment.Left
-        };
-        appUpdateBtn.Click += async (_, _) => await CheckAppUpdatesAsync(silent: false);
-        updateContent.Children.Add(appUpdateBtn);
-        updateCard.Child = updateContent;
-        root.Children.Add(updateCard);
-
-        var zapretUpdateCard = CreateCard();
-        var updateContent2 = new StackPanel();
-        updateContent2.Children.Add(new TextBlock { Text = "Flowseal zapret (конфиги)", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 8) });
-        _updateStatus = new TextBlock { Text = "Проверка...", Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"), TextWrapping = TextWrapping.Wrap };
-        updateContent2.Children.Add(_updateStatus);
-        var updateBtn = new Button { Content = "Проверить обновления zapret", Style = (Style)Application.Current.FindResource("SecondaryButton"), Margin = new Thickness(0, 12, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
-        updateBtn.Click += async (_, _) => await CheckZapretUpdatesAsync();
-        updateContent2.Children.Add(updateBtn);
-        zapretUpdateCard.Child = updateContent2;
-        root.Children.Add(zapretUpdateCard);
-
-        var infoCard = CreateCard();
-        var info = new StackPanel();
-        info.Children.Add(new TextBlock { Text = "Быстрые подсказки", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 8) });
-        info.Children.Add(Muted("• Подробный порядок настройки — раздел «Гайд»"));
-        info.Children.Add(Muted("• Тест стратегий: Сервис → Тестирование, номера 1,5,8,11,19 (Ростелеком/МГТС)"));
-        info.Children.Add(Muted("• Настройте Secure DNS; не проверяйте обход в Яндекс.Браузере"));
-        info.Children.Add(Muted("• Путь без кириллицы, например C:\\zapret"));
-        infoCard.Child = info;
-        root.Children.Add(infoCard);
-
-        scroll.Content = root;
-        Content = scroll;
-
-        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-        timer.Tick += (_, _) =>
-        {
-            var running = _strategy.IsRunning();
-            _statusIndicator.Fill = running
-                ? (Brush)Application.Current.FindResource("SuccessBrush")
-                : (Brush)Application.Current.FindResource("ErrorBrush");
-            _statusLabel.Text = running ? " winws.exe запущен" : " winws.exe не запущен";
-        };
-        timer.Start();
     }
 
-    private static Border CreateCard() => new()
+    private void RefreshStatus()
     {
-        Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
-        BorderBrush = (Brush)Application.Current.FindResource("BorderBrush"),
-        BorderThickness = new Thickness(1),
-        CornerRadius = new CornerRadius(12),
-        Padding = new Thickness(20),
-        Margin = new Thickness(0, 0, 0, 16)
-    };
+        var running = _strategy.IsRunning();
+        _statusIndicator.Fill = running
+            ? (Brush)Application.Current.FindResource("SuccessBrush")
+            : (Brush)Application.Current.FindResource("ErrorBrush");
+        _statusLabel.Text = running ? "Работает" : "Остановлен";
+        if (running)
+        {
+            var title = _strategy.GetRunningStrategyTitle();
+            if (!string.IsNullOrEmpty(title))
+                _statusLabel.Text = $"Работает — {title}";
+        }
+    }
 
-    private async Task LoadSecurityStatusAsync(StackPanel panel)
+    private void OnLogLine(string line)
     {
-        var status = await new SecuritySetupService(_paths).CheckStatusAsync();
-        panel.Children.Clear();
-
-        if (status.IsFullyConfigured)
+        Dispatcher.Invoke(() =>
         {
-            panel.Children.Add(CreateSecurityBanner(
-                "Безопасность Windows",
-                "Исключения антивируса и правила брандмауэра настроены.",
-                "SuccessBrush"));
-            return;
-        }
-
-        if (!status.CheckSucceeded)
-        {
-            panel.Children.Add(CreateSecurityBanner(
-                "Проверка безопасности",
-                status.Summary,
-                "WarningBrush"));
-            return;
-        }
-
-        var text = status.Summary;
-        if (status.MissingExclusions.Count > 0)
-            text += "\n• " + string.Join("\n• ", status.MissingExclusions);
-        if (status.MissingFirewallPrograms.Count > 0)
-            text += "\n• " + string.Join("\n• ", status.MissingFirewallPrograms);
-
-        var banner = CreateSecurityBanner("Требуется настройка безопасности", text, "ErrorBrush");
-        if (banner.Child is StackPanel sp)
-        {
-            var btn = new Button
+            if (line == "__CLEAR__")
             {
-                Content = "Настроить антивирус и брандмауэр",
-                Style = (Style)Application.Current.FindResource("PrimaryButton"),
-                Margin = new Thickness(0, 10, 0, 0),
-                HorizontalAlignment = HorizontalAlignment.Left
-            };
-            btn.Click += (_, _) =>
-            {
-                if (Application.Current.MainWindow is MainWindow mw)
-                    mw.RunSecuritySetup();
-            };
-            sp.Children.Add(btn);
-        }
-        panel.Children.Add(banner);
+                _logBox.Clear();
+                return;
+            }
+            _logBox.AppendText(line + Environment.NewLine);
+            _logBox.ScrollToEnd();
+        });
     }
-
-    private static Border CreateSecurityBanner(string title, string description, string brushKey)
-    {
-        var border = new Border
-        {
-            Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
-            BorderBrush = (Brush)Application.Current.FindResource(brushKey),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(10),
-            Padding = new Thickness(14),
-            Margin = new Thickness(0, 0, 0, 10)
-        };
-        var stack = new StackPanel();
-        stack.Children.Add(new TextBlock
-        {
-            Text = title,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = (Brush)Application.Current.FindResource(brushKey)
-        });
-        stack.Children.Add(new TextBlock
-        {
-            Text = description,
-            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 4, 0, 0)
-        });
-        border.Child = stack;
-        return border;
-    }
-
-    private static Border CreateHintBanner(SystemHint hint)
-    {
-        var brushKey = hint.Level switch
-        {
-            HintLevel.Error => "ErrorBrush",
-            HintLevel.Warning => "WarningBrush",
-            _ => "AccentBrush"
-        };
-        var border = new Border
-        {
-            Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
-            BorderBrush = (Brush)Application.Current.FindResource(brushKey),
-            BorderThickness = new Thickness(1, 1, 1, 1),
-            CornerRadius = new CornerRadius(10),
-            Padding = new Thickness(14),
-            Margin = new Thickness(0, 0, 0, 10)
-        };
-        var stack = new StackPanel();
-        stack.Children.Add(new TextBlock
-        {
-            Text = hint.Title,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = (Brush)Application.Current.FindResource(brushKey)
-        });
-        stack.Children.Add(new TextBlock
-        {
-            Text = hint.Description,
-            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 4, 0, 0)
-        });
-        border.Child = stack;
-        return border;
-    }
-
-    private static TextBlock Muted(string text) => new()
-    {
-        Text = text,
-        Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-        TextWrapping = TextWrapping.Wrap,
-        Margin = new Thickness(0, 2, 0, 2)
-    };
 
     private async Task StartAsync()
     {
@@ -291,12 +229,14 @@ public partial class HomePage : UserControl
         {
             _settings.LastStrategy = strategy;
             _settings.Save();
-            ConsoleLog.Instance.Write($"Запуск стратегии: {strategy}");
+            ConsoleLog.Instance.Write($"Запуск: {strategy}");
             await _strategy.StartStrategyAsync(strategy);
-            ConsoleLog.Instance.Write("Стратегия запущена");
+            ConsoleLog.Instance.Write("Запущено");
+            RefreshStatus();
         }
         catch (Exception ex)
         {
+            ConsoleLog.Instance.Write($"Ошибка: {ex.Message}");
             UiHelpers.ShowError(ex.Message);
         }
     }
@@ -304,62 +244,34 @@ public partial class HomePage : UserControl
     private async Task StopAsync()
     {
         await _strategy.StopStrategyAsync();
-        ConsoleLog.Instance.Write("winws.exe остановлен");
+        ConsoleLog.Instance.Write("Остановлено");
+        RefreshStatus();
     }
 
-    private async Task CheckZapretUpdatesAsync()
+    private async Task RunDiagnosticsAsync()
     {
-        _updateStatus.Text = "Проверка обновлений zapret...";
-        var result = await _updates.CheckForUpdatesAsync();
-        if (result.Error is not null)
+        ConsoleLog.Instance.Write("--- Диагностика ---");
+        try
         {
-            _updateStatus.Text = $"Не удалось проверить: {result.Error}";
-            return;
+            await _runner.RunBridgeAsync("RunDiagnostics");
+            ConsoleLog.Instance.Write("--- Готово ---");
         }
-        if (result.IsUpToDate)
-            _updateStatus.Text = $"Zapret актуален: {result.LocalVersion}";
-        else
-            _updateStatus.Text = $"Доступна версия zapret {result.RemoteVersion} (у вас {result.LocalVersion}). Обновите в разделе «Сервис».";
+        catch (Exception ex)
+        {
+            ConsoleLog.Instance.Write($"Ошибка: {ex.Message}");
+        }
     }
 
-    private async Task CheckAppUpdatesAsync(bool silent)
+    private async Task RunTestsAsync()
     {
-        if (!silent)
-            _appUpdateStatus.Text = "Проверка обновлений Zapret UI...";
-
-        var check = await _appUpdater.CheckForUpdateAsync();
-        if (check.Error is not null)
+        try
         {
-            _appUpdateStatus.Text = silent
-                ? $"Zapret UI v{check.LocalVersion}"
-                : $"Ошибка: {check.Error}";
-            return;
+            await _runner.RunInteractiveTestAsync();
         }
-
-        if (!check.HasUpdate || check.Manifest is null)
+        catch (Exception ex)
         {
-            if (!silent)
-                _appUpdateStatus.Text = $"Zapret UI v{check.LocalVersion} — актуальная версия";
-            return;
+            ConsoleLog.Instance.Write($"Ошибка: {ex.Message}");
+            UiHelpers.ShowError(ex.Message);
         }
-
-        if (silent)
-        {
-            _appUpdateStatus.Text = $"Доступна v{check.RemoteVersion}";
-            return;
-        }
-
-        _appUpdateStatus.Text = $"Доступна v{check.RemoteVersion} (у вас v{check.LocalVersion})";
-
-        if (!UiHelpers.Confirm($"Установить Zapret UI {check.RemoteVersion}? Программа перезапустится."))
-            return;
-
-        var install = await _appUpdater.InstallUpdateAsync(check.Manifest);
-        if (install.Success && install.RequiresRestart)
-            Application.Current.Shutdown();
-        else if (!install.Success)
-            UiHelpers.ShowError(install.Message);
-        else
-            _appUpdateStatus.Text = install.Message;
     }
 }

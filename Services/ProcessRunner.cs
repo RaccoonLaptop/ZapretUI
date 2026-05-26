@@ -59,6 +59,12 @@ public sealed class ProcessRunner
 
     public async Task RunBridgeAsync(string action, string? extra = null, CancellationToken ct = default)
     {
+        if (action == "RunTests")
+        {
+            RunInteractiveTest();
+            return;
+        }
+
         var scriptPath = ResolveBridgeScript();
         var root = _zapretRoot ?? ZapretPaths.DetectRoot();
         var needsAdmin = action is "InstallService" or "RemoveServices";
@@ -87,6 +93,29 @@ public sealed class ProcessRunner
         {
             await RunAsync("powershell.exe", args, root, ct);
         }
+    }
+
+    public Task RunInteractiveTestAsync(CancellationToken ct = default)
+    {
+        RunInteractiveTest();
+        return Task.CompletedTask;
+    }
+
+    private void RunInteractiveTest()
+    {
+        var root = _zapretRoot ?? ZapretPaths.DetectRoot();
+        var testScript = Path.Combine(root, "utils", "test zapret.ps1");
+        if (!File.Exists(testScript))
+            throw new FileNotFoundException("Скрипт test zapret.ps1 не найден. Переустановите программу.");
+
+        Emit("Открывается окно тестирования стратегий...");
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            Arguments = $"-NoProfile -ExecutionPolicy Bypass -NoExit -File \"{testScript}\"",
+            WorkingDirectory = root,
+            UseShellExecute = true
+        });
     }
 
     private static string ResolveBridgeScript()
