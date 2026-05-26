@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -17,6 +18,9 @@ public partial class MainWindow : Window
     private readonly ProcessRunner _runner;
     private readonly DispatcherTimer _statusTimer;
     private readonly TrayIconService _tray;
+    private Button? _activeNav;
+    private HomePage? _homePage;
+    private ToolsWindow? _toolsWindow;
     private bool _isShuttingDown;
 
     public MainWindow()
@@ -47,7 +51,9 @@ public partial class MainWindow : Window
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
 
         VersionText.Text = $"v{AppSelfUpdateService.GetLocalVersion()} · Flowseal {_paths.GetLocalVersion()}";
-        PageHost.Content = new HomePage(_paths, _strategy, _settings);
+
+        BuildNavigation();
+        NavigateHome();
 
         _statusTimer.Tick += (_, _) => RefreshStatus();
         _statusTimer.Start();
@@ -66,7 +72,7 @@ public partial class MainWindow : Window
             if (!File.Exists(iconPath)) return;
             Icon = BitmapFrame.Create(new Uri(iconPath, UriKind.Absolute));
         }
-        catch { /* exe icon is enough */ }
+        catch { /* ignore */ }
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -87,7 +93,7 @@ public partial class MainWindow : Window
             if (!_settings.SecuritySetupCompleted && !_settings.SecuritySetupSkipped)
                 ShowSecuritySetup();
         }
-        catch { /* ignore startup errors */ }
+        catch { /* ignore */ }
     }
 
     private void ShowSecuritySetup()
@@ -98,9 +104,24 @@ public partial class MainWindow : Window
 
     public void RunSecuritySetup() => ShowSecuritySetup();
 
+    public void OpenToolsWindow()
+    {
+        if (_toolsWindow is { IsLoaded: true })
+        {
+            _toolsWindow.Activate();
+            _toolsWindow.Focus();
+            return;
+        }
+
+        _toolsWindow = new ToolsWindow(_paths, _runner) { Owner = this };
+        _toolsWindow.Closed += (_, _) => _toolsWindow = null;
+        _toolsWindow.Show();
+    }
+
     public void ShutdownApplication()
     {
         _isShuttingDown = true;
+        _toolsWindow?.Close();
         _statusTimer.Stop();
         _tray.Dispose();
         Application.Current.Shutdown();
@@ -118,6 +139,7 @@ public partial class MainWindow : Window
         }
 
         _isShuttingDown = true;
+        _toolsWindow?.Close();
         _statusTimer.Stop();
         _tray.Dispose();
         Application.Current.Shutdown();
@@ -136,6 +158,53 @@ public partial class MainWindow : Window
         _tray.ShowInTray();
     }
 
+    private void BuildNavigation()
+    {
+        AddNav("Главная", NavigateHome);
+        AddNav("Стратегии", () => Navigate(new StrategiesPage(_paths, _strategy, _settings)));
+        AddNav("Списки", () => Navigate(new ListsPage(_paths)));
+        AddNav("Сервис", () => Navigate(new ServicePage(_paths, _strategy)));
+        AddNav("Консоль", OpenToolsWindow);
+    }
+
+    private void NavigateHome()
+    {
+        _homePage = new HomePage(_paths, _strategy, _settings);
+        Navigate(_homePage);
+    }
+
+    private void AddNav(string text, Action action)
+    {
+        var btn = new Button
+        {
+            Content = text,
+            Style = (Style)FindResource("NavButton"),
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 2, 0, 2)
+        };
+        btn.Click += (_, _) =>
+        {
+            SetActiveNav(btn);
+            action();
+        };
+        NavPanel.Children.Add(btn);
+        if (_activeNav is null)
+        {
+            _activeNav = btn;
+            btn.Style = (Style)FindResource("NavButtonActive");
+        }
+    }
+
+    private void SetActiveNav(Button btn)
+    {
+        if (_activeNav is not null)
+            _activeNav.Style = (Style)FindResource("NavButton");
+        _activeNav = btn;
+        btn.Style = (Style)FindResource("NavButtonActive");
+    }
+
+    private void Navigate(UserControl page) => PageHost.Content = page;
+
     private void RefreshStatus()
     {
         var running = _strategy.IsRunning();
@@ -149,5 +218,6 @@ public partial class MainWindow : Window
             if (!string.IsNullOrEmpty(title))
                 StatusText.Text = $"Работает — {title}";
         }
+        _homePage?.RefreshToggleUi();
     }
 }
