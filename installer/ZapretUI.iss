@@ -52,7 +52,10 @@ Name: "{autodesktop}\Zapret UI"; Filename: "{app}\ZapretUI.exe"; Tasks: desktopi
 
 [Run]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Scripts\bootstrap-zapret.ps1"" -TargetDir ""{app}\zapret"""; StatusMsg: "Скачивание zapret (Flowseal)..."; Flags: waituntilterminated
-Filename: "{app}\ZapretUI.exe"; Description: "Запустить Zapret UI"; Flags: nowait postinstall skipifsilent
+Filename: "powershell.exe"; Parameters: "-NoProfile -WindowStyle Hidden -Command ""Start-Process -FilePath '{app}\ZapretUI.exe' -Verb RunAs"""; Description: "Запустить Zapret UI"; Flags: nowait postinstall skipifsilent shellexec
+
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"; ValueType: string; ValueName: "{app}\ZapretUI.exe"; ValueData: "RUNASADMIN"; Flags: uninsdeletevalue
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\zapret"
