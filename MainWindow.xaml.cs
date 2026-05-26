@@ -1,6 +1,8 @@
 ﻿using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using ZapretUI.Pages;
 using ZapretUI.Services;
@@ -20,6 +22,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        TrySetWindowIcon();
 
         _settings = AppSettings.Load();
         _paths = new ZapretPaths(_settings.ZapretRoot);
@@ -53,6 +56,17 @@ public partial class MainWindow : Window
         Closing += OnClosing;
         StateChanged += OnStateChanged;
         Loaded += OnLoaded;
+    }
+
+    private void TrySetWindowIcon()
+    {
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
+            if (!File.Exists(iconPath)) return;
+            Icon = BitmapFrame.Create(new Uri(iconPath, UriKind.Absolute));
+        }
+        catch { /* exe icon is enough */ }
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)

@@ -8,6 +8,12 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        DispatcherUnhandledException += (_, args) =>
+        {
+            MessageBox.Show(args.Exception.Message, "Zapret UI — ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            args.Handled = true;
+            Shutdown();
+        };
 
         var settings = AppSettings.Load();
         if (!EnsureZapretInstalled(settings))
