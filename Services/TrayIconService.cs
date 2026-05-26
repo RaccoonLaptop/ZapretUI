@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Diagnostics;
+using System.IO;
 using System.Windows.Forms;
 using Application = System.Windows.Application;
 using DrawingColor = System.Drawing.Color;
@@ -75,6 +77,10 @@ public sealed class TrayIconService : IDisposable
 
     private static DrawingIcon CreateTrayIcon()
     {
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
+        if (File.Exists(iconPath))
+            return new DrawingIcon(iconPath);
+
         const int size = 32;
         using var bmp = new DrawingBitmap(size, size);
         using var g = System.Drawing.Graphics.FromImage(bmp);

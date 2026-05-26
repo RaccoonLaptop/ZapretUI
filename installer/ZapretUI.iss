@@ -27,6 +27,7 @@ DisableDirPage=yes
 PrivilegesRequired=lowest
 OutputDir={#OutputDir}
 OutputBaseFilename=ZapretUI-Setup
+SetupIconFile=..\Assets\app.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -35,7 +36,6 @@ MinVersion=10.0
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 LicenseFile=..\LICENSE
-InfoBeforeFile=..\packaging\ПРОЧТИ МЕНЯ.txt
 
 [Languages]
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"

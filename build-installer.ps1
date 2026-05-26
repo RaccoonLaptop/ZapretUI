@@ -26,10 +26,6 @@ dotnet publish -c Release -r win-x64 --self-contained true `
 if ($LASTEXITCODE -ne 0) { Pop-Location; exit 1 }
 Pop-Location
 
-Get-ChildItem $Packaging -File | Where-Object { $_.Name -ne 'update.json' } | ForEach-Object {
-    Copy-Item $_.FullName $StagingDir -Force
-}
-
 $isccCandidates = @(
     (Join-Path $ProjectDir "tools\innosetup\ISCC.exe"),
     "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
