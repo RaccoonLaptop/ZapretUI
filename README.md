@@ -14,15 +14,26 @@
 
 ## Запуск
 
-### Для пользователей (передаваемая версия)
-Папка **`ZapretUI-Program`** — отдельный каталог программы:
-- `ZapretUI.exe` — запуск
-- `Запуск ZapretUI.bat` — то же самое
-- `ПРОЧТИ МЕНЯ.txt` — инструкция
+### Для пользователей (рекомендуется)
+Скачайте **`ZapretUI-Setup.exe`** из [Releases](https://github.com/RaccoonLaptop/ZapretUI/releases):
 
-Положите `ZapretUI-Program` рядом с папкой zapret (где `service.bat` и `bin\`).
+1. Запустите установщик
+2. Укажите папку **zapret-discord-youtube** (где `service.bat` и `bin\`)
+3. Программа установится в подпапку `ZapretUI` и появится в меню Пуск
 
-### Сборка передаваемой версии
+.NET ставить не нужно — всё включено в установщик.
+
+### Portable (без установщика)
+Папка **`ZapretUI-Program`** — распакуйте zip в папку zapret и запустите `ZapretUI.exe`.
+
+### Сборка установщика
+```powershell
+cd ZapretUI
+.\build-installer.ps1
+```
+Результат: `ZapretUI-dist\ZapretUI-Setup.exe`
+
+### Сборка portable-версии
 ```powershell
 cd ZapretUI
 .\build-portable.ps1
@@ -36,8 +47,7 @@ dotnet run
 
 ## Требования
 
-- Windows 10/11
-- [.NET 8 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
+- Windows 10/11 (64-bit)
 - Папка zapret должна содержать `service.bat` и `bin/`
 
 ## Примечания
