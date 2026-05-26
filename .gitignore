@@ -1,0 +1,22 @@
+# Build
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.cache
+*.log
+
+# IDE
+.vs/
+.idea/
+
+# Publish output (build locally)
+../ZapretUI-Program/
+../ZapretUI-publish/
+../ZapretUI-update/
+
+# OS
+Thumbs.db
+Desktop.ini
