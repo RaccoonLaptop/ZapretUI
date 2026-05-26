@@ -1,58 +1,26 @@
-═══════════════════════════════════════
   ZAPRET UI — Автор: Niko
-═══════════════════════════════════════
+  ========================
 
-КАК ЗАПУСТИТЬ
-─────────────
-  Дважды кликните:
-    • ZapretUI.exe
-    или
-    • «Запуск ZapretUI.bat»
+  УСТАНОВКА (рекомендуется)
+  -------------------------
+  1. Скачайте ZapretUI-Setup.exe с GitHub Releases
+  2. Запустите установщик
+  3. Укажите папку zapret-discord-youtube (где service.bat и bin\)
+  4. Готово — ярлык появится в меню Пуск
 
-КУДА ПОЛОЖИТЬ ЭТУ ПАПКУ
-───────────────────────
-  Папку «ZapretUI-Program» нужно расположить РЯДОМ с папкой zapret
-  (там где лежат service.bat, general.bat, bin, lists).
+  Если zapret ещё нет — скачайте с:
+  https://github.com/Flowseal/zapret-discord-youtube
 
-  Пример:
-    C:\zapret\
-      service.bat
-      general.bat
-      bin\
-      lists\
-      ZapretUI-Program\     ← эта папка
-        ZapretUI.exe
+  ЗАПУСК
+  ------
+  Меню Пуск → Zapret UI
+  или ярлык на рабочем столе
 
-  При первом запуске программа сама найдёт zapret или попросит
-  указать папку вручную.
+  ТРЕБОВАНИЯ
+  ----------
+  - Windows 10/11 (64-bit)
+  - Папка zapret-discord-youtube (Flowseal)
 
-ТРЕБОВАНИЯ
-──────────
-  Windows 10/11
-  .NET 8 Runtime: https://dotnet.microsoft.com/download/dotnet/8.0
-
-ПЕРЕДАЧА ДРУГИМ
-───────────────
-  Скопируйте или заархивируйте всю папку «ZapretUI-Program» целиком.
-  Вместе с ней передайте архив zapret (Flowseal) или укажите путь к нему.
-
-ОБНОВЛЕНИЕ ZAPRET UI
-────────────────────
-  Программа обновляется автоматически при запуске.
-
-  При первом запуске (и после обновления) предложит:
-    • добавить папки в исключения Windows Defender
-    • разрешить ZapretUI.exe и winws.exe в брандмауэре
-
-  Повторно: Сервис → «Настроить антивирус и брандмауэр»
-
-  Для выкладки новой версии (автор):
-    1. Измените версию в ZapretUI\ZapretUI.csproj
-    2. Запустите ZapretUI\build-portable.ps1
-    3. Папку ZapretUI-update (update.json + zip) передайте пользователям
-       или положите рядом с zapret
-
-  Источники обновлений (по порядку):
-    • папка ZapretUI-update\ рядом с zapret
-    • URL в settings.json (UpdateManifestUrl)
-    • GitHub (если настроен)
+  УДАЛЕНИЕ
+  --------
+  Параметры Windows → Приложения → Zapret UI → Удалить

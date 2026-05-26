@@ -314,6 +314,7 @@ public sealed class AppUpdateManifest
 {
     public string Version { get; set; } = "";
     public string? DownloadUrl { get; set; }
+    public string? InstallerUrl { get; set; }
     public string? PackageFile { get; set; }
 
     [JsonIgnore] public string BaseDirectory { get; set; } = "";

@@ -15,8 +15,10 @@ obj/
 # Publish output (build locally)
 ../ZapretUI-Program/
 ../ZapretUI-publish/
+../ZapretUI-dist/
+../ZapretUI-installer-staging/
 ../ZapretUI-update/
 
-# OS
+tools/innosetup/
 Thumbs.db
 Desktop.ini
