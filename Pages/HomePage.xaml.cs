@@ -46,7 +46,7 @@ public partial class HomePage : UserControl
 
         center.Children.Add(new TextBlock
         {
-            Text = "Обход блокировок",
+            Text = Loc.T("home.title"),
             FontSize = 28,
             FontWeight = FontWeights.Bold,
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -54,7 +54,7 @@ public partial class HomePage : UserControl
         });
         center.Children.Add(new TextBlock
         {
-            Text = "Выберите стратегию и нажмите кнопку",
+            Text = Loc.T("home.subtitle"),
             FontSize = 15,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -76,7 +76,7 @@ public partial class HomePage : UserControl
         };
         _statusLabel = new TextBlock
         {
-            Text = "Остановлен",
+            Text = Loc.T("status.stopped"),
             FontSize = 17,
             FontWeight = FontWeights.SemiBold,
             Margin = new Thickness(10, 0, 0, 0),
@@ -99,7 +99,7 @@ public partial class HomePage : UserControl
 
         _toggleBtn = new Button
         {
-            Content = "▶   ЗАПУСТИТЬ",
+            Content = Loc.T("home.start"),
             Style = (Style)Application.Current.FindResource("PrimaryButton"),
             FontSize = 18,
             Padding = new Thickness(56, 16, 56, 16),
@@ -166,17 +166,17 @@ public partial class HomePage : UserControl
         _statusIndicator.Fill = running
             ? (Brush)Application.Current.FindResource("SuccessBrush")
             : (Brush)Application.Current.FindResource("ErrorBrush");
-        _statusLabel.Text = running ? "Работает" : "Остановлен";
+        _statusLabel.Text = running ? Loc.T("status.running") : Loc.T("status.stopped");
         if (running)
         {
             var title = _strategy.GetRunningStrategyTitle();
             if (!string.IsNullOrEmpty(title))
-                _statusLabel.Text = $"Работает — {title}";
+                _statusLabel.Text = Loc.F("status.running_with", title);
         }
 
         _toggleBtn.Content = _isStarting
-            ? "⏳   ЗАПУСКАЕТСЯ..."
-            : (running ? "⏹   ОСТАНОВИТЬ" : "▶   ЗАПУСТИТЬ");
+            ? Loc.T("home.starting")
+            : (running ? Loc.T("home.stop") : Loc.T("home.start"));
         _toggleBtn.IsEnabled = !_isStarting;
         _strategyCombo.IsEnabled = !running && !_isStarting;
     }
@@ -186,14 +186,14 @@ public partial class HomePage : UserControl
         if (_strategy.IsRunning())
         {
             await _strategy.StopStrategyAsync();
-            ConsoleLog.Instance.Write("Остановлено");
+            ConsoleLog.Instance.Write(Loc.T("home.log_stopped"));
             RefreshToggleUi();
             return;
         }
 
         if (_strategyCombo.SelectedItem is not string strategy)
         {
-            UiHelpers.ShowError("Выберите стратегию");
+            UiHelpers.ShowError(Loc.T("home.select_strategy"));
             return;
         }
 
@@ -201,24 +201,24 @@ public partial class HomePage : UserControl
         {
             _isStarting = true;
             _actionStatus.Visibility = Visibility.Visible;
-            _actionStatus.Text = "Подготовка запуска...";
+            _actionStatus.Text = Loc.T("home.prep");
             RefreshToggleUi();
 
             _settings.LastStrategy = strategy;
             _settings.Save();
-            ConsoleLog.Instance.Write($"Запуск: {strategy}");
+            ConsoleLog.Instance.Write(Loc.F("home.log_start", strategy));
 
-            _actionStatus.Text = "Запускаем winws, подождите...";
+            _actionStatus.Text = Loc.T("home.wait_winws");
             await _strategy.StartStrategyAsync(strategy);
 
-            ConsoleLog.Instance.Write("Запущено");
-            _actionStatus.Text = "Запуск завершен";
+            ConsoleLog.Instance.Write(Loc.T("home.log_started"));
+            _actionStatus.Text = Loc.T("home.done");
         }
         catch (Exception ex)
         {
             ConsoleLog.Instance.Write($"Ошибка: {ex.Message}");
             UiHelpers.ShowError(ex.Message);
-            _actionStatus.Text = "Ошибка запуска";
+            _actionStatus.Text = Loc.T("home.start_error");
         }
         finally
         {

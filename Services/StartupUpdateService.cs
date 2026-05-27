@@ -23,7 +23,7 @@ public sealed class StartupUpdateService
         var flowCheck = await flowCheckTask;
 
         ConsoleLog.Instance.Write(
-            $"Проверка версий при запуске: Zapret UI {appCheck.LocalVersion}, Flowseal {flowCheck.LocalVersion}");
+            Loc.F("startup.log_check", appCheck.LocalVersion, flowCheck.LocalVersion));
 
         if (appCheck.Error is not null)
             ConsoleLog.Instance.Write($"Zapret UI: {appCheck.Error}");
@@ -35,22 +35,19 @@ public sealed class StartupUpdateService
 
         if (!appUpdateAvailable && !flowUpdateAvailable)
         {
-            ConsoleLog.Instance.Write("Все компоненты актуальны");
+            ConsoleLog.Instance.Write(Loc.T("startup.all_up_to_date"));
             return false;
         }
 
         if (appUpdateAvailable)
         {
             if (UiHelpers.Confirm(
-                    $"Доступна новая версия Zapret UI.\n\n" +
-                    $"Новая: {appCheck.RemoteVersion}\n" +
-                    $"У вас: {appCheck.LocalVersion}\n\n" +
-                    "Скачать обновление сейчас?",
+                    Loc.F("update.app_startup", appCheck.RemoteVersion, appCheck.LocalVersion),
                     owner))
             {
                 PreparedAppUpdate? prepared = null;
                 var keepPrepared = false;
-                UpdateDownloadWindow? progressWin = new UpdateDownloadWindow("Обновление Zapret UI", "Загрузка пакета обновления...");
+                UpdateDownloadWindow? progressWin = new UpdateDownloadWindow(Loc.T("update.download_title"), Loc.T("update.download_status"));
                 progressWin.Owner = owner;
                 progressWin.Show();
                 try
@@ -67,7 +64,7 @@ public sealed class StartupUpdateService
                         prepared = preparedResult.Payload;
                         progressWin.SetStatus("Загрузка завершена. Пакет готов к установке.");
                         if (UiHelpers.Confirm(
-                                $"Пакет обновления Zapret UI {appCheck.RemoteVersion} загружен.\n\nУстановить сейчас?",
+                                Loc.F("update.app_ready", appCheck.RemoteVersion),
                                 owner))
                         {
                             progressWin.SetStatus("Запуск установки…");
@@ -98,11 +95,7 @@ public sealed class StartupUpdateService
         if (flowUpdateAvailable)
         {
             if (UiHelpers.Confirm(
-                    $"Доступна новая версия Flowseal/zapret-discord-youtube.\n\n" +
-                    $"Новая: {flowCheck.RemoteVersion}\n" +
-                    $"У вас: {flowCheck.LocalVersion}\n\n" +
-                    "Переустановить компоненты zapret из GitHub?\n" +
-                    "Ваши правки в .bat и lists могут быть заменены.",
+                    Loc.F("update.flowseal_startup", flowCheck.RemoteVersion, flowCheck.LocalVersion),
                     owner))
             {
                 await FlowsealReinstallService.ReinstallAsync(owner, paths);

@@ -19,7 +19,7 @@ public sealed class ToolsWindow : Window
     {
         _runner = runner;
 
-        Title = "Zapret UI — Консоль (Niko)";
+        Title = LocalizationService.IsEnglish ? "Zapret UI — Console (Niko)" : "Zapret UI — Консоль (Niko)";
         Width = 720;
         Height = 520;
         MinWidth = 500;
@@ -34,13 +34,13 @@ public sealed class ToolsWindow : Window
         DockPanel.SetDock(header, Dock.Top);
         header.Children.Add(new TextBlock
         {
-            Text = "Консоль и диагностика",
+            Text = Loc.T("tools.title"),
             FontSize = 22,
             FontWeight = FontWeights.Bold
         });
         header.Children.Add(new TextBlock
         {
-            Text = "Вывод операций, проверка системы и тест стратегий",
+            Text = Loc.T("tools.subtitle"),
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 4, 0, 0)
         });
@@ -61,16 +61,16 @@ public sealed class ToolsWindow : Window
 
         var toolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
         DockPanel.SetDock(toolbar, Dock.Top);
-        toolbar.Children.Add(MakeButton("Диагностика", async () => await RunDiagnosticsAsync()));
-        toolbar.Children.Add(MakeButton("Тест стратегий", async () => await RunTestsAsync()));
-        toolbar.Children.Add(MakeButton("Очистить", () =>
+        toolbar.Children.Add(MakeButton(Loc.T("tools.diagnostics"), async () => await RunDiagnosticsAsync()));
+        toolbar.Children.Add(MakeButton(Loc.T("tools.test"), async () => await RunTestsAsync()));
+        toolbar.Children.Add(MakeButton(Loc.T("tools.clear"), () =>
         {
             _output.Document.Blocks.Clear();
-            AppendLine("Консоль очищена.");
+            AppendLine(Loc.T("tools.cleared"));
             return Task.CompletedTask;
         }));
         root.Children.Add(toolbar);
-        AppendLine("Консоль Zapret UI — здесь отображается вывод.");
+        AppendLine(Loc.T("tools.intro"));
 
         var border = new Border
         {
@@ -128,7 +128,7 @@ public sealed class ToolsWindow : Window
         }
         catch (Exception ex)
         {
-            AppendLine($"Ошибка: {ex.Message}");
+            AppendLine($"{Loc.T("common.error_prefix")} {ex.Message}");
         }
     }
 
@@ -140,7 +140,7 @@ public sealed class ToolsWindow : Window
         }
         catch (Exception ex)
         {
-            AppendLine($"Ошибка: {ex.Message}");
+            AppendLine($"{Loc.T("common.error_prefix")} {ex.Message}");
             UiHelpers.ShowError(ex.Message);
         }
     }
