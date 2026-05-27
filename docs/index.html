@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zapret UI — руководство</title>
+  <meta name="description" content="Руководство пользователя Zapret UI — обход блокировок Discord, YouTube и других сервисов на Windows.">
+  <link rel="icon" href="https://raw.githubusercontent.com/RaccoonLaptop/ZapretUI/main/Assets/icon-readme.png">
+  <style>
+    :root {
+      --bg: #08090d;
+      --surface: #10121a;
+      --surface-light: #181b26;
+      --border: #2d3348;
+      --accent: #6b9fff;
+      --accent-hover: #8ab4ff;
+      --success: #8fd460;
+      --error: #f07088;
+      --text: #e8ebf4;
+      --muted: #a8b3d0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); text-decoration: underline; }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 20px 64px; }
+    header { text-align: center; margin-bottom: 40px; }
+    header img { width: 96px; height: 96px; border-radius: 20px; margin-bottom: 12px; }
+    h1 { font-size: 2rem; margin: 0 0 8px; }
+    .tagline { color: var(--muted); margin: 0; }
+    nav.lang { margin-top: 16px; }
+    nav.lang a { margin: 0 8px; font-weight: 600; }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+    h2 { font-size: 1.25rem; margin: 0 0 12px; color: var(--accent); }
+    h3 { font-size: 1rem; margin: 16px 0 8px; }
+    ul { padding-left: 1.25rem; }
+    li { margin: 6px 0; }
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #08090d;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 8px;
+      margin: 8px 8px 8px 0;
+      text-decoration: none;
+    }
+    .btn:hover { background: var(--accent-hover); color: #08090d; text-decoration: none; }
+    .btn.secondary {
+      background: var(--surface-light);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    .dot.ok { background: var(--success); }
+    .dot.err { background: var(--error); }
+    footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 32px; }
+    #en { display: none; }
+    html.lang-en #ru { display: none; }
+    html.lang-en #en { display: block; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img src="https://raw.githubusercontent.com/RaccoonLaptop/ZapretUI/main/Assets/icon-readme.png" alt="Zapret UI">
+      <h1>Zapret UI</h1>
+      <p class="tagline" id="ru">Графический интерфейс для zapret / Flowseal на Windows</p>
+      <p class="tagline" id="en">Graphical interface for zapret / Flowseal on Windows</p>
+      <nav class="lang">
+        <a href="#" onclick="setLang('ru');return false;">Русский</a>
+        <a href="#" onclick="setLang('en');return false;">English</a>
+      </nav>
+      <p style="margin-top:20px">
+        <a class="btn" href="https://github.com/RaccoonLaptop/ZapretUI/releases/latest">Скачать ZapretUI-Setup.exe</a>
+        <a class="btn secondary" href="https://github.com/RaccoonLaptop/ZapretUI">GitHub</a>
+      </p>
+    </header>
+
+    <div id="ru-content">
+      <section>
+        <h2>Быстрый старт</h2>
+        <ol>
+          <li>Скачайте и установите <strong>ZapretUI-Setup.exe</strong>.</li>
+          <li>При первом запуске дождитесь загрузки компонентов Flowseal.</li>
+          <li>На вкладке <strong>Главная</strong> выберите стратегию и нажмите <strong>ЗАПУСТИТЬ</strong>.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Разделы программы</h2>
+        <table>
+          <tr><th>Вкладка</th><th>Описание</th></tr>
+          <tr><td>Главная</td><td>Запуск и остановка обхода, выбор стратегии, фон</td></tr>
+          <tr><td>Стратегии</td><td>Редактор .bat, списки, копирование конфигов</td></tr>
+          <tr><td>Сервис</td><td>Game Filter, IPSet, язык, обновления, безопасность</td></tr>
+          <tr><td>Консоль</td><td>Логи и диагностика</td></tr>
+        </table>
+      </section>
+
+      <section>
+        <h2>Системный трей</h2>
+        <p><span class="dot ok"></span>Зелёная иконка — обход <strong>работает</strong>.</p>
+        <p><span class="dot err"></span>Синяя иконка — <strong>остановлено</strong>.</p>
+        <p><strong>ПКМ</strong> по иконке: статус, запуск/остановка, открыть программу, выход.</p>
+      </section>
+
+      <section>
+        <h2>После установки по умолчанию</h2>
+        <ul>
+          <li>Game Filter: <strong>TCP + UDP</strong></li>
+          <li>IPSet: <strong>загружен</strong></li>
+          <li>Фон главной: <strong>Wavy</strong></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Решение проблем</h2>
+        <ul>
+          <li><strong>winws не запустился</strong> — запуск от администратора, другая стратегия.</li>
+          <li><strong>Не открывается окно</strong> — установите последнюю версию с GitHub.</li>
+          <li><strong>Сайты не работают</strong> — обновите Flowseal в «Сервис», смените стратегию.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Документация для разработчиков</h2>
+        <p>В репозитории: папка <code>docs/project/</code>, файл <code>AGENTS.md</code> — полный контекст для Cursor AI.</p>
+        <p><a href="https://github.com/RaccoonLaptop/ZapretUI/blob/main/docs/project/CHANGELOG.md">История изменений</a></p>
+      </section>
+    </div>
+
+    <div id="en-content" style="display:none">
+      <section>
+        <h2>Quick start</h2>
+        <ol>
+          <li>Download and install <strong>ZapretUI-Setup.exe</strong>.</li>
+          <li>On first launch wait for Flowseal components to download.</li>
+          <li>On <strong>Home</strong> pick a strategy and press <strong>START</strong>.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>App sections</h2>
+        <table>
+          <tr><th>Tab</th><th>Description</th></tr>
+          <tr><td>Home</td><td>Start/stop bypass, strategy picker, background</td></tr>
+          <tr><td>Strategies</td><td>.bat editor, lists, copy configs</td></tr>
+          <tr><td>Service</td><td>Game filter, IPSet, language, updates, security</td></tr>
+          <tr><td>Console</td><td>Logs and diagnostics</td></tr>
+        </table>
+      </section>
+
+      <section>
+        <h2>System tray</h2>
+        <p><span class="dot ok"></span>Green icon — bypass <strong>running</strong>.</p>
+        <p><span class="dot err"></span>Blue icon — <strong>stopped</strong>.</p>
+        <p><strong>Right-click</strong>: status, start/stop, open app, exit.</p>
+      </section>
+
+      <section>
+        <h2>Fresh install defaults</h2>
+        <ul>
+          <li>Game Filter: <strong>TCP + UDP</strong></li>
+          <li>IPSet: <strong>loaded</strong></li>
+          <li>Home background: <strong>Wavy</strong></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Troubleshooting</h2>
+        <ul>
+          <li><strong>winws did not start</strong> — run as administrator, try another strategy.</li>
+          <li><strong>Window won’t open</strong> — install the latest release from GitHub.</li>
+          <li><strong>Sites still blocked</strong> — update Flowseal in Service, change strategy.</li>
+        </ul>
+      </section>
+    </div>
+
+    <footer>
+      <p>Zapret UI by Niko · <a href="https://github.com/bol-van/zapret">zapret</a> · <a href="https://github.com/Flowseal/zapret-discord-youtube">Flowseal</a></p>
+      <p>v1.6.8</p>
+    </footer>
+  </div>
+  <script>
+    function setLang(l) {
+      document.documentElement.classList.toggle('lang-en', l === 'en');
+      document.getElementById('ru-content').style.display = l === 'en' ? 'none' : 'block';
+      document.getElementById('en-content').style.display = l === 'en' ? 'block' : 'none';
+    }
+  </script>
+</body>
+</html>

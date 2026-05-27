@@ -8,20 +8,36 @@
 
 Проект помогает проще пользоваться стратегиями обхода блокировок для Discord, YouTube и других сервисов.
 
+| | |
+|---|---|
+| **Скачать** | [ZapretUI-Setup.exe (последний релиз)](https://github.com/RaccoonLaptop/ZapretUI/releases/latest) |
+| **Руководство** | https://raccoonlaptop.github.io/ZapretUI/ |
+| **Для разработчиков / AI** | [AGENTS.md](AGENTS.md) · [docs/project/](docs/project/) |
+
 ## Быстрый старт
 
 1. Скачайте `ZapretUI-Setup.exe` из [Releases](https://github.com/RaccoonLaptop/ZapretUI/releases)
 2. Установите программу
-3. Откройте `Zapret UI`, выберите стратегию на главной и нажмите `ЗАПУСТИТЬ`
+3. Откройте Zapret UI, выберите стратегию на главной и нажмите **ЗАПУСТИТЬ**
 
 ## Возможности
 
-- Язык интерфейса: **Русский / English** (вкладка «Сервис» → «Язык»)
-- Запуск/остановка стратегии одной кнопкой
+- Язык интерфейса: **Русский / English** (Сервис → Язык)
+- Запуск/остановка стратегии одной кнопкой + меню в **системном трее**
 - Редактор стратегий `.bat` с подсветкой
-- Работа со списками Flowseal (`lists/*.txt`)
-- Управление сервисом и диагностикой
-- Проверка обновлений Zapret UI и Flowseal при запуске (только с подтверждением)
+- Списки Flowseal (`lists/*.txt`)
+- Game Filter, IPSet, обновления, мастер безопасности
+- Анимированные фоны главной (по умолчанию Wavy)
+
+## Документация
+
+| Документ | Описание |
+|----------|----------|
+| [docs/project/USER_GUIDE.md](docs/project/USER_GUIDE.md) | Руководство пользователя (RU) |
+| [docs/project/USER_GUIDE_EN.md](docs/project/USER_GUIDE_EN.md) | User guide (EN) |
+| [docs/project/CHANGELOG.md](docs/project/CHANGELOG.md) | История изменений |
+| [docs/project/ARCHITECTURE.md](docs/project/ARCHITECTURE.md) | Архитектура |
+| [AGENTS.md](AGENTS.md) | Контекст для Cursor AI |
 
 ## Сборка из исходников
 
@@ -29,10 +45,9 @@
 .\build-installer.ps1
 ```
 
-Результат:
+Результат: `ZapretUI-dist\ZapretUI-Setup.exe`
 
-- `ZapretUI-dist\ZapretUI-Setup.exe` — установщик
-- Обновление из программы: скачивается `ZapretUI-Setup.exe` с GitHub Releases
+Подробнее: [docs/project/BUILD.md](docs/project/BUILD.md)
 
 ## Требования
 
@@ -41,8 +56,6 @@
 
 ## Благодарности
 
-Огромная благодарность:
-
-- создателю проекта [zapret](https://github.com/bol-van/zapret) за фундаментальную работу;
-- команде [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube) за адаптацию и поддержку конфигов для Windows;
-- всем пользователям и тестерам, которые помогают улучшать Zapret UI.
+- [bol-van/zapret](https://github.com/bol-van/zapret)
+- [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube)
+- Всем, кто тестирует и улучшает Zapret UI
