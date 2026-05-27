@@ -413,7 +413,7 @@ public partial class ServicePage : UserControl
 
     private static Border Card() => new()
     {
-        Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
+        Background = (Brush)Application.Current.FindResource("PanelOverlayBrush"),
         BorderBrush = (Brush)Application.Current.FindResource("BorderBrush"),
         BorderThickness = new Thickness(1),
         CornerRadius = new CornerRadius(12),

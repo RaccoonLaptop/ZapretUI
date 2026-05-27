@@ -5,8 +5,13 @@ namespace ZapretUI.Controls.Backgrounds;
 
 public abstract class AnimatedBackgroundBase : FrameworkElement
 {
-    /// <summary>Общий множитель скорости движения (меньше = медленнее).</summary>
+    /// <summary>Доп. замедление для фонов, где время задаётся в RenderFrame (не в AnimateFrame).</summary>
     protected const double MotionScale = 0.45;
+
+    /// <summary>Как useAnimationLoop в bedolaga-cabinet: не чаще 60 FPS.</summary>
+    private const double TargetFps = 60;
+    private const double FrameIntervalMs = 1000.0 / TargetFps;
+    private TimeSpan _lastRenderingTime;
 
     protected double AreaWidth;
     protected double AreaHeight;
@@ -51,6 +56,7 @@ public abstract class AnimatedBackgroundBase : FrameworkElement
     {
         if (_isRunning) return;
         _isRunning = true;
+        _lastRenderingTime = default;
         UpdateDimensions();
         CompositionTarget.Rendering += OnRendering;
     }
@@ -59,6 +65,7 @@ public abstract class AnimatedBackgroundBase : FrameworkElement
     {
         if (!_isRunning) return;
         _isRunning = false;
+        _lastRenderingTime = default;
         CompositionTarget.Rendering -= OnRendering;
     }
 
@@ -67,11 +74,27 @@ public abstract class AnimatedBackgroundBase : FrameworkElement
         if (!_isRunning || ActualWidth <= 1 || ActualHeight <= 1) return;
         if (Math.Abs(AreaWidth - ActualWidth) > 1 || Math.Abs(AreaHeight - ActualHeight) > 1)
             UpdateDimensions();
-        AnimateFrame(NowMs() - StartMs);
+
+        var args = (RenderingEventArgs)e!;
+        var renderTime = args.RenderingTime;
+
+        if (_lastRenderingTime != default)
+        {
+            var sinceLast = (renderTime - _lastRenderingTime).TotalMilliseconds;
+            if (sinceLast < FrameIntervalMs - 0.5)
+                return;
+        }
+
+        var deltaMs = _lastRenderingTime == default
+            ? FrameIntervalMs
+            : Math.Clamp((renderTime - _lastRenderingTime).TotalMilliseconds, FrameIntervalMs, 48);
+        _lastRenderingTime = renderTime;
+
+        AnimateFrame(NowMs() - StartMs, deltaMs);
         InvalidateVisual();
     }
 
-    protected virtual void AnimateFrame(double timeMs) { }
+    protected virtual void AnimateFrame(double timeMs, double deltaMs) { }
 
     protected override void OnRender(DrawingContext dc) => RenderFrame(dc, NowMs() - StartMs);
 
