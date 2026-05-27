@@ -20,12 +20,14 @@ public sealed class FindReplaceDialog : Window
         Owner = owner;
         Title = "Найти и заменить";
         Width = 520;
-        Height = 260;
+        SizeToContent = SizeToContent.Height;
+        MinHeight = 300;
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = (Brush)Application.Current.FindResource("BgBrush");
+        AppIcon.ApplyTo(this);
 
-        var root = new StackPanel { Margin = new Thickness(20) };
+        var root = new StackPanel { Margin = new Thickness(20, 20, 20, 28) };
         root.Children.Add(Label("Найти:"));
         _findBox = new TextBox { Margin = new Thickness(0, 0, 0, 10) };
         root.Children.Add(_findBox);
@@ -55,7 +57,7 @@ public sealed class FindReplaceDialog : Window
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(0, 8, 0, 0)
+            Margin = new Thickness(0, 12, 0, 4)
         };
         var close = MakeBtn("Закрыть", (_, _) => Close());
         close.IsCancel = true;
