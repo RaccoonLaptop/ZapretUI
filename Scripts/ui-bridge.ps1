@@ -216,6 +216,37 @@ switch ($Action) {
         }
     }
 
+    "StartStrategy" {
+        if (-not $Extra) { Write-Color "Strategy file not specified" Red; exit 1 }
+        $bat = Join-Path $Root $Extra
+        if (-not (Test-Path $bat)) { Write-Color "File not found: $bat" Red; exit 1 }
+
+        Push-Location $Root
+        foreach ($prep in @("status_zapret", "check_updates", "load_game_filter", "load_user_lists")) {
+            Start-Process -FilePath "cmd.exe" -ArgumentList "/c call service.bat $prep" `
+                -WorkingDirectory $Root -WindowStyle Hidden -Wait -NoNewWindow | Out-Null
+        }
+        Pop-Location
+
+        $parsed = Parse-StrategyArgs -BatFile $bat
+        if (-not $parsed) { Write-Color "Could not parse winws arguments from $Extra" Red; exit 1 }
+
+        $winwsPath = Join-Path $BinPath "winws.exe"
+        if (-not (Test-Path $winwsPath)) { Write-Color "winws.exe not found" Red; exit 1 }
+
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = $winwsPath
+        $psi.Arguments = $parsed
+        $psi.WorkingDirectory = $BinPath.TrimEnd('\')
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
+        $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+        [void][System.Diagnostics.Process]::Start($psi)
+
+        $name = [System.IO.Path]::GetFileNameWithoutExtension($Extra)
+        Write-Color "Strategy started (hidden): $name" Green
+    }
+
     "RunTests" {
         $testScript = Join-Path $Root "utils\test zapret.ps1"
         if (-not (Test-Path $testScript)) { Write-Color "Test script not found" Red; exit 1 }
