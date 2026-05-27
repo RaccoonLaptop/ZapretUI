@@ -7,7 +7,7 @@ namespace ZapretUI.Controls.Backgrounds;
 public abstract class AnimatedBackgroundBase : FrameworkElement
 {
     /// <summary>Глобальное замедление canvas-фонов относительно bedolaga (WPF/desktop).</summary>
-    public static double GlobalSpeed { get; set; } = 0.22;
+    public static double GlobalSpeed { get; set; } = 0.15;
 
     protected const double MotionScale = 0.45;
 
