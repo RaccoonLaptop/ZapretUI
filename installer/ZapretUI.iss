@@ -59,3 +59,19 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\zapret"
+Type: filesandordirs; Name: "{app}\Assets"
+Type: filesandordirs; Name: "{app}\Scripts"
+Type: files; Name: "{app}\settings.json"
+
+[Code]
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  AppDir: String;
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    AppDir := ExpandConstant('{app}');
+    if DirExists(AppDir) then
+      DelTree(AppDir, True, True, True);
+  end;
+end;
