@@ -79,21 +79,20 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (_settings.AutoUpdateApp)
+            var startupUpdates = new StartupUpdateService();
+            if (await startupUpdates.CheckAndPromptAsync(this, _settings, _paths))
             {
-                var updater = new AppSelfUpdateService(_settings, _paths.Root);
-                var result = await updater.CheckAndInstallIfNeededAsync(autoInstall: true);
-                if (result.RequiresRestart)
-                {
-                    ShutdownApplication();
-                    return;
-                }
+                ShutdownApplication();
+                return;
             }
 
             if (!_settings.SecuritySetupCompleted && !_settings.SecuritySetupSkipped)
                 ShowSecuritySetup();
         }
-        catch { /* ignore */ }
+        catch (Exception ex)
+        {
+            ConsoleLog.Instance.Write($"Ошибка при запуске: {ex.Message}");
+        }
     }
 
     private void ShowSecuritySetup()

@@ -149,7 +149,7 @@ public sealed class AppSelfUpdateService
         if (!check.HasUpdate || check.Manifest is null)
             return AppUpdateInstallResult.Ok(check.Message ?? "Обновление не требуется");
 
-        if (!autoInstall && !Helpers.UiHelpers.Confirm(
+        if (!Helpers.UiHelpers.Confirm(
                 $"Доступна новая версия Zapret UI: {check.RemoteVersion} (у вас {check.LocalVersion}).\n\nУстановить сейчас?"))
         {
             return AppUpdateInstallResult.Ok("Обновление отложено");
