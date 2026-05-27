@@ -10,8 +10,8 @@ namespace ZapretUI.Controls.Backgrounds;
 public sealed class ShootingStarsBackground : AnimatedBackgroundBase
 {
     private const double StarDensity = 0.00015;
-    private const double MinSpeedPxPerSec = 70;
-    private const double MaxSpeedPxPerSec = 140;
+    private const double MinSpeedPxPerSec = 45;
+    private const double MaxSpeedPxPerSec = 95;
     private const double TrailLength = 80;
     private const double FadeDistance = 750;
 
