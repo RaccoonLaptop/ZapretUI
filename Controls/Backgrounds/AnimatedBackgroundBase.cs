@@ -1,18 +1,24 @@
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace ZapretUI.Controls.Backgrounds;
 
 public abstract class AnimatedBackgroundBase : FrameworkElement
 {
-    /// <summary>Доп. замедление для фонов, где время задаётся в RenderFrame (не в AnimateFrame).</summary>
+    /// <summary>
+    /// Множитель для canvas-фонов (звёзды, метеоры, искры, вихрь).
+    /// Bedolaga-константы на WPF выглядят быстрее — снижаем ~в 3 раза.
+    /// </summary>
+    protected const double CanvasMotionScale = 0.32;
+
+    /// <summary>Доп. замедление для фонов, где время задаётся в RenderFrame.</summary>
     protected const double MotionScale = 0.45;
 
-    /// <summary>Как useAnimationLoop в bedolaga-cabinet: не чаще 60 FPS.</summary>
     private const double TargetFps = 60;
-    private const double FrameIntervalMs = 1000.0 / TargetFps;
-    private TimeSpan _lastRenderingTime;
+    private const double FrameDeltaMs = 1000.0 / TargetFps;
 
+    private DispatcherTimer? _timer;
     protected double AreaWidth;
     protected double AreaHeight;
     protected readonly Random Rng = new();
@@ -56,41 +62,35 @@ public abstract class AnimatedBackgroundBase : FrameworkElement
     {
         if (_isRunning) return;
         _isRunning = true;
-        _lastRenderingTime = default;
         UpdateDimensions();
-        CompositionTarget.Rendering += OnRendering;
+
+        _timer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(FrameDeltaMs)
+        };
+        _timer.Tick += OnTimerTick;
+        _timer.Start();
     }
 
     private void StopLoop()
     {
         if (!_isRunning) return;
         _isRunning = false;
-        _lastRenderingTime = default;
-        CompositionTarget.Rendering -= OnRendering;
+        if (_timer is not null)
+        {
+            _timer.Stop();
+            _timer.Tick -= OnTimerTick;
+            _timer = null;
+        }
     }
 
-    private void OnRendering(object? sender, EventArgs e)
+    private void OnTimerTick(object? sender, EventArgs e)
     {
         if (!_isRunning || ActualWidth <= 1 || ActualHeight <= 1) return;
         if (Math.Abs(AreaWidth - ActualWidth) > 1 || Math.Abs(AreaHeight - ActualHeight) > 1)
             UpdateDimensions();
 
-        var args = (RenderingEventArgs)e!;
-        var renderTime = args.RenderingTime;
-
-        if (_lastRenderingTime != default)
-        {
-            var sinceLast = (renderTime - _lastRenderingTime).TotalMilliseconds;
-            if (sinceLast < FrameIntervalMs - 0.5)
-                return;
-        }
-
-        var deltaMs = _lastRenderingTime == default
-            ? FrameIntervalMs
-            : Math.Clamp((renderTime - _lastRenderingTime).TotalMilliseconds, FrameIntervalMs, 48);
-        _lastRenderingTime = renderTime;
-
-        AnimateFrame(NowMs() - StartMs, deltaMs);
+        AnimateFrame(NowMs() - StartMs, FrameDeltaMs);
         InvalidateVisual();
     }
 
