@@ -236,6 +236,10 @@ public partial class StrategiesPage : UserControl
             ConsoleLog.Instance.Write(Loc.F("strategies.log_run", file));
             _runStatus.Text = Loc.T("strategies.done");
         }
+        catch (OperationCanceledException)
+        {
+            // Stopped or superseded — no dialog.
+        }
         catch (Exception ex)
         {
             _runStatus.Text = Loc.T("strategies.run_error");

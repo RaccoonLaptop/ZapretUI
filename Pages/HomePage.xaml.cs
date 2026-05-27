@@ -20,6 +20,7 @@ public partial class HomePage : UserControl
     private TextBlock _actionStatus = null!;
     private readonly DispatcherTimer _statusTimer;
     private bool _isStarting;
+    private CancellationTokenSource? _startCts;
 
     public HomePage(ZapretPaths paths, StrategyService strategy, AppSettings settings)
     {
@@ -174,18 +175,21 @@ public partial class HomePage : UserControl
                 _statusLabel.Text = Loc.F("status.running_with", title);
         }
 
-        _toggleBtn.Content = _isStarting
+        _toggleBtn.Content = _isStarting && !running
             ? Loc.T("home.starting")
-            : (running ? Loc.T("home.stop") : Loc.T("home.start"));
-        _toggleBtn.IsEnabled = !_isStarting;
+            : (running || _isStarting ? Loc.T("home.stop") : Loc.T("home.start"));
+        _toggleBtn.IsEnabled = true;
         _strategyCombo.IsEnabled = !running && !_isStarting;
     }
 
     private async Task ToggleAsync()
     {
-        if (_strategy.IsRunning())
+        if (_strategy.IsRunning() || _isStarting)
         {
+            _startCts?.Cancel();
             await _strategy.StopStrategyAsync();
+            _isStarting = false;
+            _actionStatus.Visibility = Visibility.Collapsed;
             ConsoleLog.Instance.Write(Loc.T("home.log_stopped"));
             RefreshToggleUi();
             return;
@@ -196,6 +200,10 @@ public partial class HomePage : UserControl
             UiHelpers.ShowError(Loc.T("home.select_strategy"));
             return;
         }
+
+        _startCts?.Cancel();
+        _startCts?.Dispose();
+        _startCts = new CancellationTokenSource();
 
         try
         {
@@ -209,10 +217,14 @@ public partial class HomePage : UserControl
             ConsoleLog.Instance.Write(Loc.F("home.log_start", strategy));
 
             _actionStatus.Text = Loc.T("home.wait_winws");
-            await _strategy.StartStrategyAsync(strategy);
+            await _strategy.StartStrategyAsync(strategy, _startCts.Token);
 
             ConsoleLog.Instance.Write(Loc.T("home.log_started"));
             _actionStatus.Text = Loc.T("home.done");
+        }
+        catch (OperationCanceledException)
+        {
+            // User stopped while start was still in progress — not an error.
         }
         catch (Exception ex)
         {
@@ -222,10 +234,10 @@ public partial class HomePage : UserControl
         }
         finally
         {
-            if (_strategy.IsRunning())
-                CompleteStartingUi();
-            else
-                _isStarting = false;
+            _startCts?.Dispose();
+            _startCts = null;
+            _isStarting = false;
+            _actionStatus.Visibility = Visibility.Collapsed;
             RefreshToggleUi();
         }
     }
