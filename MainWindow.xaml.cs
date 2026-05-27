@@ -52,7 +52,7 @@ public partial class MainWindow : Window
         _runner.OutputReceived += line => ConsoleLog.Instance.Write(line);
         _strategy = new StrategyService(_paths, _runner);
 
-        _tray = new TrayIconService(this);
+        _tray = new TrayIconService(this, ToggleBypassFromTrayAsync);
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
 
         VersionText.Text = $"v{AppSelfUpdateService.GetLocalVersion()} · Flowseal {_paths.GetLocalVersion()}";
@@ -298,5 +298,16 @@ public partial class MainWindow : Window
                 StatusText.Text = Loc.F("status.running_with", title);
         }
         _homePage?.RefreshToggleUi();
+        _tray.UpdateState(
+            running,
+            _strategy.GetRunningStrategyTitle(),
+            _homePage?.IsBypassBusy ?? false);
+    }
+
+    private async Task ToggleBypassFromTrayAsync()
+    {
+        if (_homePage is null)
+            NavigateHome();
+        await _homePage!.ToggleBypassAsync();
     }
 }

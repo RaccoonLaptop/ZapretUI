@@ -22,6 +22,8 @@ public partial class HomePage : UserControl
     private bool _isStarting;
     private CancellationTokenSource? _startCts;
 
+    public bool IsBypassBusy => _isStarting;
+
     public HomePage(ZapretPaths paths, StrategyService strategy, AppSettings settings)
     {
         _paths = paths;
@@ -181,6 +183,8 @@ public partial class HomePage : UserControl
         _toggleBtn.IsEnabled = true;
         _strategyCombo.IsEnabled = !running && !_isStarting;
     }
+
+    public Task ToggleBypassAsync() => ToggleAsync();
 
     private async Task ToggleAsync()
     {
