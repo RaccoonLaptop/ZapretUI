@@ -24,15 +24,54 @@ public class SetupWindow : Window
     private void BuildUi()
     {
         Title = "Установка Zapret UI — Niko";
-        Width = 520;
-        Height = 420;
+        Width = 560;
+        Height = 520;
+        MinHeight = 500;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         ResizeMode = ResizeMode.NoResize;
         Background = (Brush)Application.Current.FindResource("BgBrush");
+        var root = new DockPanel { Margin = new Thickness(24) };
 
-        var root = new StackPanel { Margin = new Thickness(24) };
+        var btns = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+        DockPanel.SetDock(btns, Dock.Bottom);
 
-        root.Children.Add(new TextBlock
+        var skipBtn = new Button
+        {
+            Content = "Пропустить",
+            Style = (Style)Application.Current.FindResource("SecondaryButton"),
+            Margin = new Thickness(0, 0, 8, 0),
+            IsCancel = true,
+            MinWidth = 120
+        };
+        skipBtn.Click += (_, _) => CloseSkipped();
+
+        var applyBtn = new Button
+        {
+            Content = "Применить",
+            Style = (Style)Application.Current.FindResource("PrimaryButton"),
+            IsDefault = true,
+            MinWidth = 120
+        };
+        applyBtn.Click += async (_, _) => await ApplyAsync(applyBtn);
+
+        btns.Children.Add(skipBtn);
+        btns.Children.Add(applyBtn);
+        root.Children.Add(btns);
+
+        var scroll = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+        var content = new StackPanel();
+        scroll.Content = content;
+        root.Children.Add(scroll);
+
+        content.Children.Add(new TextBlock
         {
             Text = "Настройка безопасности",
             FontSize = 22,
@@ -40,7 +79,7 @@ public class SetupWindow : Window
             Margin = new Thickness(0, 0, 0, 8)
         });
 
-        root.Children.Add(new TextBlock
+        content.Children.Add(new TextBlock
         {
             Text = "Zapret использует WinDivert и winws.exe — антивирус и брандмауэр могут их блокировать. Рекомендуем добавить исключения сейчас (нужны права администратора).",
             TextWrapping = TextWrapping.Wrap,
@@ -57,7 +96,7 @@ public class SetupWindow : Window
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 0, 0, 16)
         };
-        root.Children.Add(pathsBlock);
+        content.Children.Add(pathsBlock);
 
         _defenderCheck = new CheckBox
         {
@@ -71,8 +110,8 @@ public class SetupWindow : Window
             IsChecked = true,
             Margin = new Thickness(0, 0, 0, 16)
         };
-        root.Children.Add(_defenderCheck);
-        root.Children.Add(_firewallCheck);
+        content.Children.Add(_defenderCheck);
+        content.Children.Add(_firewallCheck);
 
         _statusText = new TextBlock
         {
@@ -81,30 +120,7 @@ public class SetupWindow : Window
             MinHeight = 40,
             Margin = new Thickness(0, 0, 0, 12)
         };
-        root.Children.Add(_statusText);
-
-        var btns = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        var skipBtn = new Button
-        {
-            Content = "Пропустить",
-            Style = (Style)Application.Current.FindResource("SecondaryButton"),
-            Margin = new Thickness(0, 0, 8, 0),
-            IsCancel = true
-        };
-        skipBtn.Click += (_, _) => CloseSkipped();
-
-        var applyBtn = new Button
-        {
-            Content = "Применить",
-            Style = (Style)Application.Current.FindResource("PrimaryButton"),
-            IsDefault = true,
-            MinWidth = 120
-        };
-        applyBtn.Click += async (_, _) => await ApplyAsync(applyBtn);
-
-        btns.Children.Add(skipBtn);
-        btns.Children.Add(applyBtn);
-        root.Children.Add(btns);
+        content.Children.Add(_statusText);
 
         Content = root;
     }
