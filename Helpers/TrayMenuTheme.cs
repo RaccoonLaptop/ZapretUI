@@ -15,29 +15,19 @@ internal sealed class TrayMenuTheme : ProfessionalColorTable
     public static readonly DColor Accent = DColor.FromArgb(107, 159, 255);
     public static readonly DColor Success = DColor.FromArgb(143, 212, 96);
     public static readonly DColor Error = DColor.FromArgb(240, 112, 136);
-
-    public override DColor MenuItemSelected => BgHover;
-    public override DColor MenuItemSelectedGradientBegin => BgHover;
-    public override DColor MenuItemSelectedGradientEnd => BgHover;
-    public override DColor MenuItemPressedGradientBegin => BgHover;
-    public override DColor MenuItemPressedGradientEnd => BgHover;
-    public override DColor MenuItemBorder => Border;
-    public override DColor MenuBorder => Border;
-    public override DColor ToolStripDropDownBackground => Bg;
-    public override DColor ImageMarginGradientBegin => Bg;
-    public override DColor ImageMarginGradientMiddle => Bg;
-    public override DColor ImageMarginGradientEnd => Bg;
-    public override DColor SeparatorDark => Border;
-    public override DColor SeparatorLight => Border;
 }
 
 internal sealed class TrayMenuRenderer : ToolStripProfessionalRenderer
 {
     public TrayMenuRenderer() : base(new TrayMenuTheme()) { }
 
-    protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+    protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
     {
         e.Graphics.FillRectangle(new SolidBrush(TrayMenuTheme.Bg), e.AffectedBounds);
+    }
+
+    protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+    {
         using var pen = new Pen(TrayMenuTheme.Border);
         e.Graphics.DrawRectangle(pen, 0, 0, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1);
     }
@@ -51,49 +41,75 @@ internal sealed class TrayMenuRenderer : ToolStripProfessionalRenderer
 
     protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
     {
-        var g = e.Graphics;
         var bounds = new System.Drawing.Rectangle(0, 0, e.Item.Width, e.Item.Height);
-        if (e.Item is ToolStripLabel)
-        {
-            g.FillRectangle(new SolidBrush(TrayMenuTheme.Bg), bounds);
-            return;
-        }
-
-        if (!e.Item.Enabled)
-        {
-            g.FillRectangle(new SolidBrush(TrayMenuTheme.Bg), bounds);
-            return;
-        }
-
-        if (e.Item.Selected)
-            g.FillRectangle(new SolidBrush(TrayMenuTheme.BgHover), bounds);
-        else
-            g.FillRectangle(new SolidBrush(TrayMenuTheme.Bg), bounds);
+        var bg = e.Item.Selected && e.Item.Enabled
+            ? TrayMenuTheme.BgHover
+            : TrayMenuTheme.Bg;
+        e.Graphics.FillRectangle(new SolidBrush(bg), bounds);
     }
 
     protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
     {
-        if (e.Item is ToolStripLabel && e.Item.Tag is TrayStatusTag tag)
-        {
-            var g = e.Graphics;
-            var y = (e.Item.Height - e.TextRectangle.Height) / 2;
-            using var dotBrush = new SolidBrush(tag.Running ? TrayMenuTheme.Success : TrayMenuTheme.Error);
-            g.FillEllipse(dotBrush, 14, y + 4, 8, 8);
+        var bounds = new System.Drawing.Rectangle(0, 0, e.Item.Width, e.Item.Height);
+        e.Graphics.FillRectangle(new SolidBrush(TrayMenuTheme.Bg), bounds);
 
-            using var textBrush = new SolidBrush(TrayMenuTheme.Text);
-            var textRect = new System.Drawing.RectangleF(28, e.TextRectangle.Y, e.TextRectangle.Width - 16, e.TextRectangle.Height);
-            using var format = new System.Drawing.StringFormat
-            {
-                LineAlignment = System.Drawing.StringAlignment.Center,
-                Alignment = System.Drawing.StringAlignment.Near,
-                Trimming = System.Drawing.StringTrimming.EllipsisCharacter
-            };
-            g.DrawString(e.Text, e.TextFont ?? e.Item.Font, textBrush, textRect, format);
+        if (e.Item.Tag is TrayStatusTag tag)
+        {
+            DrawStatusText(e, tag);
             return;
         }
 
-        e.TextColor = e.Item.Enabled ? TrayMenuTheme.Text : TrayMenuTheme.TextMuted;
-        base.OnRenderItemText(e);
+        var color = TrayMenuTheme.Text;
+        if (!e.Item.Enabled)
+            color = TrayMenuTheme.TextMuted;
+        else if (e.Item.ForeColor != System.Drawing.SystemColors.ControlText
+                 && e.Item.ForeColor != System.Drawing.SystemColors.MenuText
+                 && e.Item.ForeColor.A > 0)
+            color = e.Item.ForeColor;
+
+        DrawItemText(e.Graphics, e.Item, color);
+    }
+
+    private static void DrawStatusText(ToolStripItemTextRenderEventArgs e, TrayStatusTag tag)
+    {
+        var g = e.Graphics;
+        var y = (e.Item.Height - e.TextRectangle.Height) / 2;
+        using var dotBrush = new SolidBrush(tag.Running ? TrayMenuTheme.Success : TrayMenuTheme.Error);
+        g.FillEllipse(dotBrush, 14, y + 4, 8, 8);
+
+        using var textBrush = new SolidBrush(TrayMenuTheme.Text);
+        var textRect = new System.Drawing.RectangleF(
+            28,
+            e.TextRectangle.Y,
+            Math.Max(80, e.TextRectangle.Width - 16),
+            e.TextRectangle.Height);
+        using var format = new System.Drawing.StringFormat
+        {
+            LineAlignment = System.Drawing.StringAlignment.Center,
+            Alignment = System.Drawing.StringAlignment.Near,
+            Trimming = System.Drawing.StringTrimming.EllipsisCharacter
+        };
+        g.DrawString(e.Text, e.TextFont ?? e.Item.Font, textBrush, textRect, format);
+    }
+
+    private static void DrawItemText(System.Drawing.Graphics g, ToolStripItem item, DColor color)
+    {
+        if (string.IsNullOrEmpty(item.Text)) return;
+
+        var rect = new System.Drawing.RectangleF(
+            14,
+            0,
+            Math.Max(80, item.Width - 28),
+            item.Height);
+
+        using var brush = new SolidBrush(color);
+        using var format = new System.Drawing.StringFormat
+        {
+            LineAlignment = System.Drawing.StringAlignment.Center,
+            Alignment = System.Drawing.StringAlignment.Near,
+            Trimming = System.Drawing.StringTrimming.EllipsisCharacter
+        };
+        g.DrawString(item.Text, item.Font, brush, rect, format);
     }
 }
 

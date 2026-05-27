@@ -14,8 +14,8 @@ public sealed class TrayIconService : IDisposable
     private readonly Func<Task> _toggleBypassAsync;
     private readonly NotifyIcon _notifyIcon;
     private readonly ContextMenuStrip _menu;
-    private readonly ToolStripLabel _statusItem;
-    private readonly ToolStripLabel _strategyItem;
+    private readonly ToolStripMenuItem _statusItem;
+    private readonly ToolStripMenuItem _strategyItem;
     private readonly ToolStripMenuItem _toggleItem;
     private readonly ToolStripMenuItem _openItem;
     private readonly ToolStripMenuItem _exitItem;
@@ -39,24 +39,28 @@ public sealed class TrayIconService : IDisposable
             Renderer = new TrayMenuRenderer(),
             ShowImageMargin = false,
             AutoSize = true,
-            Padding = new Padding(4, 6, 4, 6)
+            BackColor = TrayMenuTheme.Bg,
+            ForeColor = TrayMenuTheme.Text,
+            Padding = new Padding(4, 6, 4, 6),
+            MinimumSize = new System.Drawing.Size(240, 0)
         };
         _menu.Opening += (_, _) => ApplyLocalization();
 
-        _statusItem = new ToolStripLabel
+        _statusItem = new ToolStripMenuItem
         {
+            Enabled = false,
             AutoSize = true,
-            Margin = new Padding(8, 6, 8, 0),
-            Padding = new Padding(0, 4, 0, 0),
+            Padding = new Padding(12, 8, 12, 4),
             Font = new DFont("Segoe UI", 9.5f, DFontStyle.Bold),
             ForeColor = TrayMenuTheme.Text,
             Tag = new TrayStatusTag { Running = false }
         };
 
-        _strategyItem = new ToolStripLabel
+        _strategyItem = new ToolStripMenuItem
         {
+            Enabled = false,
             AutoSize = true,
-            Margin = new Padding(28, 0, 8, 6),
+            Padding = new Padding(28, 0, 12, 8),
             ForeColor = TrayMenuTheme.TextMuted,
             Font = new DFont("Segoe UI", 8.5f),
             Visible = false
@@ -65,7 +69,7 @@ public sealed class TrayIconService : IDisposable
         _toggleItem = new ToolStripMenuItem
         {
             Font = new DFont("Segoe UI", 9.25f),
-            ForeColor = TrayMenuTheme.Text,
+            ForeColor = TrayMenuTheme.Accent,
             Padding = new Padding(12, 6, 12, 6)
         };
         _toggleItem.Click += async (_, _) => await RunToggleAsync();
