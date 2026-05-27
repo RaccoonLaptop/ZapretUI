@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory)][string]$TargetDir,
     [Parameter(Mandatory)][int]$ProcessId,
     [Parameter(Mandatory)][string]$ExePath,
-    [string]$LogFile = ""
+    [string]$LogFile = "",
+    [string]$StagingDir = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -111,6 +112,18 @@ try {
 
     Write-Log "Update applied successfully (full replace)"
     Remove-Item -LiteralPath $backupDir -Recurse -Force -ErrorAction SilentlyContinue
+
+    if ($StagingDir -and (Test-Path -LiteralPath $StagingDir)) {
+        Write-Log "Remove staging: $StagingDir"
+        Remove-Item -LiteralPath $StagingDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if ($SourceDir -match 'ZapretUI-install-payload') {
+        $payloadRoot = Split-Path $SourceDir -Parent
+        if (Test-Path -LiteralPath $payloadRoot) {
+            Write-Log "Remove install payload: $payloadRoot"
+            Remove-Item -LiteralPath $payloadRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 
     $launch = $ExePath
     if (-not (Test-Path -LiteralPath $launch)) {

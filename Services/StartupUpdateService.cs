@@ -48,12 +48,15 @@ public sealed class StartupUpdateService
                     "Скачать обновление сейчас?"))
             {
                 PreparedAppUpdate? prepared = null;
-                var progress = new UpdateDownloadWindow("Обновление Zapret UI", "Загрузка пакета обновления...");
-                progress.Owner = owner;
-                progress.Show();
+                var keepPrepared = false;
+                var progressWin = new UpdateDownloadWindow("Обновление Zapret UI", "Загрузка пакета обновления...");
+                progressWin.Owner = owner;
+                progressWin.Show();
                 try
                 {
-                    var preparedResult = await appUpdater.PrepareUpdateAsync(appCheck.Manifest!);
+                    var downloadProgress = new Progress<DownloadProgress>(p => progressWin.ReportProgress(p));
+                    var preparedResult = await appUpdater.PrepareUpdateAsync(
+                        appCheck.Manifest!, downloadProgress);
                     if (!preparedResult.Success || preparedResult.Payload is null)
                     {
                         UiHelpers.ShowError(preparedResult.Message);
@@ -61,12 +64,13 @@ public sealed class StartupUpdateService
                     else
                     {
                         prepared = preparedResult.Payload;
-                        progress.SetStatus("Загрузка завершена. Пакет готов к установке.");
+                        progressWin.SetStatus("Загрузка завершена. Пакет готов к установке.");
                         if (UiHelpers.Confirm(
                                 $"Пакет обновления Zapret UI {appCheck.RemoteVersion} загружен.\n\nУстановить сейчас?"))
                         {
                             var install = await appUpdater.InstallPreparedUpdateAsync(prepared);
                             ConsoleLog.Instance.Write(install.Message);
+                            keepPrepared = install.KeepPreparedFiles;
                             if (install.RequiresRestart)
                                 return true;
                             if (!install.Success)
@@ -76,8 +80,8 @@ public sealed class StartupUpdateService
                 }
                 finally
                 {
-                    progress.Close();
-                    AppSelfUpdateService.CleanupPreparedUpdate(prepared);
+                    progressWin.Close();
+                    AppSelfUpdateService.CleanupPreparedUpdate(prepared, keepPrepared);
                 }
             }
         }

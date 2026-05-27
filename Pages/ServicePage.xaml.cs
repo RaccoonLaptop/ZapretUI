@@ -251,12 +251,15 @@ public partial class ServicePage : UserControl
                 if (result.Manifest is not null)
                 {
                     PreparedAppUpdate? prepared = null;
-                    var progress = new UpdateDownloadWindow("Обновление Zapret UI", "Загрузка пакета обновления...");
-                    if (OwnerWindow is not null) progress.Owner = OwnerWindow;
-                    progress.Show();
+                    var keepPrepared = false;
+                    var progressWin = new UpdateDownloadWindow("Обновление Zapret UI", "Загрузка пакета обновления...");
+                    if (OwnerWindow is not null) progressWin.Owner = OwnerWindow;
+                    progressWin.Show();
                     try
                     {
-                        var preparedResult = await updater.PrepareUpdateAsync(result.Manifest);
+                        var downloadProgress = new Progress<DownloadProgress>(p => progressWin.ReportProgress(p));
+                        var preparedResult = await updater.PrepareUpdateAsync(
+                            result.Manifest, downloadProgress);
                         if (!preparedResult.Success || preparedResult.Payload is null)
                         {
                             UiHelpers.ShowError(preparedResult.Message);
@@ -264,12 +267,13 @@ public partial class ServicePage : UserControl
                         }
 
                         prepared = preparedResult.Payload;
-                        progress.SetStatus("Загрузка завершена. Пакет готов к установке.");
+                        progressWin.SetStatus("Загрузка завершена. Пакет готов к установке.");
 
                         if (UiHelpers.Confirm(
                                 $"Пакет обновления Zapret UI {result.RemoteVersion} загружен.\n\nУстановить сейчас?"))
                         {
                             var install = await updater.InstallPreparedUpdateAsync(prepared);
+                            keepPrepared = install.KeepPreparedFiles;
                             if (install.RequiresRestart && Application.Current.MainWindow is MainWindow mw)
                                 mw.ShutdownApplication();
                             else if (!install.Success)
@@ -280,8 +284,8 @@ public partial class ServicePage : UserControl
                     }
                     finally
                     {
-                        progress.Close();
-                        AppSelfUpdateService.CleanupPreparedUpdate(prepared);
+                        progressWin.Close();
+                        AppSelfUpdateService.CleanupPreparedUpdate(prepared, keepPrepared);
                     }
                 }
             }
