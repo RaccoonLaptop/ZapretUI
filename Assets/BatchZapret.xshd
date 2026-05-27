@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<SyntaxDefinition name="BatchZapret" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Default" foreground="#E8EBF4" fontWeight="normal" />
+  <Color name="Comment" foreground="#9AA5BE" fontStyle="italic" />
+  <Color name="Keyword" foreground="#FF9F6B" fontWeight="bold" />
+  <Color name="Command" foreground="#8FD460" />
+  <Color name="String" foreground="#FFD580" />
+  <Color name="Variable" foreground="#FF8FA3" />
+  <Color name="Label" foreground="#E8B86A" fontWeight="bold" />
+  <Color name="Operator" foreground="#F07088" />
+  <Color name="Number" foreground="#FFB347" />
+
+  <RuleSet ignoreCase="true">
+    <Rule color="Comment">
+      \sREM.*$
+    </Rule>
+    <Rule color="Comment">
+      ^::.*$
+    </Rule>
+    <Rule color="Label">
+      ^\s*:[\w\-]+
+    </Rule>
+    <Rule color="String">
+      &quot;[^&quot;\\]*(?:\\.[^&quot;\\]*)*&quot;
+    </Rule>
+    <Rule color="Variable">
+      %[\w\-]+%
+    </Rule>
+    <Rule color="Variable">
+      ![\w\-]+!
+    </Rule>
+    <Rule color="Number">
+      \b\d+\b
+    </Rule>
+    <Rule color="Keyword">
+      \b(if|else|goto|call|set|setlocal|endlocal|for|in|do|exit|pause|shift|errorlevel|not|equ|neq|lss|leq|gtr|geq)\b
+    </Rule>
+    <Rule color="Command">
+      \b(echo|cd|chdir|start|rem|pushd|popd|title|cls|break|choice|timeout|netsh|sc)\b
+    </Rule>
+    <Rule color="Operator">
+      [&amp;|&lt;&gt;]
+    </Rule>
+  </RuleSet>
+</SyntaxDefinition>

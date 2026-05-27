@@ -10,7 +10,7 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <AssemblyName>ZapretUI</AssemblyName>
     <RootNamespace>ZapretUI</RootNamespace>
-    <Version>1.1.5</Version>
+    <Version>1.1.6</Version>
     <Authors>Niko</Authors>
     <Company>Niko</Company>
     <Product>Zapret UI</Product>
@@ -34,6 +34,9 @@
 
   <ItemGroup>
     <Content Include="Assets\app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\BatchZapret.xshd">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

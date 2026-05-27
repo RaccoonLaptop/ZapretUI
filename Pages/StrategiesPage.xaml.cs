@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using ICSharpCode.AvalonEdit;
-using ICSharpCode.AvalonEdit.Highlighting;
 using ZapretUI.Helpers;
 using ZapretUI.Services;
 
@@ -42,7 +41,7 @@ public partial class StrategiesPage : UserControl
         });
         header.Children.Add(new TextBlock
         {
-            Text = "Создание своей стратегии: «Создать копию» — копия выбранного конфига; «Новый конфиг» — пустой на основе шаблона. После редактирования нажмите «Сохранить».",
+            Text = "«Создать копию» — копия с новым именем. «Переименовать» — изменить имя текущего файла.",
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12,
@@ -71,12 +70,9 @@ public partial class StrategiesPage : UserControl
         var leftBtns = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
         var runBtn = new Button { Content = "Запустить", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 0, 8) };
         runBtn.Click += async (_, _) => await RunSelectedAsync();
-        var createBtn = new Button { Content = "Создать копию", Style = (Style)Application.Current.FindResource("SecondaryButton"), Margin = new Thickness(0, 0, 0, 8) };
-        createBtn.Click += (_, _) => CreateCopy();
         var newBtn = new Button { Content = "Новый конфиг", Style = (Style)Application.Current.FindResource("SecondaryButton") };
         newBtn.Click += (_, _) => CreateNew();
         leftBtns.Children.Add(runBtn);
-        leftBtns.Children.Add(createBtn);
         leftBtns.Children.Add(newBtn);
         leftStack.Children.Add(leftBtns);
         leftPanel.Child = leftStack;
@@ -94,20 +90,23 @@ public partial class StrategiesPage : UserControl
         DockPanel.SetDock(_fileName, Dock.Top);
         rightStack.Children.Add(_fileName);
 
-        var editorToolbar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
+        var editorToolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
         DockPanel.SetDock(editorToolbar, Dock.Top);
-        var saveBtn = new Button { Content = "Сохранить", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 0) };
-        saveBtn.Click += (_, _) => SaveCurrent();
-        var revertBtn = new Button { Content = "Отменить", Style = (Style)Application.Current.FindResource("SecondaryButton") };
-        revertBtn.Click += (_, _) => LoadSelected();
+
+        var saveBtn = MakeToolbarBtn("Сохранить", "PrimaryButton", (_, _) => SaveCurrent());
+        var revertBtn = MakeToolbarBtn("Отменить", "SecondaryButton", (_, _) => LoadSelected());
+        var copyBtn = MakeToolbarBtn("Создать копию", "SecondaryButton", (_, _) => CreateCopy());
+        var renameBtn = MakeToolbarBtn("Переименовать", "SecondaryButton", (_, _) => RenameCurrent());
+
         editorToolbar.Children.Add(saveBtn);
         editorToolbar.Children.Add(revertBtn);
+        editorToolbar.Children.Add(copyBtn);
+        editorToolbar.Children.Add(renameBtn);
         rightStack.Children.Add(editorToolbar);
 
         _editor = new TextEditor
         {
             FontFamily = new System.Windows.Media.FontFamily("Consolas"),
-            FontSize = 13,
             ShowLineNumbers = true,
             WordWrap = false,
             Background = (System.Windows.Media.Brush)Application.Current.FindResource("InputBrush"),
@@ -115,7 +114,7 @@ public partial class StrategiesPage : UserControl
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
         };
-        ApplySyntaxHighlightingToEditor();
+        BatchSyntaxHighlighting.Apply(_editor);
         rightStack.Children.Add(_editor);
         rightPanel.Child = rightStack;
         Grid.SetColumn(rightPanel, 1);
@@ -126,17 +125,16 @@ public partial class StrategiesPage : UserControl
         Content = grid;
     }
 
-    private void ApplySyntaxHighlightingToEditor()
+    private static Button MakeToolbarBtn(string text, string styleKey, RoutedEventHandler click)
     {
-        foreach (var name in new[] { "PowerShell", "JavaScript", "C#", "XML" })
+        var btn = new Button
         {
-            var def = HighlightingManager.Instance.GetDefinition(name);
-            if (def is not null)
-            {
-                _editor.SyntaxHighlighting = def;
-                return;
-            }
-        }
+            Content = text,
+            Style = (Style)Application.Current.FindResource(styleKey),
+            Margin = new Thickness(0, 0, 8, 8)
+        };
+        btn.Click += click;
+        return btn;
     }
 
     private void RefreshList()
@@ -156,7 +154,7 @@ public partial class StrategiesPage : UserControl
         try
         {
             _editor.Text = _strategy.ReadStrategyContent(file);
-            ApplySyntaxHighlightingToEditor();
+            BatchSyntaxHighlighting.Apply(_editor);
         }
         catch (Exception ex)
         {
@@ -199,17 +197,55 @@ public partial class StrategiesPage : UserControl
     {
         if (_list.SelectedItem is not string baseFile) return;
         var name = Prompt(
-            "Создать копию стратегии",
-            "Введите имя нового .bat файла (будет создана копия выбранного конфига):",
-            baseFile.Replace(".bat", "-custom.bat"));
+            "Создать копию",
+            "Введите имя для копии (будет создан новый .bat на основе выбранного файла):",
+            baseFile.Replace(".bat", "-copy.bat"));
         if (string.IsNullOrWhiteSpace(name)) return;
+
         try
         {
             var created = _strategy.CreateCustomStrategy(baseFile, name);
             RefreshList();
             _list.SelectedItem = created;
             ConsoleLog.Instance.Write($"Создан конфиг: {created}");
-            UiHelpers.ShowInfo($"Создан файл: {created}\nОтредактируйте его и нажмите «Сохранить».");
+            UiHelpers.ShowInfo($"Создана копия: {created}");
+        }
+        catch (Exception ex)
+        {
+            UiHelpers.ShowError(ex.Message);
+        }
+    }
+
+    private void RenameCurrent()
+    {
+        if (_currentFile is null) return;
+
+        if (_currentFile.StartsWith("general", StringComparison.OrdinalIgnoreCase) &&
+            !_currentFile.Contains("custom", StringComparison.OrdinalIgnoreCase) &&
+            !_currentFile.Contains("copy", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!UiHelpers.Confirm($"Переименовать базовый конфиг {_currentFile}?\nЛучше создать копию, чтобы не потерять оригинал."))
+                return;
+        }
+
+        var name = Prompt(
+            "Переименовать",
+            "Новое имя файла:",
+            _currentFile);
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        try
+        {
+            var renamed = _strategy.RenameStrategy(_currentFile, name);
+            if (_settings.LastStrategy == _currentFile)
+            {
+                _settings.LastStrategy = renamed;
+                _settings.Save();
+            }
+            RefreshList();
+            _list.SelectedItem = renamed;
+            ConsoleLog.Instance.Write($"Переименовано: {_currentFile} → {renamed}");
+            UiHelpers.ShowInfo($"Файл переименован в {renamed}");
         }
         catch (Exception ex)
         {
@@ -235,7 +271,7 @@ public partial class StrategiesPage : UserControl
             var created = _strategy.CreateCustomStrategy(template, name);
             RefreshList();
             _list.SelectedItem = created;
-            UiHelpers.ShowInfo($"Создан файл: {created}\nОтредактируйте параметры winws.exe и сохраните.");
+            UiHelpers.ShowInfo($"Создан файл: {created}");
         }
         catch (Exception ex)
         {
@@ -267,8 +303,8 @@ public partial class StrategiesPage : UserControl
         stack.Children.Add(input);
         var btns = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 16, 0, 0) };
         string? result = null;
-        var ok = new Button { Content = "Создать", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
-        ok.Click += (_, _) => { result = input.Text; dlg.Close(); };
+        var ok = new Button { Content = "OK", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
+        ok.Click += (_, _) => { result = input.Text.Trim(); dlg.Close(); };
         var cancel = new Button { Content = "Отмена", Style = (Style)Application.Current.FindResource("SecondaryButton"), IsCancel = true };
         cancel.Click += (_, _) => dlg.Close();
         btns.Children.Add(ok);
