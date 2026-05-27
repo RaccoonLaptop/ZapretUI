@@ -91,36 +91,11 @@
                                     VerticalAlignment="Bottom"
                                     Margin="0,0,20,16"
                                     Visibility="Collapsed">
-                            <TextBlock x:Name="BgSpeedLabel"
-                                       Text="Скорость фона"
-                                       FontSize="11"
-                                       Foreground="{StaticResource TextMutedBrush}"
-                                       HorizontalAlignment="Center"
-                                       Margin="0,0,0,4"/>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,4">
-                                <Button x:Name="BgSlowBtn" Content="🐢" Width="32" Height="28" Padding="0"
-                                        Style="{StaticResource SecondaryButton}" FontSize="14"
-                                        ToolTip="Очень медленно (5%)" Click="BgSlowBtn_Click"/>
-                                <Slider x:Name="BgSpeedSlider"
-                                        Width="110"
-                                        Margin="6,0"
-                                        Minimum="5"
-                                        Maximum="100"
-                                        Value="15"
-                                        IsMoveToPointEnabled="True"
-                                        Opacity="0.9"
-                                        ToolTip="5% — очень медленно, 15% — по умолчанию, 100% — быстро"
-                                        ValueChanged="BgSpeedSlider_ValueChanged"/>
-                                <Button x:Name="BgFastBtn" Content="🚀" Width="32" Height="28" Padding="0"
-                                        Style="{StaticResource SecondaryButton}" FontSize="14"
-                                        ToolTip="Очень быстро (100%)" Click="BgFastBtn_Click"/>
-                            </StackPanel>
                             <Button x:Name="BgSwitchBtn"
                                     Style="{StaticResource SecondaryButton}"
                                     FontSize="11"
                                     Padding="10,4"
                                     Opacity="0.38"
-                                    Margin="0,8,0,0"
                                     ToolTip="Сменить фоновую анимацию"
                                     Click="BgSwitchBtn_Click"/>
                         </StackPanel>
