@@ -4,13 +4,11 @@ using System.Windows.Media;
 namespace ZapretUI.Controls.Backgrounds;
 
 /// <summary>
-/// CSS-метеоры как в bedolaga-cabinet (duration 2–8s, translate ~500px, угол ~215°).
-/// https://github.com/BEDOLAGA-DEV/bedolaga-cabinet/blob/main/src/components/ui/backgrounds/meteors.tsx
+/// CSS-метеоры bedolaga-cabinet: 2–8 с на ~500px.
 /// </summary>
 public sealed class MeteorsBackground : AnimatedBackgroundBase
 {
     private const double TravelPx = 480;
-    private const double DurationScale = 2.8;
     private const double AngleRad = 215 * Math.PI / 180;
 
     private readonly List<Meteor> _meteors = new();
@@ -30,20 +28,20 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
         _meteors.Clear();
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
 
-        var count = 16;
-        for (var i = 0; i < count; i++)
+        for (var i = 0; i < 14; i++)
             _meteors.Add(CreateMeteor());
     }
 
     protected override void AnimateFrame(double timeMs, double deltaMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
+        var dt = deltaMs * GlobalSpeed;
 
         foreach (var m in _meteors)
         {
             if (!m.Started)
             {
-                m.DelayMs -= deltaMs;
+                m.DelayMs -= dt;
                 if (m.DelayMs <= 0)
                 {
                     m.Started = true;
@@ -52,7 +50,7 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
                 continue;
             }
 
-            m.ElapsedMs += deltaMs;
+            m.ElapsedMs += dt;
             if (m.ElapsedMs >= m.DurationMs)
                 ResetMeteor(m);
         }
@@ -69,11 +67,8 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
             var t = m.ElapsedMs / m.DurationMs;
             if (t > 1) continue;
 
-            // bedolaga: 0–70% opacity 1, затем затухание
             var opacity = t < 0.7 ? 1.0 : 1.0 - (t - 0.7) / 0.3;
-
             var dist = t * TravelPx;
-            // CSS: rotate(215deg) translateX(-500px) — движение вниз-влево
             var headX = m.StartX + Math.Cos(AngleRad) * dist;
             var headY = m.StartY - Math.Sin(AngleRad) * dist;
             var tailLen = Math.Min(80, dist);
@@ -94,8 +89,8 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
     {
         StartX = Rng.NextDouble() * AreaWidth,
         StartY = -10 - Rng.NextDouble() * AreaHeight * 0.08,
-        DurationMs = (2000 + Rng.NextDouble() * 6000) * DurationScale,
-        DelayMs = Rng.NextDouble() * 6000,
+        DurationMs = 3500 + Rng.NextDouble() * 8500,
+        DelayMs = Rng.NextDouble() * 7000,
         Size = 1 + Rng.NextDouble(),
         Started = false
     };
@@ -104,8 +99,8 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
     {
         m.StartX = Rng.NextDouble() * AreaWidth;
         m.StartY = -10 - Rng.NextDouble() * AreaHeight * 0.08;
-        m.DurationMs = (2000 + Rng.NextDouble() * 6000) * DurationScale;
-        m.DelayMs = Rng.NextDouble() * 4000;
+        m.DurationMs = 3500 + Rng.NextDouble() * 8500;
+        m.DelayMs = Rng.NextDouble() * 5000;
         m.ElapsedMs = 0;
         m.Started = false;
     }

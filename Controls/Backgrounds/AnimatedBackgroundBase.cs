@@ -6,30 +6,29 @@ namespace ZapretUI.Controls.Backgrounds;
 
 public abstract class AnimatedBackgroundBase : FrameworkElement
 {
-    /// <summary>
-    /// Множитель для canvas-фонов (звёзды, метеоры, искры, вихрь).
-    /// Bedolaga-константы на WPF выглядят быстрее — снижаем ~в 3 раза.
-    /// </summary>
-    protected const double CanvasMotionScale = 0.32;
+    /// <summary>Глобальное замедление canvas-фонов относительно bedolaga (WPF/desktop).</summary>
+    public static double GlobalSpeed { get; set; } = 0.22;
 
-    /// <summary>Доп. замедление для фонов, где время задаётся в RenderFrame.</summary>
     protected const double MotionScale = 0.45;
 
-    private const double TargetFps = 60;
-    private const double FrameDeltaMs = 1000.0 / TargetFps;
+    private const double MaxStepMs = 50;
 
     private DispatcherTimer? _timer;
+    private double _lastTickMs;
     protected double AreaWidth;
     protected double AreaHeight;
     protected readonly Random Rng = new();
     protected double StartMs;
     private bool _isRunning;
 
+    protected static double DtSec(double deltaMs) => (deltaMs / 1000.0) * GlobalSpeed;
+
     protected AnimatedBackgroundBase()
     {
         Loaded += (_, _) =>
         {
             StartMs = NowMs();
+            _lastTickMs = 0;
             StartLoop();
         };
         Unloaded += (_, _) => StopLoop();
@@ -62,11 +61,12 @@ public abstract class AnimatedBackgroundBase : FrameworkElement
     {
         if (_isRunning) return;
         _isRunning = true;
+        _lastTickMs = 0;
         UpdateDimensions();
 
-        _timer = new DispatcherTimer(DispatcherPriority.Background)
+        _timer = new DispatcherTimer(DispatcherPriority.Render)
         {
-            Interval = TimeSpan.FromMilliseconds(FrameDeltaMs)
+            Interval = TimeSpan.FromMilliseconds(1000.0 / 60.0)
         };
         _timer.Tick += OnTimerTick;
         _timer.Start();
@@ -76,6 +76,7 @@ public abstract class AnimatedBackgroundBase : FrameworkElement
     {
         if (!_isRunning) return;
         _isRunning = false;
+        _lastTickMs = 0;
         if (_timer is not null)
         {
             _timer.Stop();
@@ -90,7 +91,12 @@ public abstract class AnimatedBackgroundBase : FrameworkElement
         if (Math.Abs(AreaWidth - ActualWidth) > 1 || Math.Abs(AreaHeight - ActualHeight) > 1)
             UpdateDimensions();
 
-        AnimateFrame(NowMs() - StartMs, FrameDeltaMs);
+        var now = NowMs();
+        var deltaMs = _lastTickMs > 0 ? now - _lastTickMs : 1000.0 / 60.0;
+        _lastTickMs = now;
+        deltaMs = Math.Clamp(deltaMs, 1, MaxStepMs);
+
+        AnimateFrame(now - StartMs, deltaMs);
         InvalidateVisual();
     }
 

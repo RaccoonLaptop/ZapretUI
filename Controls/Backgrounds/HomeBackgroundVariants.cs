@@ -5,7 +5,7 @@ namespace ZapretUI.Controls.Backgrounds;
 
 public sealed class SparklesBackground : AnimatedBackgroundBase
 {
-    private const double Speed = 0.75;
+    private const double DriftPxPerSec = 18;
 
     private readonly List<Particle> _particles = new();
 
@@ -25,11 +25,12 @@ public sealed class SparklesBackground : AnimatedBackgroundBase
 
     protected override void AnimateFrame(double timeMs, double deltaMs)
     {
+        var dt = DtSec(deltaMs);
         foreach (var p in _particles)
         {
-            p.X += p.SpeedX;
-            p.Y += p.SpeedY;
-            p.Opacity += p.OpacityDir * p.OpacitySpeed;
+            p.X += p.SpeedX * dt;
+            p.Y += p.SpeedY * dt;
+            p.Opacity += p.OpacityDir * p.OpacitySpeed * dt;
             if (p.Opacity <= 0) { p.Opacity = 0; p.OpacityDir = 1; }
             else if (p.Opacity >= 1) { p.Opacity = 1; p.OpacityDir = -1; }
             if (p.X < 0) p.X = AreaWidth;
@@ -50,11 +51,11 @@ public sealed class SparklesBackground : AnimatedBackgroundBase
         X = Rng.NextDouble() * AreaWidth,
         Y = Rng.NextDouble() * AreaHeight,
         Size = 0.4 + Rng.NextDouble() * 1.0,
-        SpeedX = (Rng.NextDouble() - 0.5) * Speed * 0.2,
-        SpeedY = (Rng.NextDouble() - 0.5) * Speed * 0.2,
+        SpeedX = (Rng.NextDouble() - 0.5) * DriftPxPerSec,
+        SpeedY = (Rng.NextDouble() - 0.5) * DriftPxPerSec,
         Opacity = Rng.NextDouble(),
         OpacityDir = Rng.NextDouble() > 0.5 ? 1 : -1,
-        OpacitySpeed = 0.005 + Rng.NextDouble() * 0.01 * Speed
+        OpacitySpeed = 0.35 + Rng.NextDouble() * 0.45
     };
 }
 
@@ -86,7 +87,7 @@ public sealed class VortexBackground : AnimatedBackgroundBase
 
     private sealed class VParticle
     {
-        public double Angle, Radius, Speed, Size;
+        public double Angle, Radius, SpeedRadPerSec, Size;
     }
 
     protected override void OnDimensionsChanged()
@@ -99,7 +100,7 @@ public sealed class VortexBackground : AnimatedBackgroundBase
             {
                 Angle = Rng.NextDouble() * Math.PI * 2,
                 Radius = Rng.NextDouble() * Math.Min(AreaWidth, AreaHeight) * 0.45,
-                Speed = (0.0009 + Rng.NextDouble() * 0.0016) * CanvasMotionScale,
+                SpeedRadPerSec = 0.035 + Rng.NextDouble() * 0.055,
                 Size = 0.6 + Rng.NextDouble() * 1.4
             });
         }
@@ -107,8 +108,9 @@ public sealed class VortexBackground : AnimatedBackgroundBase
 
     protected override void AnimateFrame(double timeMs, double deltaMs)
     {
+        var dt = DtSec(deltaMs);
         foreach (var p in _particles)
-            p.Angle += p.Speed;
+            p.Angle += p.SpeedRadPerSec * dt;
     }
 
     protected override void RenderFrame(DrawingContext dc, double timeMs)
