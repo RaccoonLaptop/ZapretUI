@@ -1,136 +1,182 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Threading;
-
 namespace ZapretUI.Controls;
 
+/// <summary>
+/// Shooting stars background (ported from bedolaga-cabinet shooting-stars.tsx).
+/// https://github.com/BEDOLAGA-DEV/bedolaga-cabinet/blob/main/src/components/ui/backgrounds/shooting-stars.tsx
+/// </summary>
 public sealed class ShootingStarsBackground : Canvas
 {
-    private readonly List<Star> _stars = new();
+    private const double StarDensity = 0.00015;
+    private const double MinSpeed = 10;
+    private const double MaxSpeed = 30;
+    private const double TrailLength = 80;
+    private const double FadeDistance = 500;
+
+    private static readonly Color StarColor = (Color)ColorConverter.ConvertFromString("#9E00FF")!;
+    private static readonly Color TrailColor = (Color)ColorConverter.ConvertFromString("#2EB9DF")!;
+
+    private readonly List<BgStar> _bgStars = new();
     private readonly List<ShootingStar> _shootingStars = new();
-    private readonly DispatcherTimer _timer;
     private readonly Random _rng = new();
+
     private double _width;
     private double _height;
+    private double _lastShootingMs;
+    private double _nextShootingDelayMs;
+    private double _startMs;
+    private bool _isRendering;
 
-    private sealed class Star
+    private sealed class BgStar
     {
-        public double X, Y, Size, Opacity, TwinklePhase;
+        public double X, Y, Radius, Opacity;
+        public double? TwinkleSpeed;
     }
 
     private sealed class ShootingStar
     {
-        public double X, Y, Vx, Vy, Opacity;
+        public double X, Y, Angle, Scale, Speed, Distance, Opacity;
     }
 
     public ShootingStarsBackground()
     {
+        _nextShootingDelayMs = 4200 + _rng.NextDouble() * 4500;
         Loaded += OnLoaded;
-        SizeChanged += (_, _) => OnResize();
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
-        _timer.Tick += (_, _) => OnTick();
-        Unloaded += (_, _) => _timer.Stop();
+        Unloaded += OnUnloaded;
+        SizeChanged += (_, _) => RebuildBackgroundStars();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        OnResize();
-        _timer.Start();
+        _startMs = GetTimeMs();
+        _lastShootingMs = _startMs;
+        UpdateSize();
+        RebuildBackgroundStars();
+        StartLoop();
     }
 
-    private void OnResize()
+    private void OnUnloaded(object sender, RoutedEventArgs e) => StopLoop();
+
+    private void StartLoop()
+    {
+        if (_isRendering) return;
+        _isRendering = true;
+        CompositionTarget.Rendering += OnRendering;
+    }
+
+    private void StopLoop()
+    {
+        if (!_isRendering) return;
+        _isRendering = false;
+        CompositionTarget.Rendering -= OnRendering;
+    }
+
+    private void UpdateSize()
     {
         _width = ActualWidth > 1 ? ActualWidth : 800;
         _height = ActualHeight > 1 ? ActualHeight : 600;
-        if (_stars.Count == 0)
-            InitStars();
     }
 
-    private void InitStars()
+    private void RebuildBackgroundStars()
     {
-        _stars.Clear();
-        var count = Math.Clamp((int)(_width * _height / 12000), 80, 220);
+        UpdateSize();
+        if (_width <= 0 || _height <= 0) return;
+
+        _bgStars.Clear();
+        var count = Math.Max(1, (int)(_width * _height * StarDensity));
         for (var i = 0; i < count; i++)
         {
-            _stars.Add(new Star
+            _bgStars.Add(new BgStar
             {
                 X = _rng.NextDouble() * _width,
                 Y = _rng.NextDouble() * _height,
-                Size = 0.8 + _rng.NextDouble() * 1.8,
-                Opacity = 0.15 + _rng.NextDouble() * 0.55,
-                TwinklePhase = _rng.NextDouble() * Math.PI * 2
+                Radius = _rng.NextDouble() * 1.2 + 0.3,
+                Opacity = _rng.NextDouble(),
+                TwinkleSpeed = _rng.NextDouble() > 0.3 ? 0.5 + _rng.NextDouble() * 0.5 : null
             });
         }
     }
 
-    private void OnTick()
+    private void OnRendering(object? sender, EventArgs e)
     {
         if (_width <= 0 || _height <= 0) return;
 
-        foreach (var s in _stars)
-        {
-            s.TwinklePhase += 0.04;
-            if (s.TwinklePhase > Math.PI * 2)
-                s.TwinklePhase -= Math.PI * 2;
-        }
+        var timeMs = GetTimeMs();
 
-        if (_rng.NextDouble() < 0.08)
-            SpawnShootingStar();
+        if (timeMs - _lastShootingMs > _nextShootingDelayMs)
+        {
+            _shootingStars.Add(new ShootingStar
+            {
+                X = _rng.NextDouble() * _width,
+                Y = _rng.NextDouble() * _height * 0.5,
+                Angle = Math.PI / 4 + (_rng.NextDouble() - 0.5) * 0.3,
+                Scale = 0.5 + _rng.NextDouble() * 0.5,
+                Speed = MinSpeed + _rng.NextDouble() * (MaxSpeed - MinSpeed),
+                Distance = 0,
+                Opacity = 1
+            });
+            _lastShootingMs = timeMs;
+            _nextShootingDelayMs = 4200 + _rng.NextDouble() * 4500;
+        }
 
         for (var i = _shootingStars.Count - 1; i >= 0; i--)
         {
-            var sh = _shootingStars[i];
-            sh.X += sh.Vx;
-            sh.Y += sh.Vy;
-            sh.Opacity -= 0.018;
-            if (sh.X > _width + 80 || sh.Y > _height + 40 || sh.Opacity <= 0)
+            var star = _shootingStars[i];
+            star.Distance += star.Speed;
+            star.Opacity = Math.Max(0, 1 - star.Distance / FadeDistance);
+            if (star.Opacity <= 0)
                 _shootingStars.RemoveAt(i);
         }
 
         InvalidateVisual();
     }
 
-    private void SpawnShootingStar()
-    {
-        var angle = _rng.NextDouble() * 0.5 + 0.2;
-        var speed = 8 + _rng.NextDouble() * 14;
-        _shootingStars.Add(new ShootingStar
-        {
-            X = -40 - _rng.NextDouble() * 60,
-            Y = _rng.NextDouble() * _height * 0.4,
-            Vx = Math.Cos(angle) * speed,
-            Vy = Math.Sin(angle) * speed + 2,
-            Opacity = 0.85 + _rng.NextDouble() * 0.15
-        });
-    }
+    private double GetTimeMs() =>
+        (DateTime.UtcNow - DateTime.UnixEpoch).TotalMilliseconds;
 
     protected override void OnRender(DrawingContext dc)
     {
         if (_width <= 0 || _height <= 0) return;
 
-        foreach (var s in _stars)
+        var timeSec = (GetTimeMs() - _startMs) / 1000.0;
+
+        foreach (var s in _bgStars)
         {
-            var twinkle = 0.65 + 0.35 * Math.Sin(s.TwinklePhase);
+            var opacity = s.Opacity;
+            if (s.TwinkleSpeed is { } speed)
+                opacity = 0.5 + 0.5 * Math.Sin(timeSec * speed * Math.PI * 2);
+
             var brush = new SolidColorBrush(Color.FromArgb(
-                (byte)(s.Opacity * twinkle * 255), 220, 230, 255));
+                (byte)(opacity * 255), 255, 255, 255));
             brush.Freeze();
-            dc.DrawEllipse(brush, null, new Point(s.X, s.Y), s.Size, s.Size);
+            dc.DrawEllipse(brush, null, new Point(s.X, s.Y), s.Radius, s.Radius);
         }
 
-        foreach (var sh in _shootingStars)
+        foreach (var star in _shootingStars)
         {
-            var head = new Point(sh.X, sh.Y);
-            var tail = new Point(sh.X - sh.Vx * 4, sh.Y - sh.Vy * 4);
-            var brush = new SolidColorBrush(Color.FromArgb((byte)(sh.Opacity * 255), 200, 220, 255));
-            brush.Freeze();
-            var pen = new Pen(brush, 1.8)
+            var x2 = star.X + Math.Cos(star.Angle) * star.Distance;
+            var y2 = star.Y + Math.Sin(star.Angle) * star.Distance;
+            var tailDist = Math.Max(0, star.Distance - TrailLength);
+            var tailX = star.X + Math.Cos(star.Angle) * tailDist;
+            var tailY = star.Y + Math.Sin(star.Angle) * tailDist;
+
+            var trailBrush = new SolidColorBrush(Color.FromArgb(
+                (byte)(star.Opacity * 0.4 * 255), TrailColor.R, TrailColor.G, TrailColor.B));
+            trailBrush.Freeze();
+            var trailPen = new Pen(trailBrush, star.Scale * 2)
             {
                 StartLineCap = PenLineCap.Round,
                 EndLineCap = PenLineCap.Round
             };
-            pen.Freeze();
-            dc.DrawLine(pen, tail, head);
+            trailPen.Freeze();
+            dc.DrawLine(trailPen, new Point(tailX, tailY), new Point(x2, y2));
+
+            var headBrush = new SolidColorBrush(Color.FromArgb(
+                (byte)(star.Opacity * 255), StarColor.R, StarColor.G, StarColor.B));
+            headBrush.Freeze();
+            dc.DrawEllipse(headBrush, null, new Point(x2, y2), star.Scale * 1.5, star.Scale * 1.5);
         }
     }
 }
