@@ -35,7 +35,7 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
     protected override void AnimateFrame(double timeMs, double deltaMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var dt = deltaMs * GlobalSpeed;
+        var dt = deltaMs * MotionSpeed;
 
         foreach (var m in _meteors)
         {

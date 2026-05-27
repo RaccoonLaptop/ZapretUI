@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private HomePage? _homePage;
     private ToolsWindow? _toolsWindow;
     private bool _isShuttingDown;
+    private bool _initingBgSpeed;
 
     public MainWindow()
     {
@@ -195,30 +196,54 @@ public partial class MainWindow : Window
 
     private void InitAppBackground()
     {
-        BgSpeedSlider.Value = Math.Clamp(_settings.BackgroundAnimSpeed, 0.05, 1.0) * 100;
-        ApplyBackgroundAnimSpeed(restartBackground: false);
-        AppBackgroundHost.SetBackground(_settings.HomeBackground);
+        _initingBgSpeed = true;
+        BgSpeedSlider.Value = SpeedToSlider(_settings.BackgroundAnimSpeed);
+        _initingBgSpeed = false;
+
+        var speed = SliderToSpeed(BgSpeedSlider.Value);
+        _settings.BackgroundAnimSpeed = speed;
+        AnimatedBackgroundBase.GlobalSpeed = speed;
+        AppBackgroundHost.SetBackground(_settings.HomeBackground, speed);
+        UpdateBgSpeedLabel(speed);
         UpdateBgSwitchLabel();
+
         BgSwitchBtn.MouseEnter += (_, _) => BgSwitchBtn.Opacity = 0.72;
         BgSwitchBtn.MouseLeave += (_, _) => BgSwitchBtn.Opacity = 0.38;
     }
 
+    private static double SliderToSpeed(double sliderValue)
+    {
+        var t = Math.Clamp((sliderValue - 5) / 95.0, 0, 1);
+        return 0.03 + t * t * 1.47;
+    }
+
+    private static double SpeedToSlider(double speed)
+    {
+        speed = Math.Clamp(speed, 0.03, 1.5);
+        var t = Math.Sqrt((speed - 0.03) / 1.47);
+        return 5 + t * 95;
+    }
+
     private void ApplyBackgroundAnimSpeed(bool restartBackground)
     {
-        var speed = Math.Clamp(BgSpeedSlider.Value / 100.0, 0.05, 1.0);
+        var speed = SliderToSpeed(BgSpeedSlider.Value);
         _settings.BackgroundAnimSpeed = speed;
         _settings.Save();
-        AnimatedBackgroundBase.GlobalSpeed = speed;
-        BgSpeedLabel.Text = $"Скорость фона · {(int)(speed * 100)}%";
+        AppBackgroundHost.ApplyMotionSpeed(speed);
+        UpdateBgSpeedLabel(speed);
+        ConsoleLog.Instance.Write($"Скорость фона: {(int)Math.Round(BgSpeedSlider.Value)}%");
 
         if (restartBackground)
-            AppBackgroundHost.SetBackground(_settings.HomeBackground);
+            AppBackgroundHost.SetBackground(_settings.HomeBackground, speed);
     }
+
+    private void UpdateBgSpeedLabel(double speed) =>
+        BgSpeedLabel.Text = $"Скорость фона · {(int)Math.Round(BgSpeedSlider.Value)}%";
 
     private void BgSpeedSlider_ValueChanged(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e)
     {
-        if (!IsLoaded) return;
-        ApplyBackgroundAnimSpeed(restartBackground: true);
+        if (_initingBgSpeed) return;
+        ApplyBackgroundAnimSpeed(restartBackground: false);
     }
 
     private void UpdateBgSwitchLabel()
@@ -232,7 +257,7 @@ public partial class MainWindow : Window
         var next = HomeBackgroundCatalog.Next(_settings.HomeBackground);
         _settings.HomeBackground = next.Id;
         _settings.Save();
-        AppBackgroundHost.SetBackground(next.Id);
+        AppBackgroundHost.SetBackground(next.Id, SliderToSpeed(BgSpeedSlider.Value));
         UpdateBgSwitchLabel();
         ConsoleLog.Instance.Write($"Фон: {next.Label}");
     }

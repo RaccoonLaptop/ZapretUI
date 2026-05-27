@@ -64,7 +64,7 @@ public sealed class AuroraBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0 * MotionScale;
+        var t = timeMs / 1000.0;
         var colors = new[] { ParseColor("#00d2ff"), ParseColor("#7928ca"), ParseColor("#ff0080") };
         for (var i = 0; i < 3; i++)
         {
@@ -186,21 +186,22 @@ public sealed class RippleBackground : AnimatedBackgroundBase
 
     protected override void AnimateFrame(double timeMs, double deltaMs)
     {
-        if (Rng.NextDouble() < 0.02 && _ripples.Count < 6)
+        var dt = DtSec(deltaMs);
+        if (Rng.NextDouble() < 0.02 * MotionSpeed && _ripples.Count < 6)
         {
             _ripples.Add(new Ripple
             {
                 X = Rng.NextDouble() * AreaWidth,
                 Y = Rng.NextDouble() * AreaHeight,
                 Radius = 0,
-                Speed = 1.2 + Rng.NextDouble(),
+                Speed = 40 + Rng.NextDouble() * 60,
                 MaxRadius = 80 + Rng.NextDouble() * 160
             });
         }
 
         for (var i = _ripples.Count - 1; i >= 0; i--)
         {
-            _ripples[i].Radius += _ripples[i].Speed;
+            _ripples[i].Radius += _ripples[i].Speed * dt;
             if (_ripples[i].Radius > _ripples[i].MaxRadius)
                 _ripples.RemoveAt(i);
         }
@@ -223,7 +224,7 @@ public sealed class WavyBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0 * MotionScale;
+        var t = timeMs / 1000.0;
         for (var wave = 0; wave < 4; wave++)
         {
             var geometry = new StreamGeometry();
@@ -268,7 +269,7 @@ public sealed class LinesBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0 * MotionScale;
+        var t = timeMs / 1000.0;
         var cx = AreaWidth / 2;
         var cy = AreaHeight / 2;
         for (var i = 0; i < 40; i++)
@@ -289,7 +290,7 @@ public sealed class SpotlightBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0 * MotionScale;
+        var t = timeMs / 1000.0;
         var x = AreaWidth * 0.5 + Math.Sin(t * 0.4) * AreaWidth * 0.25;
         var y = AreaHeight * 0.45 + Math.Cos(t * 0.35) * AreaHeight * 0.2;
         var brush = new RadialGradientBrush(
