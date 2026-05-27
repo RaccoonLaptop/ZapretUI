@@ -258,7 +258,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ScrollBar">
                         <Grid Background="Transparent">
-                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                            <Track x:Name="PART_Track">
                                 <Track.Thumb>
                                     <Thumb>
                                         <Thumb.Template>
@@ -270,6 +270,14 @@
                                 </Track.Thumb>
                             </Track>
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Orientation" Value="Vertical">
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="True"/>
+                            </Trigger>
+                            <Trigger Property="Orientation" Value="Horizontal">
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>

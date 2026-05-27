@@ -87,6 +87,28 @@ public sealed class StrategyService
         return newName;
     }
 
+    public string RenameStrategy(string oldName, string newName)
+    {
+        if (!newName.EndsWith(".bat", StringComparison.OrdinalIgnoreCase))
+            newName += ".bat";
+
+        if (oldName.Equals(newName, StringComparison.OrdinalIgnoreCase))
+            return oldName;
+
+        if (oldName.StartsWith("service", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Нельзя переименовать служебный файл service.bat");
+
+        var oldPath = Path.Combine(_paths.Root, oldName);
+        var newPath = Path.Combine(_paths.Root, newName);
+        if (!File.Exists(oldPath))
+            throw new FileNotFoundException("Файл не найден", oldName);
+        if (File.Exists(newPath))
+            throw new InvalidOperationException("Файл с таким именем уже существует");
+
+        File.Move(oldPath, newPath);
+        return newName;
+    }
+
     public async Task<string> GetServiceStrategyAsync()
     {
         var script = $@"
