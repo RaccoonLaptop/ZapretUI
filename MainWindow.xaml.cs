@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using ZapretUI.Controls.Backgrounds;
+using ZapretUI.Helpers;
 using ZapretUI.Pages;
 using ZapretUI.Services;
 
@@ -29,7 +30,7 @@ public partial class MainWindow : Window
     {
         _settings = AppSettings.Load();
         InitializeComponent();
-        TrySetWindowIcon();
+        AppIcon.ApplyTo(this);
 
         InitAppBackground();
         _paths = new ZapretPaths(_settings.ZapretRoot);
@@ -65,17 +66,6 @@ public partial class MainWindow : Window
         Closing += OnClosing;
         StateChanged += OnStateChanged;
         Loaded += OnLoaded;
-    }
-
-    private void TrySetWindowIcon()
-    {
-        try
-        {
-            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
-            if (!File.Exists(iconPath)) return;
-            Icon = BitmapFrame.Create(new Uri(iconPath, UriKind.Absolute));
-        }
-        catch { /* ignore */ }
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)

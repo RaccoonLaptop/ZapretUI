@@ -19,6 +19,7 @@ public class SetupWindow : Window
         _service = service;
         _settings = settings;
         BuildUi();
+        AppIcon.ApplyTo(this);
     }
 
     private void BuildUi()

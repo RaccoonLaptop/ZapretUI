@@ -26,7 +26,7 @@ public sealed class ToolsWindow : Window
         MinHeight = 360;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Background = (Brush)Application.Current.FindResource("BgBrush");
-        TrySetIcon();
+        AppIcon.ApplyTo(this);
 
         var root = new DockPanel { Margin = new Thickness(16) };
 
@@ -87,17 +87,6 @@ public sealed class ToolsWindow : Window
 
         ConsoleLog.Instance.LineAdded += OnLineAdded;
         Closed += (_, _) => ConsoleLog.Instance.LineAdded -= OnLineAdded;
-    }
-
-    private void TrySetIcon()
-    {
-        try
-        {
-            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
-            if (File.Exists(iconPath))
-                Icon = BitmapFrame.Create(new Uri(iconPath, UriKind.Absolute));
-        }
-        catch { /* ignore */ }
     }
 
     private Button MakeButton(string text, Func<Task> action)
