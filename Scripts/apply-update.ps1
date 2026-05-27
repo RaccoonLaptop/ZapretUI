@@ -49,7 +49,7 @@ try {
     Write-Log "Target: $TargetDir"
 
     if ($ProcessId -gt 0) {
-        Write-Log "Waiting for process $ProcessId..."
+        Write-Log "Ожидание закрытия программы (PID $ProcessId)..."
         $waited = 0
         while ($waited -lt 120) {
             if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) { break }
@@ -79,7 +79,7 @@ try {
     $copied = $false
     for ($i = 1; $i -le 20; $i++) {
         try {
-            Write-Log "Full replace attempt $i..."
+            Write-Log "Установка обновления (попытка $i)..."
             Remove-DirContentsExcept -Dir $TargetDir -KeepNames $PreserveNames
             Copy-Tree -From $SourceDir -To $TargetDir -SkipNames @('zapret')
             $copied = $true
@@ -131,6 +131,7 @@ try {
     }
 
     if (Test-Path -LiteralPath $launch) {
+        Write-Log "Запуск Zapret UI..."
         Write-Log "Starting: $launch"
         Start-Process -FilePath $launch -WorkingDirectory $TargetDir -Verb RunAs
     }

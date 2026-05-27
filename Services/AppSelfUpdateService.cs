@@ -4,6 +4,8 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ZapretUI.Helpers;
+
 namespace ZapretUI.Services;
 
 public sealed class AppSelfUpdateService
@@ -161,9 +163,10 @@ public sealed class AppSelfUpdateService
                 Directory.Delete(installPayloadDir, true);
             CopyDirectory(prepared.SourceDir, installPayloadDir);
 
-            var logFile = Path.Combine(Path.GetTempPath(), "ZapretUI-update.log");
+            var logFile = GetUpdateLogPath();
             var exePath = Path.Combine(_installDir, "ZapretUI.exe");
             var pid = Process.GetCurrentProcess().Id;
+            StartUpdateProgressUi(logFile, prepared.ManifestVersion);
             var args = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{scriptPath}\" " +
                        $"-SourceDir \"{installPayloadDir}\" -TargetDir \"{_installDir}\" -ProcessId {pid} " +
                        $"-ExePath \"{exePath}\" -LogFile \"{logFile}\" " +
@@ -462,9 +465,10 @@ public sealed class AppSelfUpdateService
         if (scriptPath is null)
             return Task.FromResult(AppUpdateInstallResult.Fail("Скрипт apply-update-installer.ps1 не найден"));
 
-        var logFile = Path.Combine(Path.GetTempPath(), "ZapretUI-update.log");
+        var logFile = GetUpdateLogPath();
         var exePath = Path.Combine(_installDir, "ZapretUI.exe");
         var pid = Process.GetCurrentProcess().Id;
+        StartUpdateProgressUi(logFile, prepared.ManifestVersion);
         var args = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{scriptPath}\" " +
                    $"-InstallerPath \"{prepared.InstallerExePath}\" -TargetDir \"{_installDir}\" -ProcessId {pid} " +
                    $"-ExePath \"{exePath}\" -LogFile \"{logFile}\" " +
@@ -488,6 +492,15 @@ public sealed class AppSelfUpdateService
             "Загружен установщик. Программа закроется и обновится...",
             restart: true,
             keepPreparedFiles: true));
+    }
+
+    private static string GetUpdateLogPath() =>
+        Path.Combine(Path.GetTempPath(), "ZapretUI-update.log");
+
+    private static void StartUpdateProgressUi(string logFile, string version)
+    {
+        UpdateProgressLauncher.Start(logFile, version);
+        Thread.Sleep(450);
     }
 
     private static bool IsNewerVersion(string remote, string local)
