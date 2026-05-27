@@ -261,7 +261,11 @@ public partial class MainWindow : Window
         btn.Style = (Style)FindResource("NavButtonActive");
     }
 
-    private void Navigate(UserControl page) => PageHost.Content = page;
+    private void Navigate(UserControl page)
+    {
+        PageHost.Content = page;
+        BgSwitchBtn.Visibility = page is HomePage ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     private void RefreshStatus()
     {

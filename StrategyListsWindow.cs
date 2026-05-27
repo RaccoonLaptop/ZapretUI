@@ -70,7 +70,7 @@ public sealed class StrategyListsWindow : Window
 
         var left = new Border
         {
-            Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
+            Background = (Brush)Application.Current.FindResource("PanelOverlayBrush"),
             CornerRadius = new CornerRadius(12),
             Padding = new Thickness(12),
             Margin = new Thickness(0, 0, 12, 0)
@@ -97,7 +97,7 @@ public sealed class StrategyListsWindow : Window
 
         var right = new Border
         {
-            Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
+            Background = (Brush)Application.Current.FindResource("PanelOverlayBrush"),
             CornerRadius = new CornerRadius(12),
             Padding = new Thickness(16)
         };

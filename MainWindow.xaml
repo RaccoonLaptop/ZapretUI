@@ -69,7 +69,7 @@
                             <StackPanel x:Name="NavPanel" DockPanel.Dock="Top"/>
 
                             <StackPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
-                                <Border Background="#99181b26" CornerRadius="8" Padding="10" Margin="0,0,0,8">
+                                <Border Background="#7A181b26" CornerRadius="8" Padding="10" Margin="0,0,0,8">
                                     <StackPanel>
                                         <TextBlock Text="Статус" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
                                         <StackPanel Orientation="Horizontal" Margin="0,6,0,0">

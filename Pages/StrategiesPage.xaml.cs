@@ -57,7 +57,7 @@ public partial class StrategiesPage : UserControl
 
         var leftPanel = new Border
         {
-            Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
+            Background = (Brush)Application.Current.FindResource("PanelOverlayBrush"),
             CornerRadius = new CornerRadius(12),
             Padding = new Thickness(12),
             Margin = new Thickness(0, 0, 12, 0)
@@ -82,7 +82,7 @@ public partial class StrategiesPage : UserControl
 
         var rightPanel = new Border
         {
-            Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
+            Background = (Brush)Application.Current.FindResource("PanelOverlayBrush"),
             CornerRadius = new CornerRadius(12),
             Padding = new Thickness(16)
         };
