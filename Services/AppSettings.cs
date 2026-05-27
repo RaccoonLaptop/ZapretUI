@@ -21,7 +21,7 @@ public sealed class AppSettings
     public bool SecuritySetupCompleted { get; set; }
     public bool SecuritySetupSkipped { get; set; }
     /// <summary>ID фона главной страницы (см. HomeBackgroundCatalog).</summary>
-    public string HomeBackground { get; set; } = "shooting-stars";
+    public string HomeBackground { get; set; } = "wavy";
 
     public static AppSettings Load()
     {
