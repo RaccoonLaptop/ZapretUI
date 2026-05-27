@@ -195,7 +195,6 @@ public partial class MainWindow : Window
     {
         AddNav("Главная", NavigateHome);
         AddNav("Стратегии", () => Navigate(new StrategiesPage(_paths, _strategy, _settings)));
-        AddNav("Списки", () => Navigate(new ListsPage(_paths)));
         AddNav("Сервис", () => Navigate(new ServicePage(_paths, _strategy)));
         AddNav("Консоль", OpenToolsWindow);
     }

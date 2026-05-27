@@ -41,7 +41,7 @@ public partial class StrategiesPage : UserControl
         });
         header.Children.Add(new TextBlock
         {
-            Text = "«Создать копию» — копия с новым именем. «Переименовать» — изменить имя текущего файла.",
+            Text = "«Списки» — только .txt, указанные в выбранном конфиге. «Создать копию» / «Переименовать» — работа с .bat.",
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12,
@@ -97,11 +97,13 @@ public partial class StrategiesPage : UserControl
         var revertBtn = MakeToolbarBtn("Отменить", "SecondaryButton", (_, _) => LoadSelected());
         var copyBtn = MakeToolbarBtn("Создать копию", "SecondaryButton", (_, _) => CreateCopy());
         var renameBtn = MakeToolbarBtn("Переименовать", "SecondaryButton", (_, _) => RenameCurrent());
+        var listsBtn = MakeToolbarBtn("Списки", "SecondaryButton", (_, _) => OpenListsWindow());
 
         editorToolbar.Children.Add(saveBtn);
         editorToolbar.Children.Add(revertBtn);
         editorToolbar.Children.Add(copyBtn);
         editorToolbar.Children.Add(renameBtn);
+        editorToolbar.Children.Add(listsBtn);
         rightStack.Children.Add(editorToolbar);
 
         _editor = new TextEditor
@@ -144,6 +146,23 @@ public partial class StrategiesPage : UserControl
             _list.Items.Add(f);
         if (_list.Items.Count > 0)
             _list.SelectedIndex = 0;
+    }
+
+    private void OpenListsWindow()
+    {
+        var file = _currentFile ?? _list.SelectedItem as string;
+        if (string.IsNullOrEmpty(file))
+        {
+            UiHelpers.ShowError("Сначала выберите конфиг (.bat) слева");
+            return;
+        }
+
+        var owner = Window.GetWindow(this);
+        var win = new StrategyListsWindow(_paths, file, () => _editor.Text)
+        {
+            Owner = owner
+        };
+        win.Show();
     }
 
     private void LoadSelected()
