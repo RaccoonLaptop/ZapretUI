@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using ZapretUI.Helpers;
@@ -39,6 +40,8 @@ public partial class HomePage : UserControl
             HorizontalAlignment = HorizontalAlignment.Center,
             MaxWidth = 460
         };
+
+        center.Children.Add(CreateAnimatedHeader());
 
         center.Children.Add(new TextBlock
         {
@@ -106,6 +109,94 @@ public partial class HomePage : UserControl
         center.Children.Add(_toggleBtn);
 
         Content = center;
+    }
+
+    private UIElement CreateAnimatedHeader()
+    {
+        var root = new Grid
+        {
+            Width = 360,
+            Height = 120,
+            Margin = new Thickness(0, 0, 0, 12)
+        };
+
+        var canvas = new Canvas { Width = 360, Height = 120 };
+
+        var line1 = new Line
+        {
+            X1 = 40,
+            Y1 = 62,
+            X2 = 320,
+            Y2 = 62,
+            StrokeThickness = 1.5,
+            Stroke = (Brush)Application.Current.FindResource("BorderBrush"),
+            Opacity = 0.7
+        };
+        canvas.Children.Add(line1);
+
+        var line2 = new Line
+        {
+            X1 = 40,
+            Y1 = 78,
+            X2 = 320,
+            Y2 = 78,
+            StrokeThickness = 1.2,
+            Stroke = (Brush)Application.Current.FindResource("SurfaceLightBrush"),
+            Opacity = 0.8
+        };
+        canvas.Children.Add(line2);
+
+        var dotA = MakeDot(56, 62, "AccentBrush", 9);
+        var dotB = MakeDot(182, 62, "SuccessBrush", 8);
+        var dotC = MakeDot(304, 62, "WarningBrush", 9);
+        canvas.Children.Add(dotA);
+        canvas.Children.Add(dotB);
+        canvas.Children.Add(dotC);
+
+        StartDotAnimation(dotA, 0.0, 12.0, 1400);
+        StartDotAnimation(dotB, 0.2, 14.0, 1700);
+        StartDotAnimation(dotC, 0.4, 10.0, 1500);
+
+        root.Children.Add(canvas);
+        return root;
+    }
+
+    private static Ellipse MakeDot(double x, double y, string brushKey, double size)
+    {
+        var dot = new Ellipse
+        {
+            Width = size,
+            Height = size,
+            Fill = (Brush)Application.Current.FindResource(brushKey)
+        };
+        Canvas.SetLeft(dot, x - size / 2);
+        Canvas.SetTop(dot, y - size / 2);
+        return dot;
+    }
+
+    private static void StartDotAnimation(UIElement element, double beginSeconds, double rise, int durationMs)
+    {
+        var move = new DoubleAnimation
+        {
+            By = -rise,
+            Duration = TimeSpan.FromMilliseconds(durationMs),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            BeginTime = TimeSpan.FromSeconds(beginSeconds),
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
+        element.BeginAnimation(Canvas.TopProperty, move);
+
+        var fade = new DoubleAnimation
+        {
+            From = 0.45,
+            To = 1.0,
+            Duration = TimeSpan.FromMilliseconds(durationMs + 220),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            BeginTime = TimeSpan.FromSeconds(beginSeconds)
+        };
+        element.BeginAnimation(OpacityProperty, fade);
     }
 
     private void SelectDefaultStrategy()

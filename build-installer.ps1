@@ -14,6 +14,7 @@ if (-not $version) { $version = "1.0.0" }
 Write-Host "Building Zapret UI v$version (self-contained installer)..." -ForegroundColor Cyan
 
 & (Join-Path $ProjectDir "build-icon.ps1")
+& (Join-Path $ProjectDir "build-installer-art.ps1")
 
 if (Test-Path $StagingDir) { Remove-Item $StagingDir -Recurse -Force }
 New-Item -ItemType Directory -Path $StagingDir -Force | Out-Null
