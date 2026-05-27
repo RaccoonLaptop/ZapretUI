@@ -15,7 +15,10 @@ public partial class StrategiesPage : UserControl
     private ListBox _list = null!;
     private TextEditor _editor = null!;
     private TextBlock _fileName = null!;
+    private TextBlock _runStatus = null!;
+    private Button _runBtn = null!;
     private string? _currentFile;
+    private bool _isStarting;
 
     public StrategiesPage(ZapretPaths paths, StrategyService strategy, AppSettings settings)
     {
@@ -69,12 +72,21 @@ public partial class StrategiesPage : UserControl
         leftStack.Children.Add(_list);
 
         var leftBtns = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
-        var runBtn = new Button { Content = "Запустить", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 0, 8) };
-        runBtn.Click += async (_, _) => await RunSelectedAsync();
+        _runBtn = new Button { Content = "Запустить", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 0, 8) };
+        _runBtn.Click += async (_, _) => await RunSelectedAsync();
         var newBtn = new Button { Content = "Новый конфиг", Style = (Style)Application.Current.FindResource("SecondaryButton") };
         newBtn.Click += (_, _) => CreateNew();
-        leftBtns.Children.Add(runBtn);
+        leftBtns.Children.Add(_runBtn);
         leftBtns.Children.Add(newBtn);
+        _runStatus = new TextBlock
+        {
+            Text = "",
+            Visibility = Visibility.Collapsed,
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            FontSize = 12,
+            TextWrapping = TextWrapping.Wrap
+        };
+        leftBtns.Children.Add(_runStatus);
         leftStack.Children.Add(leftBtns);
         leftPanel.Child = leftStack;
         Grid.SetColumn(leftPanel, 0);
@@ -207,17 +219,38 @@ public partial class StrategiesPage : UserControl
 
     private async Task RunSelectedAsync()
     {
+        if (_isStarting) return;
         if (_list.SelectedItem is not string file) return;
         _settings.LastStrategy = file;
         _settings.Save();
         try
         {
+            _isStarting = true;
+            _runBtn.IsEnabled = false;
+            _runBtn.Content = "Запускается...";
+            _runStatus.Text = "Подготовка запуска...";
+            _runStatus.Visibility = Visibility.Visible;
+
+            _runStatus.Text = "Запускаем winws, подождите...";
             await _strategy.StartStrategyAsync(file);
             ConsoleLog.Instance.Write($"Запущена стратегия: {file}");
+            _runStatus.Text = "Запуск завершен";
         }
         catch (Exception ex)
         {
+            _runStatus.Text = "Ошибка запуска";
             UiHelpers.ShowError(ex.Message);
+        }
+        finally
+        {
+            _isStarting = false;
+            _runBtn.IsEnabled = true;
+            _runBtn.Content = "Запустить";
+            if (_strategy.IsRunning())
+            {
+                _ = Task.Delay(1200).ContinueWith(_ =>
+                    Dispatcher.Invoke(() => _runStatus.Visibility = Visibility.Collapsed));
+            }
         }
     }
 
