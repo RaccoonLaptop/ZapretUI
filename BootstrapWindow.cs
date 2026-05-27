@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using ZapretUI.Helpers;
 using ZapretUI.Services;
 
 namespace ZapretUI;
@@ -23,6 +24,7 @@ public sealed class BootstrapWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         ResizeMode = ResizeMode.NoResize;
         Background = (Brush)Application.Current.FindResource("BgBrush");
+        AppIcon.ApplyTo(this);
 
         var root = new StackPanel { Margin = new Thickness(24) };
         root.Children.Add(new TextBlock

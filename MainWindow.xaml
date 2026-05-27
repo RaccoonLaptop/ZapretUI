@@ -4,6 +4,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:controls="clr-namespace:ZapretUI.Controls"
         Title="Zapret UI — Niko"
+        Icon="pack://application:,,,/Assets/app.ico"
         Height="720" Width="1100"
         MinHeight="560" MinWidth="900"
         WindowStartupLocation="CenterScreen"

@@ -10,7 +10,7 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <AssemblyName>ZapretUI</AssemblyName>
     <RootNamespace>ZapretUI</RootNamespace>
-    <Version>1.4.0</Version>
+    <Version>1.4.1</Version>
     <Authors>Niko</Authors>
     <Company>Niko</Company>
     <Product>Zapret UI</Product>
@@ -33,6 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\app.ico" />
     <Content Include="Assets\app.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
