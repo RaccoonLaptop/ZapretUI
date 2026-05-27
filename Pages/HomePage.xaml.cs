@@ -1,9 +1,11 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using ZapretUI.Controls;
+using ZapretUI.Controls.Backgrounds;
 using ZapretUI.Helpers;
 using ZapretUI.Services;
 
@@ -18,6 +20,8 @@ public partial class HomePage : UserControl
     private Button _toggleBtn = null!;
     private Ellipse _statusIndicator = null!;
     private TextBlock _statusLabel = null!;
+    private Button _bgSwitchBtn = null!;
+    private HomeBackgroundHost _bgHost = null!;
     private readonly DispatcherTimer _statusTimer;
 
     public HomePage(ZapretPaths paths, StrategyService strategy, AppSettings settings)
@@ -35,7 +39,10 @@ public partial class HomePage : UserControl
     private void BuildUi()
     {
         var root = new Grid();
-        root.Children.Add(CreateAnimatedBackground());
+
+        _bgHost = new HomeBackgroundHost();
+        _bgHost.SetBackground(_settings.HomeBackground);
+        root.Children.Add(_bgHost);
 
         var center = new StackPanel
         {
@@ -112,15 +119,44 @@ public partial class HomePage : UserControl
         center.Children.Add(_toggleBtn);
 
         root.Children.Add(center);
+
+        _bgSwitchBtn = CreateBackgroundSwitchButton();
+        root.Children.Add(_bgSwitchBtn);
+
         Content = root;
     }
 
-    private static UIElement CreateAnimatedBackground() => new ShootingStarsBackground
+    private Button CreateBackgroundSwitchButton()
     {
-        HorizontalAlignment = HorizontalAlignment.Stretch,
-        VerticalAlignment = VerticalAlignment.Stretch,
-        IsHitTestVisible = false
-    };
+        var entry = HomeBackgroundCatalog.Get(_settings.HomeBackground);
+        var btn = new Button
+        {
+            Content = $"✦  {entry.Label}",
+            Style = (Style)Application.Current.FindResource("SecondaryButton"),
+            FontSize = 11,
+            Padding = new Thickness(10, 4, 10, 4),
+            Opacity = 0.38,
+            Cursor = Cursors.Hand,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 0, 16, 14),
+            ToolTip = "Сменить фоновую анимацию"
+        };
+        btn.MouseEnter += (_, _) => btn.Opacity = 0.72;
+        btn.MouseLeave += (_, _) => btn.Opacity = 0.38;
+        btn.Click += (_, _) => CycleBackground();
+        return btn;
+    }
+
+    private void CycleBackground()
+    {
+        var next = HomeBackgroundCatalog.Next(_settings.HomeBackground);
+        _settings.HomeBackground = next.Id;
+        _settings.Save();
+        _bgHost.SetBackground(next.Id);
+        _bgSwitchBtn.Content = $"✦  {next.Label}";
+        ConsoleLog.Instance.Write($"Фон главной: {next.Label}");
+    }
 
     private static UIElement CreateHeader() => new TextBlock
     {

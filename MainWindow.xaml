@@ -53,7 +53,7 @@
                         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,20">
                             <TextBlock Text="Zapret UI" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
                             <TextBlock Text="Автор: Niko" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                            <TextBlock x:Name="VersionText" Text="v1.2.5" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                            <TextBlock x:Name="VersionText" Text="v1.2.6" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
                         </StackPanel>
 
                         <StackPanel x:Name="NavPanel" DockPanel.Dock="Top"/>
