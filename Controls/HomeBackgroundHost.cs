@@ -10,11 +10,15 @@ public sealed class HomeBackgroundHost : Grid
 
     public string BackgroundId { get; private set; } = HomeBackgroundCatalog.All[0].Id;
 
-    public void SetBackground(string? id)
+    public void SetBackground(string? id, double? motionSpeed = null)
     {
         BackgroundId = HomeBackgroundCatalog.Normalize(id);
+        var speed = motionSpeed ?? AnimatedBackgroundBase.GlobalSpeed;
         Children.Clear();
         _background = HomeBackgroundFactory.Create(BackgroundId);
+        if (_background is not null)
+            _background.MotionSpeed = Math.Clamp(speed, 0.02, 1.5);
+
         if (_background is null)
         {
             Children.Add(new System.Windows.Controls.Border
@@ -30,5 +34,14 @@ public sealed class HomeBackgroundHost : Grid
         _background.HorizontalAlignment = HorizontalAlignment.Stretch;
         _background.VerticalAlignment = VerticalAlignment.Stretch;
         Children.Add(_background);
+    }
+
+    /// <summary>Меняет скорость без пересоздания фона — эффект сразу.</summary>
+    public void ApplyMotionSpeed(double speed)
+    {
+        speed = Math.Clamp(speed, 0.02, 1.5);
+        AnimatedBackgroundBase.GlobalSpeed = speed;
+        if (_background is not null)
+            _background.MotionSpeed = speed;
     }
 }
