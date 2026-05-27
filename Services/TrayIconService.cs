@@ -1,13 +1,7 @@
 using System.Windows;
-using System.Diagnostics;
-using System.IO;
 using System.Windows.Forms;
+using ZapretUI.Helpers;
 using Application = System.Windows.Application;
-using DrawingColor = System.Drawing.Color;
-using DrawingIcon = System.Drawing.Icon;
-using DrawingBitmap = System.Drawing.Bitmap;
-using DrawingPen = System.Drawing.Pen;
-using DrawingBrush = System.Drawing.SolidBrush;
 
 namespace ZapretUI.Services;
 
@@ -23,7 +17,7 @@ public sealed class TrayIconService : IDisposable
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = CreateTrayIcon(),
+            Icon = (System.Drawing.Icon)AppIcon.DrawingIcon.Clone(),
             Text = "Zapret UI",
             Visible = false
         };
@@ -73,25 +67,6 @@ public sealed class TrayIconService : IDisposable
             else
                 Application.Current.Shutdown();
         });
-    }
-
-    private static DrawingIcon CreateTrayIcon()
-    {
-        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
-        if (File.Exists(iconPath))
-            return new DrawingIcon(iconPath);
-
-        const int size = 32;
-        using var bmp = new DrawingBitmap(size, size);
-        using var g = System.Drawing.Graphics.FromImage(bmp);
-        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        g.Clear(DrawingColor.FromArgb(8, 9, 13));
-        using var brush = new DrawingBrush(DrawingColor.FromArgb(107, 159, 255));
-        g.FillEllipse(brush, 4, 4, size - 8, size - 8);
-        using var pen = new DrawingPen(DrawingColor.FromArgb(232, 235, 244), 2f);
-        g.DrawLine(pen, 11, 16, 15, 20);
-        g.DrawLine(pen, 15, 20, 22, 12);
-        return DrawingIcon.FromHandle(bmp.GetHicon());
     }
 
     public void Dispose()
