@@ -106,7 +106,12 @@ public sealed class ProcessRunner
             OutputReceived -= Capture;
         }
 
-        return captured.Length > 0 ? captured.ToString().TrimEnd() : "Операция завершена.";
+        var exitCode = await RunAsync("powershell.exe", args, root, ct);
+        var result = captured.Length > 0 ? captured.ToString().TrimEnd() : "Операция завершена.";
+        if (exitCode != 0)
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(result) ? $"Ошибка: {action}" : result);
+
+        return result;
     }
 
     public Task RunInteractiveTestAsync(CancellationToken ct = default)
