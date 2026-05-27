@@ -68,6 +68,11 @@ public sealed class ZapretBootstrapService
                     return BootstrapResult.Fail("Скачанный пакет повреждён или неполный.");
 
                 BundledStrategiesService.DeployTo(targetDir);
+                try
+                {
+                    new ServiceDefaultsService(new ZapretPaths(targetDir)).ApplyFreshInstallDefaults();
+                }
+                catch { /* ignore */ }
                 return BootstrapResult.Ok($"Установлено: Flowseal {release.TagName}", targetDir);
             }
             finally
