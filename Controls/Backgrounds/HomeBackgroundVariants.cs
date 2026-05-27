@@ -187,7 +187,7 @@ public sealed class RippleBackground : AnimatedBackgroundBase
     protected override void AnimateFrame(double timeMs, double deltaMs)
     {
         var dt = DtSec(deltaMs);
-        if (Rng.NextDouble() < 0.02 * MotionSpeed && _ripples.Count < 6)
+        if (Rng.NextDouble() < 0.02 * (MotionSpeed / 1.0) && _ripples.Count < 6)
         {
             _ripples.Add(new Ripple
             {
