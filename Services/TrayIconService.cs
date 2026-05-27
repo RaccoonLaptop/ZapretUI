@@ -1,5 +1,8 @@
+using System.Drawing;
 using System.Windows;
 using System.Windows.Forms;
+using DFont = System.Drawing.Font;
+using DFontStyle = System.Drawing.FontStyle;
 using ZapretUI.Helpers;
 using Application = System.Windows.Application;
 
@@ -7,28 +10,150 @@ namespace ZapretUI.Services;
 
 public sealed class TrayIconService : IDisposable
 {
-    private readonly NotifyIcon _notifyIcon;
     private readonly Window _window;
+    private readonly Func<Task> _toggleBypassAsync;
+    private readonly NotifyIcon _notifyIcon;
+    private readonly ContextMenuStrip _menu;
+    private readonly ToolStripLabel _statusItem;
+    private readonly ToolStripLabel _strategyItem;
+    private readonly ToolStripMenuItem _toggleItem;
+    private readonly ToolStripMenuItem _openItem;
+    private readonly ToolStripMenuItem _exitItem;
+    private Icon? _idleIcon;
+    private Icon? _activeIcon;
     private bool _disposed;
+    private bool _running;
+    private bool _busy;
+    private string? _strategyTitle;
 
-    public TrayIconService(Window window)
+    public TrayIconService(Window window, Func<Task> toggleBypassAsync)
     {
         _window = window;
+        _toggleBypassAsync = toggleBypassAsync;
 
-        _notifyIcon = new NotifyIcon
+        _idleIcon = TrayIconGenerator.Create(active: false);
+        _activeIcon = TrayIconGenerator.Create(active: true);
+
+        _menu = new ContextMenuStrip
         {
-            Icon = (System.Drawing.Icon)AppIcon.DrawingIcon.Clone(),
-            Text = "Zapret UI",
+            Renderer = new TrayMenuRenderer(),
+            ShowImageMargin = false,
+            AutoSize = true,
+            Padding = new Padding(4, 6, 4, 6)
+        };
+        _menu.Opening += (_, _) => ApplyLocalization();
+
+        _statusItem = new ToolStripLabel
+        {
+            AutoSize = true,
+            Margin = new Padding(8, 6, 8, 0),
+            Padding = new Padding(0, 4, 0, 0),
+            Font = new DFont("Segoe UI", 9.5f, DFontStyle.Bold),
+            ForeColor = TrayMenuTheme.Text,
+            Tag = new TrayStatusTag { Running = false }
+        };
+
+        _strategyItem = new ToolStripLabel
+        {
+            AutoSize = true,
+            Margin = new Padding(28, 0, 8, 6),
+            ForeColor = TrayMenuTheme.TextMuted,
+            Font = new DFont("Segoe UI", 8.5f),
             Visible = false
         };
 
-        var menu = new ContextMenuStrip();
-        menu.Items.Add(Loc.T("tray.open"), null, (_, _) => ShowWindow());
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(Loc.T("tray.exit"), null, (_, _) => RequestExit());
-        _notifyIcon.ContextMenuStrip = menu;
+        _toggleItem = new ToolStripMenuItem
+        {
+            Font = new DFont("Segoe UI", 9.25f),
+            ForeColor = TrayMenuTheme.Text,
+            Padding = new Padding(12, 6, 12, 6)
+        };
+        _toggleItem.Click += async (_, _) => await RunToggleAsync();
+
+        _openItem = new ToolStripMenuItem
+        {
+            Font = new DFont("Segoe UI", 9.25f),
+            ForeColor = TrayMenuTheme.Text,
+            Padding = new Padding(12, 6, 12, 6)
+        };
+        _openItem.Click += (_, _) => ShowWindow();
+
+        _exitItem = new ToolStripMenuItem
+        {
+            Font = new DFont("Segoe UI", 9.25f),
+            ForeColor = TrayMenuTheme.Text,
+            Padding = new Padding(12, 6, 12, 6)
+        };
+        _exitItem.Click += (_, _) => RequestExit();
+
+        _menu.Items.Add(_statusItem);
+        _menu.Items.Add(_strategyItem);
+        _menu.Items.Add(new ToolStripSeparator());
+        _menu.Items.Add(_toggleItem);
+        _menu.Items.Add(_openItem);
+        _menu.Items.Add(new ToolStripSeparator());
+        _menu.Items.Add(_exitItem);
+
+        _notifyIcon = new NotifyIcon
+        {
+            Icon = _idleIcon,
+            Text = Loc.T("app.title"),
+            Visible = true,
+            ContextMenuStrip = _menu
+        };
 
         _notifyIcon.DoubleClick += (_, _) => ShowWindow();
+        ApplyLocalization();
+        UpdateState(false, null, false);
+    }
+
+    public void UpdateState(bool running, string? strategyTitle, bool busy)
+    {
+        _running = running;
+        _busy = busy;
+        _strategyTitle = strategyTitle;
+
+        _statusItem.Tag = new TrayStatusTag { Running = running };
+        _statusItem.Text = busy
+            ? Loc.T("tray.status.starting")
+            : (running ? Loc.T("status.running") : Loc.T("status.stopped"));
+
+        var hasStrategy = running && !string.IsNullOrWhiteSpace(strategyTitle);
+        _strategyItem.Visible = hasStrategy;
+        _strategyItem.Text = hasStrategy ? strategyTitle! : "";
+
+        _toggleItem.Text = busy
+            ? Loc.T("home.starting")
+            : (running ? Loc.T("tray.toggle.stop") : Loc.T("tray.toggle.start"));
+        _toggleItem.Enabled = !busy;
+        _toggleItem.ForeColor = running ? TrayMenuTheme.Error : TrayMenuTheme.Accent;
+
+        _notifyIcon.Icon = running ? _activeIcon : _idleIcon;
+        _notifyIcon.Text = busy
+            ? Loc.T("tray.status.starting")
+            : (running
+                ? Loc.F("tray.tooltip_running", strategyTitle ?? Loc.T("status.running"))
+                : Loc.T("tray.tooltip_stopped"));
+    }
+
+    private void ApplyLocalization()
+    {
+        _openItem.Text = Loc.T("tray.open");
+        _exitItem.Text = Loc.T("tray.exit");
+        UpdateState(_running, _strategyTitle, _busy);
+    }
+
+    private async Task RunToggleAsync()
+    {
+        try
+        {
+            await _window.Dispatcher.InvokeAsync(async () => await _toggleBypassAsync());
+        }
+        catch (Exception ex)
+        {
+            _window.Dispatcher.Invoke(() =>
+                UiHelpers.ShowError(ex.Message));
+        }
     }
 
     public void ShowInTray()
@@ -43,7 +168,7 @@ public sealed class TrayIconService : IDisposable
 
     public void HideFromTray()
     {
-        _notifyIcon.Visible = false;
+        // Keep icon in notification area for quick start/stop.
     }
 
     public void ShowWindow()
@@ -55,7 +180,6 @@ public sealed class TrayIconService : IDisposable
             _window.Activate();
             _window.Focus();
         });
-        HideFromTray();
     }
 
     public void RequestExit()
@@ -75,5 +199,8 @@ public sealed class TrayIconService : IDisposable
         _disposed = true;
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
+        _menu.Dispose();
+        _idleIcon?.Dispose();
+        _activeIcon?.Dispose();
     }
 }
