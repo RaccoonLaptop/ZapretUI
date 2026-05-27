@@ -111,11 +111,20 @@ public partial class ServicePage : UserControl
         var updStack = new StackPanel();
         updStack.Children.Add(new TextBlock
         {
-            Text = "Проверка обновлений Zapret UI и компонентов Flowseal/zapret-discord-youtube",
+            Text = "При запуске проверяются версии Zapret UI и Flowseal. Установка — только после вашего подтверждения.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 0, 0, 12)
         });
+        var startupCheck = new CheckBox
+        {
+            Content = "Проверять обновления при запуске программы",
+            IsChecked = _settings.CheckUpdatesOnStartup,
+            Margin = new Thickness(0, 0, 0, 12)
+        };
+        startupCheck.Checked += (_, _) => { _settings.CheckUpdatesOnStartup = true; _settings.Save(); };
+        startupCheck.Unchecked += (_, _) => { _settings.CheckUpdatesOnStartup = false; _settings.Save(); };
+        updStack.Children.Add(startupCheck);
         var updBtns = new WrapPanel();
         updBtns.Children.Add(ActionBtn("Проверить обновление Zapret UI", async () => await CheckAppUpdateAsync()));
         updBtns.Children.Add(ActionBtn("Проверить обновление Flowseal", async () => await CheckFlowsealUpdateAsync()));
@@ -196,12 +205,33 @@ public partial class ServicePage : UserControl
         {
             var updater = new AppSelfUpdateService(_settings, _paths.Root);
             var result = await updater.CheckForUpdateAsync();
-            var text = result.Error is not null
-                ? $"Ошибка: {result.Error}"
-                : result.HasUpdate
-                    ? $"Доступна новая версия Zapret UI: {result.RemoteVersion}\nУ вас: {result.LocalVersion}\n\nОбновление можно установить при следующем запуске (если включено авто-обновление)."
-                    : $"Zapret UI актуален.\nВерсия: {result.LocalVersion}";
-            UiHelpers.ShowResult(OwnerWindow, "Обновление Zapret UI", text);
+            if (result.Error is not null)
+            {
+                UiHelpers.ShowResult(OwnerWindow, "Обновление Zapret UI", $"Ошибка: {result.Error}");
+                return;
+            }
+
+            if (!result.HasUpdate)
+            {
+                UiHelpers.ShowResult(OwnerWindow, "Обновление Zapret UI",
+                    $"Zapret UI актуален.\nВерсия: {result.LocalVersion}");
+                return;
+            }
+
+            if (UiHelpers.Confirm(
+                    $"Доступна новая версия Zapret UI: {result.RemoteVersion}\nУ вас: {result.LocalVersion}\n\nУстановить сейчас?"))
+            {
+                if (result.Manifest is not null)
+                {
+                    var install = await updater.InstallUpdateAsync(result.Manifest);
+                    if (install.RequiresRestart && Application.Current.MainWindow is MainWindow mw)
+                        mw.ShutdownApplication();
+                    else if (!install.Success)
+                        UiHelpers.ShowError(install.Message);
+                    else
+                        UiHelpers.ShowInfo(install.Message);
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -217,39 +247,27 @@ public partial class ServicePage : UserControl
                 "Ваши правки в .bat и lists могут быть перезаписаны."))
             return;
 
-        var target = _paths.Root;
-        try
-        {
-            if (Directory.Exists(target))
-                Directory.Delete(target, true);
-
-            var bootstrap = new BootstrapWindow(target) { Owner = OwnerWindow };
-            if (bootstrap.ShowDialog() != true)
-            {
-                UiHelpers.ShowResult(OwnerWindow, "Flowseal", "Установка отменена или не удалась.");
-                return;
-            }
-
-            UiHelpers.ShowResult(OwnerWindow, "Flowseal",
-                "Компоненты Flowseal переустановлены.\nПерезапустите Zapret UI для применения изменений.");
-        }
-        catch (Exception ex)
-        {
-            UiHelpers.ShowResult(OwnerWindow, "Flowseal", $"Ошибка: {ex.Message}");
-        }
+        await FlowsealReinstallService.ReinstallAsync(OwnerWindow, _paths);
     }
 
     private async Task CheckFlowsealUpdateAsync()
     {
         var r = await _updates.CheckForUpdatesAsync();
-        string text;
         if (r.Error is not null)
-            text = $"Ошибка: {r.Error}";
-        else if (r.IsUpToDate)
-            text = $"Flowseal актуален.\nВерсия: {r.LocalVersion}";
-        else
-            text = $"Доступна новая версия Flowseal: {r.RemoteVersion}\nУ вас: {r.LocalVersion}\n\nСкачайте с GitHub или обновите через установщик.";
-        UiHelpers.ShowResult(OwnerWindow, "Обновление Flowseal", text);
+        {
+            UiHelpers.ShowResult(OwnerWindow, "Обновление Flowseal", $"Ошибка: {r.Error}");
+            return;
+        }
+
+        if (r.IsUpToDate)
+        {
+            UiHelpers.ShowResult(OwnerWindow, "Обновление Flowseal", $"Flowseal актуален.\nВерсия: {r.LocalVersion}");
+            return;
+        }
+
+        if (UiHelpers.Confirm(
+                $"Доступна новая версия Flowseal: {r.RemoteVersion}\nУ вас: {r.LocalVersion}\n\nПереустановить компоненты zapret?"))
+            await FlowsealReinstallService.ReinstallAsync(OwnerWindow, _paths);
     }
 
     private async Task UpdateIpsetWithDialog()

@@ -12,7 +12,10 @@ public sealed class AppSettings
     public string? ZapretRoot { get; set; }
     public string? LastStrategy { get; set; }
     public bool MinimizeToTray { get; set; } = true;
-    public bool AutoUpdateApp { get; set; } = true;
+    /// <summary>Проверять Zapret UI и Flowseal при запуске (только с подтверждением пользователя).</summary>
+    public bool CheckUpdatesOnStartup { get; set; } = true;
+    /// <summary>Устарело: авто-установка без подтверждения отключена.</summary>
+    public bool AutoUpdateApp { get; set; } = false;
     public string? UpdateManifestUrl { get; set; }
     public string? LastInstalledVersion { get; set; }
     public bool SecuritySetupCompleted { get; set; }
@@ -25,7 +28,12 @@ public sealed class AppSettings
             if (File.Exists(SettingsPath))
             {
                 var json = File.ReadAllText(SettingsPath);
-                return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                // Раньше AutoUpdateApp включал установку без спроса — теперь только проверка.
+                if (settings.AutoUpdateApp && !settings.CheckUpdatesOnStartup)
+                    settings.CheckUpdatesOnStartup = true;
+                settings.AutoUpdateApp = false;
+                return settings;
             }
         }
         catch { /* ignore */ }
