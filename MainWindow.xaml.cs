@@ -225,15 +225,10 @@ public partial class MainWindow : Window
         _settings.BackgroundAnimSpeed = speed;
         _settings.Save();
 
-        if (!HomeBackgroundCatalog.SupportsMotionSpeed(_settings.HomeBackground))
-        {
-            UpdateBgSpeedLabel();
-            return;
-        }
-
-        AppBackgroundHost.SetBackground(_settings.HomeBackground, speed);
+        AnimatedBackgroundBase.GlobalSpeed = speed;
+        AppBackgroundHost.ApplyMotionSpeed(speed);
         UpdateBgSpeedLabel();
-        ConsoleLog.Instance.Write($"Скорость фона: {percent}%");
+        ConsoleLog.Instance.Write($"Скорость фона: {percent}% (×{speed:F2})");
     }
 
     private void UpdateBgSpeedLabel()
