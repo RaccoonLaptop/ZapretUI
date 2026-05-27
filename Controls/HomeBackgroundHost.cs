@@ -15,7 +15,17 @@ public sealed class HomeBackgroundHost : Grid
         BackgroundId = HomeBackgroundCatalog.Normalize(id);
         Children.Clear();
         _background = HomeBackgroundFactory.Create(BackgroundId);
-        if (_background is null) return;
+        if (_background is null)
+        {
+            Children.Add(new System.Windows.Controls.Border
+            {
+                Background = (System.Windows.Media.Brush)System.Windows.Application.Current
+                    .FindResource("BgBrush"),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
+            });
+            return;
+        }
 
         _background.HorizontalAlignment = HorizontalAlignment.Stretch;
         _background.VerticalAlignment = VerticalAlignment.Stretch;
