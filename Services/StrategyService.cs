@@ -49,6 +49,10 @@ public sealed class StrategyService
         await _runner.RunBridgeAsync("StartStrategy", batFileName, ct);
         _lastStartedStrategy = Path.GetFileNameWithoutExtension(batFileName);
         await Task.Delay(1500, ct);
+
+        if (!IsRunning())
+            throw new InvalidOperationException(
+                "winws.exe не запустился. Запустите Zapret UI от имени администратора.");
     }
 
     public Task StopStrategyAsync(CancellationToken ct = default)
