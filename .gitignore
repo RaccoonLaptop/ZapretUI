@@ -1,6 +1,4 @@
-# Build
-bin/
-obj/
+# Build artifacts
 [Dd]ebug/
 [Rr]elease/
 *.user
@@ -12,12 +10,11 @@ obj/
 .vs/
 .idea/
 
-# Publish output (build locally)
-../ZapretUI-Program/
-../ZapretUI-publish/
-../ZapretUI-dist/
-../ZapretUI-installer-staging/
-../ZapretUI-update/
+# Build output (inside project folder)
+dist/
+build/
+bin/
+obj/
 
 tools/innosetup/
 Thumbs.db
@@ -27,4 +24,7 @@ Desktop.ini
 AGENTS.md
 docs/project/
 _private/
+ПРОЧТИ-МЕНЯ.txt
+reference/
 Assets/icon-readme-1024.png
+Assets/icon-exact-1024.png

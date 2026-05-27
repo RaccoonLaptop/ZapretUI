@@ -1,8 +1,8 @@
 # Build portable ZapretUI into ZapretUI-Program folder + update package
 $ErrorActionPreference = "Stop"
-$Root = Split-Path $PSScriptRoot -Parent
-$OutDir = Join-Path $Root "ZapretUI-Program"
-$UpdateDir = Join-Path $Root "ZapretUI-update"
+$Root = $PSScriptRoot
+$OutDir = Join-Path $Root "build\portable"
+$UpdateDir = Join-Path $Root "build\update"
 $Packaging = Join-Path $PSScriptRoot "packaging"
 $ZipName = "ZapretUI-Program.zip"
 
