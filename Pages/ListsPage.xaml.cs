@@ -33,9 +33,17 @@ public partial class ListsPage : UserControl
         header.Children.Add(new TextBlock { Text = "Списки", FontSize = 28, FontWeight = FontWeights.Bold });
         header.Children.Add(new TextBlock
         {
-            Text = "Домены и IP для фильтрации. Файлы *-user.txt — ваши пользовательские записи.",
+            Text = "Списки доменов и IP из Flowseal/zapret-discord-youtube (lists/). Файлы *-user.txt — ваши дополнения.",
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             TextWrapping = TextWrapping.Wrap
+        });
+        header.Children.Add(new TextBlock
+        {
+            Text = "list-general, list-google, list-exclude, ipset-all, ipset-exclude — основные списки. Резервные .backup скрыты.",
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12,
+            Margin = new Thickness(0, 6, 0, 0)
         });
         Grid.SetRow(header, 0);
         grid.Children.Add(header);
@@ -70,7 +78,7 @@ public partial class ListsPage : UserControl
 
         var toolbar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
         DockPanel.SetDock(toolbar, Dock.Top);
-        var saveBtn = new Button { Content = "💾 Сохранить", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 0) };
+        var saveBtn = new Button { Content = "Сохранить", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 0) };
         saveBtn.Click += (_, _) => SaveCurrent();
         toolbar.Children.Add(saveBtn);
         rightStack.Children.Add(toolbar);
@@ -79,6 +87,7 @@ public partial class ListsPage : UserControl
         {
             AcceptsReturn = true,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             FontFamily = new System.Windows.Media.FontFamily("Consolas"),
             FontSize = 13
         };
@@ -109,7 +118,8 @@ public partial class ListsPage : UserControl
         {
             _editor.Text = _lists.ReadList(file);
             var lines = _lists.CountLines(file);
-            _info.Text = $"{file} — {lines} записей";
+            var kind = file.EndsWith("-user.txt", StringComparison.OrdinalIgnoreCase) ? "пользовательский" : "основной";
+            _info.Text = $"{file} ({kind}) — {lines} записей";
         }
         catch (Exception ex)
         {

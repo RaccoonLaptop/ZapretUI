@@ -57,12 +57,12 @@ public sealed class ProcessRunner
             workingDirectory, ct);
     }
 
-    public async Task RunBridgeAsync(string action, string? extra = null, CancellationToken ct = default)
+    public async Task<string> RunBridgeAsync(string action, string? extra = null, CancellationToken ct = default)
     {
         if (action == "RunTests")
         {
             RunInteractiveTest();
-            return;
+            return "Открыто окно тестирования стратегий.";
         }
 
         var scriptPath = ResolveBridgeScript();
@@ -72,6 +72,8 @@ public sealed class ProcessRunner
         var args = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" -Action \"{action}\" -Root \"{root}\"";
         if (!string.IsNullOrEmpty(extra))
             args += $" -Extra \"{extra.Replace("\"", "`\"")}\"";
+
+        var captured = new StringBuilder();
 
         if (needsAdmin)
         {
@@ -87,12 +89,24 @@ public sealed class ProcessRunner
             using var process = Process.Start(psi);
             if (process is not null)
                 await process.WaitForExitAsync(ct);
-            Emit($"--- {action} завершено (окно администратора) ---");
+            var msg = $"--- {action} завершено (окно администратора) ---";
+            Emit(msg);
+            return msg;
         }
-        else
+
+        void Capture(string line) => captured.AppendLine(line);
+
+        OutputReceived += Capture;
+        try
         {
             await RunAsync("powershell.exe", args, root, ct);
         }
+        finally
+        {
+            OutputReceived -= Capture;
+        }
+
+        return captured.Length > 0 ? captured.ToString().TrimEnd() : "Операция завершена.";
     }
 
     public Task RunInteractiveTestAsync(CancellationToken ct = default)
@@ -104,9 +118,11 @@ public sealed class ProcessRunner
     private void RunInteractiveTest()
     {
         var root = _zapretRoot ?? ZapretPaths.DetectRoot();
-        var testScript = Path.Combine(root, "utils", "test zapret.ps1");
-        if (!File.Exists(testScript))
-            throw new FileNotFoundException("Скрипт test zapret.ps1 не найден. Переустановите программу.");
+        var testScript = ResolveTestScript(root);
+        if (testScript is null)
+            throw new FileNotFoundException(
+                "Скрипт test zapret.ps1 не найден в папке zapret\\utils.\n" +
+                "Обновите компоненты Flowseal через «Сервис → Обновления» или переустановите программу.");
 
         Emit("Открывается окно тестирования стратегий...");
         Process.Start(new ProcessStartInfo
@@ -116,6 +132,23 @@ public sealed class ProcessRunner
             WorkingDirectory = root,
             UseShellExecute = true
         });
+    }
+
+    private static string? ResolveTestScript(string root)
+    {
+        var utils = Path.Combine(root, "utils");
+        if (!Directory.Exists(utils)) return null;
+
+        var exact = Path.Combine(utils, "test zapret.ps1");
+        if (File.Exists(exact)) return exact;
+
+        foreach (var file in Directory.GetFiles(utils, "test*.ps1"))
+        {
+            if (file.Contains("test", StringComparison.OrdinalIgnoreCase))
+                return file;
+        }
+
+        return null;
     }
 
     private static string ResolveBridgeScript()

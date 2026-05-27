@@ -88,10 +88,38 @@ public sealed class ZapretPaths
     public IEnumerable<string> GetListFiles()
     {
         if (!IsValid || !Directory.Exists(Lists)) return [];
-        return Directory.GetFiles(Lists, "*.txt")
+
+        var all = Directory.GetFiles(Lists, "*.txt")
             .Select(Path.GetFileName)
-            .Where(f => f is not null)
-            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
-            .Cast<string>();
+            .Where(f => f is not null &&
+                        !f.EndsWith(".backup", StringComparison.OrdinalIgnoreCase))
+            .Cast<string>()
+            .ToList();
+
+        string[] official =
+        [
+            "list-general.txt",
+            "list-google.txt",
+            "list-exclude.txt",
+            "ipset-all.txt",
+            "ipset-exclude.txt"
+        ];
+
+        var result = new List<string>();
+        foreach (var name in official)
+        {
+            var match = all.FirstOrDefault(f => f.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (match is not null)
+                result.Add(match);
+        }
+
+        foreach (var user in all.Where(f => f.EndsWith("-user.txt", StringComparison.OrdinalIgnoreCase))
+                                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!result.Contains(user, StringComparer.OrdinalIgnoreCase))
+                result.Add(user);
+        }
+
+        return result;
     }
 }

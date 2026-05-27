@@ -113,8 +113,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        _toolsWindow = new ToolsWindow(_paths, _runner) { Owner = this };
-        _toolsWindow.Closed += (_, _) => _toolsWindow = null;
+        _toolsWindow = new ToolsWindow(_paths, _runner)
+        {
+            WindowStartupLocation = WindowStartupLocation.CenterScreen
+        };
+        _toolsWindow.Closed += (_, _) =>
+        {
+            _toolsWindow = null;
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
+            Focus();
+        };
         _toolsWindow.Show();
     }
 

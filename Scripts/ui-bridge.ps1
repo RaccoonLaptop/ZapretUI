@@ -20,7 +20,7 @@ $BinPath = Join-Path $Root "bin\"
 $ListsPath = Join-Path $Root "lists\"
 
 function Write-Color($Text, $Color = "White") {
-    Write-Host $Text -ForegroundColor $Color
+    Write-Output "{COLOR:$Color}$Text"
 }
 
 function Get-GameFilterVars {
