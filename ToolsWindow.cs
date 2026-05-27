@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ZapretUI.Helpers;
@@ -11,18 +13,18 @@ namespace ZapretUI;
 public sealed class ToolsWindow : Window
 {
     private readonly ProcessRunner _runner;
-    private readonly TextBox _output;
+    private readonly RichTextBox _output;
 
     public ToolsWindow(ZapretPaths paths, ProcessRunner runner)
     {
         _runner = runner;
 
-        Title = "Zapret UI — Инструменты";
+        Title = "Zapret UI — Консоль (Niko)";
         Width = 720;
         Height = 520;
         MinWidth = 500;
         MinHeight = 360;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Background = (Brush)Application.Current.FindResource("BgBrush");
         TrySetIcon();
 
@@ -44,22 +46,9 @@ public sealed class ToolsWindow : Window
         });
         root.Children.Add(header);
 
-        var toolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
-        DockPanel.SetDock(toolbar, Dock.Top);
-        toolbar.Children.Add(MakeButton("Диагностика", async () => await RunDiagnosticsAsync()));
-        toolbar.Children.Add(MakeButton("Тест стратегий", async () => await RunTestsAsync()));
-        toolbar.Children.Add(MakeButton("Очистить", () =>
-        {
-            _output.Clear();
-            _output.Text = "Консоль очищена.\r\n";
-            return Task.CompletedTask;
-        }));
-        root.Children.Add(toolbar);
-
-        _output = new TextBox
+        _output = new RichTextBox
         {
             IsReadOnly = true,
-            AcceptsReturn = true,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             FontFamily = new FontFamily("Consolas"),
@@ -67,8 +56,21 @@ public sealed class ToolsWindow : Window
             Background = (Brush)Application.Current.FindResource("InputBrush"),
             Foreground = (Brush)Application.Current.FindResource("TextBrush"),
             BorderThickness = new Thickness(0),
-            Text = "Консоль Zapret UI — здесь отображается вывод.\r\n"
+            Document = new FlowDocument { PagePadding = new Thickness(4) }
         };
+
+        var toolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
+        DockPanel.SetDock(toolbar, Dock.Top);
+        toolbar.Children.Add(MakeButton("Диагностика", async () => await RunDiagnosticsAsync()));
+        toolbar.Children.Add(MakeButton("Тест стратегий", async () => await RunTestsAsync()));
+        toolbar.Children.Add(MakeButton("Очистить", () =>
+        {
+            _output.Document.Blocks.Clear();
+            AppendLine("Консоль очищена.");
+            return Task.CompletedTask;
+        }));
+        root.Children.Add(toolbar);
+        AppendLine("Консоль Zapret UI — здесь отображается вывод.");
 
         var border = new Border
         {
@@ -110,31 +112,34 @@ public sealed class ToolsWindow : Window
         return btn;
     }
 
+    private void AppendLine(string line) => ColoredLog.AppendParagraph(_output, line);
+
     private void OnLineAdded(string line)
     {
         Dispatcher.Invoke(() =>
         {
             if (line == "__CLEAR__")
             {
-                _output.Clear();
+                _output.Document.Blocks.Clear();
                 return;
             }
-            _output.AppendText(line + Environment.NewLine);
-            _output.ScrollToEnd();
+            AppendLine(line);
         });
     }
 
     private async Task RunDiagnosticsAsync()
     {
-        ConsoleLog.Instance.Write("--- Диагностика ---");
+        AppendLine("--- Диагностика ---");
         try
         {
-            await _runner.RunBridgeAsync("RunDiagnostics");
-            ConsoleLog.Instance.Write("--- Готово ---");
+            var result = await _runner.RunBridgeAsync("RunDiagnostics");
+            if (!string.IsNullOrWhiteSpace(result))
+                AppendLine(result);
+            AppendLine("--- Готово ---");
         }
         catch (Exception ex)
         {
-            ConsoleLog.Instance.Write($"Ошибка: {ex.Message}");
+            AppendLine($"Ошибка: {ex.Message}");
         }
     }
 
@@ -146,7 +151,7 @@ public sealed class ToolsWindow : Window
         }
         catch (Exception ex)
         {
-            ConsoleLog.Instance.Write($"Ошибка: {ex.Message}");
+            AppendLine($"Ошибка: {ex.Message}");
             UiHelpers.ShowError(ex.Message);
         }
     }

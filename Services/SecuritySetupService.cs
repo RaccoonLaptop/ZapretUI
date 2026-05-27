@@ -156,6 +156,24 @@ public sealed class SecuritySetupService
         }
     }
 
+    public string GetManualInstructions()
+    {
+        var plan = BuildPlan();
+        var sb = new StringBuilder();
+        sb.AppendLine("Добавьте вручную через «Безопасность Windows»:");
+        sb.AppendLine();
+        sb.AppendLine("1. Windows Defender → Защита от вирусов → Управление параметрами → Исключения:");
+        foreach (var p in plan.ExclusionPaths)
+            sb.AppendLine("   • " + p);
+        sb.AppendLine();
+        sb.AppendLine("2. Брандмауэр → Разрешить приложение → добавьте:");
+        foreach (var p in plan.ProgramPaths)
+            sb.AppendLine("   • " + p);
+        sb.AppendLine();
+        sb.AppendLine("Или запустите мастер настройки в программе с правами администратора.");
+        return sb.ToString();
+    }
+
     private static string? ResolveCheckScript()
     {
         foreach (var c in new[]

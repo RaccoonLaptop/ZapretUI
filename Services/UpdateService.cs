@@ -52,6 +52,8 @@ public sealed class UpdateService
 
     public void OpenReleasePage() =>
         Process.Start(new ProcessStartInfo(ReleaseUrl) { UseShellExecute = true });
+
+    public string GetReleaseUrl() => ReleaseUrl;
 }
 
 public sealed class UpdateCheckResult

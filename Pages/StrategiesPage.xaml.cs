@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit.Highlighting;
 using ZapretUI.Helpers;
 using ZapretUI.Services;
 
@@ -11,7 +13,7 @@ public partial class StrategiesPage : UserControl
     private readonly StrategyService _strategy;
     private readonly AppSettings _settings;
     private ListBox _list = null!;
-    private TextBox _editor = null!;
+    private TextEditor _editor = null!;
     private TextBlock _fileName = null!;
     private string? _currentFile;
 
@@ -30,23 +32,29 @@ public partial class StrategiesPage : UserControl
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-        // Header
         var header = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
         header.Children.Add(new TextBlock { Text = "Стратегии", FontSize = 28, FontWeight = FontWeights.Bold });
         header.Children.Add(new TextBlock
         {
-            Text = "Конфиги запуска Zapret (.bat). Редактируйте или создайте свои.",
-            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush")
+            Text = "Конфиги запуска Zapret (.bat). Выберите файл слева, отредактируйте и сохраните.",
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            TextWrapping = TextWrapping.Wrap
+        });
+        header.Children.Add(new TextBlock
+        {
+            Text = "Создание своей стратегии: «Создать копию» — копия выбранного конфига; «Новый конфиг» — пустой на основе шаблона. После редактирования нажмите «Сохранить».",
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12,
+            Margin = new Thickness(0, 8, 0, 0)
         });
         Grid.SetRow(header, 0);
         grid.Children.Add(header);
 
-        // Main split
         var split = new Grid();
         split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
         split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        // Left panel - list
         var leftPanel = new Border
         {
             Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
@@ -61,11 +69,11 @@ public partial class StrategiesPage : UserControl
         leftStack.Children.Add(_list);
 
         var leftBtns = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
-        var runBtn = new Button { Content = "▶ Запустить", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 0, 8) };
+        var runBtn = new Button { Content = "Запустить", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 0, 8) };
         runBtn.Click += async (_, _) => await RunSelectedAsync();
-        var createBtn = new Button { Content = "+ Создать копию", Style = (Style)Application.Current.FindResource("SecondaryButton"), Margin = new Thickness(0, 0, 0, 8) };
+        var createBtn = new Button { Content = "Создать копию", Style = (Style)Application.Current.FindResource("SecondaryButton"), Margin = new Thickness(0, 0, 0, 8) };
         createBtn.Click += (_, _) => CreateCopy();
-        var newBtn = new Button { Content = "+ Новый конфиг", Style = (Style)Application.Current.FindResource("SecondaryButton") };
+        var newBtn = new Button { Content = "Новый конфиг", Style = (Style)Application.Current.FindResource("SecondaryButton") };
         newBtn.Click += (_, _) => CreateNew();
         leftBtns.Children.Add(runBtn);
         leftBtns.Children.Add(createBtn);
@@ -75,7 +83,6 @@ public partial class StrategiesPage : UserControl
         Grid.SetColumn(leftPanel, 0);
         split.Children.Add(leftPanel);
 
-        // Right panel - editor
         var rightPanel = new Border
         {
             Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
@@ -89,23 +96,26 @@ public partial class StrategiesPage : UserControl
 
         var editorToolbar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
         DockPanel.SetDock(editorToolbar, Dock.Top);
-        var saveBtn = new Button { Content = "💾 Сохранить", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 0) };
+        var saveBtn = new Button { Content = "Сохранить", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 0) };
         saveBtn.Click += (_, _) => SaveCurrent();
-        var revertBtn = new Button { Content = "↩ Отменить", Style = (Style)Application.Current.FindResource("SecondaryButton") };
+        var revertBtn = new Button { Content = "Отменить", Style = (Style)Application.Current.FindResource("SecondaryButton") };
         revertBtn.Click += (_, _) => LoadSelected();
         editorToolbar.Children.Add(saveBtn);
         editorToolbar.Children.Add(revertBtn);
         rightStack.Children.Add(editorToolbar);
 
-        _editor = new TextBox
+        _editor = new TextEditor
         {
-            AcceptsReturn = true,
-            AcceptsTab = true,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             FontFamily = new System.Windows.Media.FontFamily("Consolas"),
-            FontSize = 13
+            FontSize = 13,
+            ShowLineNumbers = true,
+            WordWrap = false,
+            Background = (System.Windows.Media.Brush)Application.Current.FindResource("InputBrush"),
+            Foreground = (System.Windows.Media.Brush)Application.Current.FindResource("TextBrush"),
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
         };
+        ApplySyntaxHighlightingToEditor();
         rightStack.Children.Add(_editor);
         rightPanel.Child = rightStack;
         Grid.SetColumn(rightPanel, 1);
@@ -114,6 +124,19 @@ public partial class StrategiesPage : UserControl
         Grid.SetRow(split, 1);
         grid.Children.Add(split);
         Content = grid;
+    }
+
+    private void ApplySyntaxHighlightingToEditor()
+    {
+        foreach (var name in new[] { "PowerShell", "JavaScript", "C#", "XML" })
+        {
+            var def = HighlightingManager.Instance.GetDefinition(name);
+            if (def is not null)
+            {
+                _editor.SyntaxHighlighting = def;
+                return;
+            }
+        }
     }
 
     private void RefreshList()
@@ -133,6 +156,7 @@ public partial class StrategiesPage : UserControl
         try
         {
             _editor.Text = _strategy.ReadStrategyContent(file);
+            ApplySyntaxHighlightingToEditor();
         }
         catch (Exception ex)
         {
@@ -174,7 +198,10 @@ public partial class StrategiesPage : UserControl
     private void CreateCopy()
     {
         if (_list.SelectedItem is not string baseFile) return;
-        var name = Prompt("Имя нового конфига", baseFile.Replace(".bat", " (custom).bat"));
+        var name = Prompt(
+            "Создать копию стратегии",
+            "Введите имя нового .bat файла (будет создана копия выбранного конфига):",
+            baseFile.Replace(".bat", "-custom.bat"));
         if (string.IsNullOrWhiteSpace(name)) return;
         try
         {
@@ -182,6 +209,7 @@ public partial class StrategiesPage : UserControl
             RefreshList();
             _list.SelectedItem = created;
             ConsoleLog.Instance.Write($"Создан конфиг: {created}");
+            UiHelpers.ShowInfo($"Создан файл: {created}\nОтредактируйте его и нажмите «Сохранить».");
         }
         catch (Exception ex)
         {
@@ -191,17 +219,23 @@ public partial class StrategiesPage : UserControl
 
     private void CreateNew()
     {
-        var name = Prompt("Имя нового конфига", "my-strategy.bat");
+        var name = Prompt(
+            "Новый конфиг",
+            "Введите имя нового .bat (на основе general.bat):",
+            "my-strategy.bat");
         if (string.IsNullOrWhiteSpace(name)) return;
         if (!name.EndsWith(".bat", StringComparison.OrdinalIgnoreCase))
             name += ".bat";
 
-        var template = _paths.GetStrategyFiles().FirstOrDefault() ?? "general.bat";
+        var template = _paths.GetStrategyFiles().FirstOrDefault(f => f.Equals("general.bat", StringComparison.OrdinalIgnoreCase))
+                       ?? _paths.GetStrategyFiles().FirstOrDefault()
+                       ?? "general.bat";
         try
         {
             var created = _strategy.CreateCustomStrategy(template, name);
             RefreshList();
             _list.SelectedItem = created;
+            UiHelpers.ShowInfo($"Создан файл: {created}\nОтредактируйте параметры winws.exe и сохраните.");
         }
         catch (Exception ex)
         {
@@ -209,24 +243,31 @@ public partial class StrategiesPage : UserControl
         }
     }
 
-    private static string? Prompt(string title, string defaultValue)
+    private static string? Prompt(string title, string description, string defaultValue)
     {
         var dlg = new Window
         {
             Title = title,
-            Width = 420,
-            Height = 160,
+            Width = 480,
+            Height = 220,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
             Background = (Brush)Application.Current.FindResource("BgBrush"),
             ResizeMode = ResizeMode.NoResize
         };
         var stack = new StackPanel { Margin = new Thickness(20) };
-        stack.Children.Add(new TextBlock { Text = title, Margin = new Thickness(0, 0, 0, 8) });
+        stack.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 6) });
+        stack.Children.Add(new TextBlock
+        {
+            Text = description,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            Margin = new Thickness(0, 0, 0, 10)
+        });
         var input = new TextBox { Text = defaultValue };
         stack.Children.Add(input);
         var btns = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 16, 0, 0) };
         string? result = null;
-        var ok = new Button { Content = "OK", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
+        var ok = new Button { Content = "Создать", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
         ok.Click += (_, _) => { result = input.Text; dlg.Close(); };
         var cancel = new Button { Content = "Отмена", Style = (Style)Application.Current.FindResource("SecondaryButton"), IsCancel = true };
         cancel.Click += (_, _) => dlg.Close();
