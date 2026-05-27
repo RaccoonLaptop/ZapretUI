@@ -22,9 +22,9 @@ public sealed class UpdateService
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, VersionUrl);
             request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true };
-            var response = await _http.SendAsync(request, ct);
+            var response = await _http.SendAsync(request, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            var remote = (await response.Content.ReadAsStringAsync(ct)).Trim();
+            var remote = (await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false)).Trim();
             var local = LocalVersion;
             return new UpdateCheckResult
             {
@@ -44,9 +44,9 @@ public sealed class UpdateService
     {
         var url = "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/refs/heads/main/.service/ipset-service.txt";
         var listFile = Path.Combine(_paths.Lists, "ipset-all.txt");
-        var content = await _http.GetStringAsync(url, ct);
+        var content = await _http.GetStringAsync(url, ct).ConfigureAwait(false);
         Directory.CreateDirectory(_paths.Lists);
-        await File.WriteAllTextAsync(listFile, content, ct);
+        await File.WriteAllTextAsync(listFile, content, ct).ConfigureAwait(false);
         return true;
     }
 

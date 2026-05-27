@@ -52,15 +52,25 @@ public partial class App : Application
 
         var zapretRoot = ZapretPaths.DetectRoot(settings.ZapretRoot);
         BundledStrategiesService.DeployTo(zapretRoot);
-        try
-        {
-            new ServiceDefaultsService(new ZapretPaths(zapretRoot)).ApplyFreshInstallDefaults();
-        }
-        catch { /* ignore */ }
 
         var main = new MainWindow();
         MainWindow = main;
         main.Show();
+        ScheduleFreshInstallDefaults(zapretRoot);
+    }
+
+    private static void ScheduleFreshInstallDefaults(string root)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await new ServiceDefaultsService(new ZapretPaths(root))
+                    .ApplyFreshInstallDefaultsAsync()
+                    .ConfigureAwait(false);
+            }
+            catch { /* ignore */ }
+        });
     }
 
     private static bool EnsureZapretInstalled(AppSettings settings)
@@ -71,11 +81,6 @@ public partial class App : Application
             settings.ZapretRoot = root;
             settings.Save();
             BundledStrategiesService.DeployTo(root);
-            try
-            {
-                new ServiceDefaultsService(new ZapretPaths(root)).ApplyFreshInstallDefaults();
-            }
-            catch { /* ignore */ }
             return true;
         }
 
@@ -90,11 +95,6 @@ public partial class App : Application
         settings.ZapretRoot = target;
         settings.Save();
         BundledStrategiesService.DeployTo(target);
-        try
-        {
-            new ServiceDefaultsService(new ZapretPaths(target)).ApplyFreshInstallDefaults();
-        }
-        catch { /* ignore */ }
         return true;
     }
 }

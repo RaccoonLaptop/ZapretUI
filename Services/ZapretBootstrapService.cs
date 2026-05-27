@@ -70,7 +70,9 @@ public sealed class ZapretBootstrapService
                 BundledStrategiesService.DeployTo(targetDir);
                 try
                 {
-                    new ServiceDefaultsService(new ZapretPaths(targetDir)).ApplyFreshInstallDefaults();
+                    await new ServiceDefaultsService(new ZapretPaths(targetDir))
+                        .ApplyFreshInstallDefaultsAsync(ct)
+                        .ConfigureAwait(false);
                 }
                 catch { /* ignore */ }
                 return BootstrapResult.Ok($"Установлено: Flowseal {release.TagName}", targetDir);
