@@ -45,6 +45,8 @@ public sealed class AppSettings
                 if (settings.BackgroundSpeedPercent is < 5 or > 100)
                     settings.BackgroundSpeedPercent = BackgroundMotion.PercentFromLegacyMultiplier(
                         settings.BackgroundAnimSpeed);
+                if (settings.BackgroundSpeedPercent < 8)
+                    settings.BackgroundSpeedPercent = 15;
                 return settings;
             }
         }
