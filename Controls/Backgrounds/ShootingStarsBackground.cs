@@ -36,6 +36,8 @@ public sealed class ShootingStarsBackground : AnimatedBackgroundBase
 
     protected override void OnDimensionsChanged() => RebuildStars();
 
+    protected override void OnMotionSpeedChanged() => _shootingStars.Clear();
+
     protected override void AnimateFrame(double timeMs, double deltaMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;

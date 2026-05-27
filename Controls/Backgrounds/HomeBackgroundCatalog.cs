@@ -43,4 +43,11 @@ public static class HomeBackgroundCatalog
         var index = Array.FindIndex(All, e => e.Id == normalized);
         return All[(index + 1) % All.Length];
     }
+
+    /// <summary>Фоны без движения — ползунок скорости на них не действует.</summary>
+    public static bool SupportsMotionSpeed(string? id)
+    {
+        var normalized = Normalize(id);
+        return normalized is not ("none" or "grid" or "dots");
+    }
 }
