@@ -1,9 +1,8 @@
 # Build ZapretUI-Setup.exe (self-contained, no .NET install required)
 $ErrorActionPreference = "Stop"
 $ProjectDir = $PSScriptRoot
-$ParentDir = Split-Path $ProjectDir -Parent
-$StagingDir = Join-Path $ParentDir "ZapretUI-installer-staging"
-$DistDir = Join-Path $ParentDir "ZapretUI-dist"
+$StagingDir = Join-Path $ProjectDir "build\staging"
+$DistDir = Join-Path $ProjectDir "dist"
 $Packaging = Join-Path $ProjectDir "packaging"
 $IssFile = Join-Path $ProjectDir "installer\ZapretUI.iss"
 
