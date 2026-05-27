@@ -78,11 +78,10 @@ public sealed class AppSelfUpdateService
         }
     }
 
-    public async Task<AppUpdateInstallResult> InstallUpdateAsync(AppUpdateManifest manifest, CancellationToken ct = default)
+    public async Task<AppUpdatePrepareResult> PrepareUpdateAsync(AppUpdateManifest manifest, CancellationToken ct = default)
     {
         var tempRoot = Path.Combine(Path.GetTempPath(), "ZapretUI-update-" + Guid.NewGuid().ToString("N"));
         var extractDir = Path.Combine(tempRoot, "extract");
-        var logFile = Path.Combine(tempRoot, "update.log");
 
         try
         {
@@ -90,7 +89,7 @@ public sealed class AppSelfUpdateService
 
             var packagePath = await ResolvePackagePathAsync(manifest, tempRoot, ct);
             if (packagePath is null)
-                return AppUpdateInstallResult.Fail("Файл обновления не найден");
+                return AppUpdatePrepareResult.Fail("Файл обновления не найден");
 
             if (packagePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {
@@ -102,22 +101,40 @@ public sealed class AppSelfUpdateService
             }
             else
             {
-                return AppUpdateInstallResult.Fail("Неподдерживаемый формат пакета");
+                return AppUpdatePrepareResult.Fail("Неподдерживаемый формат пакета");
             }
 
             var sourceDir = FindProgramRoot(extractDir);
             if (sourceDir is null || !File.Exists(Path.Combine(sourceDir, "ZapretUI.exe")))
-                return AppUpdateInstallResult.Fail("В пакете нет ZapretUI.exe");
+                return AppUpdatePrepareResult.Fail("В пакете нет ZapretUI.exe");
 
+            return AppUpdatePrepareResult.Ok(new PreparedAppUpdate
+            {
+                TempRoot = tempRoot,
+                SourceDir = sourceDir,
+                ManifestVersion = manifest.Version
+            });
+        }
+        catch (Exception ex)
+        {
+            try { Directory.Delete(tempRoot, true); } catch { /* ignore */ }
+            return AppUpdatePrepareResult.Fail(ex.Message);
+        }
+    }
+
+    public async Task<AppUpdateInstallResult> InstallPreparedUpdateAsync(PreparedAppUpdate prepared, CancellationToken ct = default)
+    {
+        try
+        {
             var scriptPath = ResolveUpdateScript();
             if (scriptPath is null)
                 return AppUpdateInstallResult.Fail("Скрипт apply-update.ps1 не найден");
 
+            var logFile = Path.Combine(prepared.TempRoot, "update.log");
             var exePath = Path.Combine(_installDir, "ZapretUI.exe");
             var pid = Process.GetCurrentProcess().Id;
-
             var args = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{scriptPath}\" " +
-                       $"-SourceDir \"{sourceDir}\" -TargetDir \"{_installDir}\" -ProcessId {pid} " +
+                       $"-SourceDir \"{prepared.SourceDir}\" -TargetDir \"{_installDir}\" -ProcessId {pid} " +
                        $"-ExePath \"{exePath}\" -LogFile \"{logFile}\"";
 
             Process.Start(new ProcessStartInfo
@@ -128,16 +145,33 @@ public sealed class AppSelfUpdateService
                 CreateNoWindow = true
             });
 
-            _settings.LastInstalledVersion = manifest.Version;
+            _settings.LastInstalledVersion = prepared.ManifestVersion;
             _settings.Save();
-
             return AppUpdateInstallResult.Ok("Обновление запускается, программа перезапустится...", restart: true);
         }
         catch (Exception ex)
         {
-            try { Directory.Delete(tempRoot, true); } catch { /* ignore */ }
             return AppUpdateInstallResult.Fail(ex.Message);
         }
+    }
+
+    public async Task<AppUpdateInstallResult> InstallUpdateAsync(AppUpdateManifest manifest, CancellationToken ct = default)
+    {
+        var prepared = await PrepareUpdateAsync(manifest, ct);
+        if (!prepared.Success || prepared.Payload is null)
+            return AppUpdateInstallResult.Fail(prepared.Message);
+        return await InstallPreparedUpdateAsync(prepared.Payload, ct);
+    }
+
+    public static void CleanupPreparedUpdate(PreparedAppUpdate? prepared)
+    {
+        if (prepared is null) return;
+        try
+        {
+            if (Directory.Exists(prepared.TempRoot))
+                Directory.Delete(prepared.TempRoot, true);
+        }
+        catch { /* ignore */ }
     }
 
     public async Task<AppUpdateInstallResult> CheckAndInstallIfNeededAsync(bool autoInstall, CancellationToken ct = default)
@@ -342,4 +376,24 @@ public sealed class AppUpdateInstallResult
 
     public static AppUpdateInstallResult Fail(string msg) =>
         new() { Success = false, Message = msg };
+}
+
+public sealed class AppUpdatePrepareResult
+{
+    public bool Success { get; init; }
+    public string Message { get; init; } = "";
+    public PreparedAppUpdate? Payload { get; init; }
+
+    public static AppUpdatePrepareResult Ok(PreparedAppUpdate payload) =>
+        new() { Success = true, Message = "Пакет обновления загружен", Payload = payload };
+
+    public static AppUpdatePrepareResult Fail(string msg) =>
+        new() { Success = false, Message = msg };
+}
+
+public sealed class PreparedAppUpdate
+{
+    public string TempRoot { get; init; } = "";
+    public string SourceDir { get; init; } = "";
+    public string ManifestVersion { get; init; } = "";
 }
