@@ -33,8 +33,8 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
         for (var i = _meteors.Count - 1; i >= 0; i--)
         {
             var m = _meteors[i];
-            m.Phase += m.Speed;
-            m.Opacity = Math.Max(0, 1 - m.Phase / 900);
+            m.Phase += m.Speed * MotionScale;
+            m.Opacity = Math.Max(0, 1 - m.Phase / 1200);
             if (m.Opacity <= 0 || m.X > AreaWidth + 200 || m.Y > AreaHeight + 200)
                 _meteors.RemoveAt(i);
         }
@@ -64,7 +64,7 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
             X = Rng.NextDouble() * AreaWidth * 1.2 - AreaWidth * 0.1,
             Y = Rng.NextDouble() * AreaHeight * 0.55,
             Angle = angle,
-            Speed = 4 + Rng.NextDouble() * 6,
+            Speed = 2 + Rng.NextDouble() * 3,
             Length = 60 + Rng.NextDouble() * 80,
             Opacity = 1,
             Phase = randomPhase ? Rng.NextDouble() * 400 : 0
@@ -94,9 +94,9 @@ public sealed class SparklesBackground : AnimatedBackgroundBase
     {
         foreach (var p in _particles)
         {
-            p.X += p.SpeedX;
-            p.Y += p.SpeedY;
-            p.Opacity += p.OpacityDir * p.OpacitySpeed;
+            p.X += p.SpeedX * MotionScale;
+            p.Y += p.SpeedY * MotionScale;
+            p.Opacity += p.OpacityDir * p.OpacitySpeed * MotionScale;
             if (p.Opacity <= 0) { p.Opacity = 0; p.OpacityDir = 1; }
             else if (p.Opacity >= 1) { p.Opacity = 1; p.OpacityDir = -1; }
             if (p.X < 0) p.X = AreaWidth;
@@ -117,8 +117,8 @@ public sealed class SparklesBackground : AnimatedBackgroundBase
         X = Rng.NextDouble() * AreaWidth,
         Y = Rng.NextDouble() * AreaHeight,
         Size = 0.4 + Rng.NextDouble() * 1.0,
-        SpeedX = (Rng.NextDouble() - 0.5) * 0.4,
-        SpeedY = (Rng.NextDouble() - 0.5) * 0.4,
+        SpeedX = (Rng.NextDouble() - 0.5) * 0.25,
+        SpeedY = (Rng.NextDouble() - 0.5) * 0.25,
         Opacity = Rng.NextDouble(),
         OpacityDir = Rng.NextDouble() > 0.5 ? 1 : -1,
         OpacitySpeed = 0.004 + Rng.NextDouble() * 0.01
@@ -130,7 +130,7 @@ public sealed class AuroraBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0;
+        var t = timeMs / 1000.0 * MotionScale;
         var colors = new[] { ParseColor("#00d2ff"), ParseColor("#7928ca"), ParseColor("#ff0080") };
         for (var i = 0; i < 3; i++)
         {
@@ -165,7 +165,7 @@ public sealed class VortexBackground : AnimatedBackgroundBase
             {
                 Angle = Rng.NextDouble() * Math.PI * 2,
                 Radius = Rng.NextDouble() * Math.Min(AreaWidth, AreaHeight) * 0.45,
-                Speed = 0.002 + Rng.NextDouble() * 0.004,
+                Speed = (0.001 + Rng.NextDouble() * 0.002) * MotionScale,
                 Size = 0.6 + Rng.NextDouble() * 1.4
             });
         }
@@ -174,7 +174,7 @@ public sealed class VortexBackground : AnimatedBackgroundBase
     protected override void AnimateFrame(double timeMs)
     {
         foreach (var p in _particles)
-            p.Angle += p.Speed;
+            p.Angle += p.Speed; // Speed already scaled at creation
     }
 
     protected override void RenderFrame(DrawingContext dc, double timeMs)
@@ -257,7 +257,7 @@ public sealed class RippleBackground : AnimatedBackgroundBase
                 X = Rng.NextDouble() * AreaWidth,
                 Y = Rng.NextDouble() * AreaHeight,
                 Radius = 0,
-                Speed = 1.2 + Rng.NextDouble(),
+                Speed = (0.5 + Rng.NextDouble() * 0.5) * MotionScale,
                 MaxRadius = 80 + Rng.NextDouble() * 160
             });
         }
@@ -287,7 +287,7 @@ public sealed class WavyBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0;
+        var t = timeMs / 1000.0 * MotionScale;
         for (var wave = 0; wave < 4; wave++)
         {
             var geometry = new StreamGeometry();
@@ -315,7 +315,7 @@ public sealed class GradientAnimationBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 5000.0;
+        var t = timeMs / 9000.0;
         var c1 = ParseColor("#1271FF");
         var c2 = ParseColor("#DD4AFF");
         var c3 = ParseColor("#64DCFF");
@@ -332,12 +332,12 @@ public sealed class LinesBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0;
+        var t = timeMs / 1000.0 * MotionScale;
         var cx = AreaWidth / 2;
         var cy = AreaHeight / 2;
         for (var i = 0; i < 40; i++)
         {
-            var angle = t * 0.15 + i * (Math.PI * 2 / 40);
+            var angle = t * 0.08 + i * (Math.PI * 2 / 40);
             var len = Math.Max(AreaWidth, AreaHeight) * 0.6;
             var pen = new Pen(new SolidColorBrush(Color.FromArgb(22, 129, 140, 248)), 1);
             pen.Freeze();
@@ -353,7 +353,7 @@ public sealed class SpotlightBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0;
+        var t = timeMs / 1000.0 * MotionScale;
         var x = AreaWidth * 0.5 + Math.Sin(t * 0.4) * AreaWidth * 0.25;
         var y = AreaHeight * 0.45 + Math.Cos(t * 0.35) * AreaHeight * 0.2;
         var brush = new RadialGradientBrush(
@@ -372,7 +372,7 @@ public sealed class BeamsBackground : AnimatedBackgroundBase
         var t = timeMs / 1000.0;
         for (var i = 0; i < 6; i++)
         {
-            var offset = (t * 40 + i * 120) % (AreaWidth + 200) - 100;
+            var offset = (t * 18 + i * 120) % (AreaWidth + 200) - 100;
             var brush = new LinearGradientBrush(
                 Color.FromArgb(0, 107, 159, 255),
                 Color.FromArgb(35, 107, 159, 255),

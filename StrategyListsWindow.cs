@@ -17,6 +17,7 @@ public sealed class StrategyListsWindow : Window
     private TextBox _editor = null!;
     private TextBlock _info = null!;
     private Button _createBtn = null!;
+    private Button _deleteBtn = null!;
     private string? _currentFile;
 
     public StrategyListsWindow(ZapretPaths paths, string strategyFile, Func<string> getBatContent)
@@ -121,8 +122,16 @@ public sealed class StrategyListsWindow : Window
             Visibility = Visibility.Collapsed
         };
         _createBtn.Click += (_, _) => CreateMissingList();
+        _deleteBtn = new Button
+        {
+            Content = "Удалить файл",
+            Style = (Style)Application.Current.FindResource("SecondaryButton"),
+            Visibility = Visibility.Collapsed
+        };
+        _deleteBtn.Click += (_, _) => DeleteCurrentList();
         toolbar.Children.Add(saveBtn);
         toolbar.Children.Add(_createBtn);
+        toolbar.Children.Add(_deleteBtn);
         rightStack.Children.Add(toolbar);
 
         _editor = new TextBox
@@ -164,6 +173,7 @@ public sealed class StrategyListsWindow : Window
             _editor.Text = "";
             _currentFile = null;
             _createBtn.Visibility = Visibility.Collapsed;
+            _deleteBtn.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -181,11 +191,15 @@ public sealed class StrategyListsWindow : Window
             _editor.IsReadOnly = true;
             _info.Text = $"{entry.FileName} — указан в конфиге, но файла нет в lists/";
             _createBtn.Visibility = Visibility.Visible;
+            _deleteBtn.Visibility = Visibility.Collapsed;
             return;
         }
 
         _editor.IsReadOnly = false;
         _createBtn.Visibility = Visibility.Collapsed;
+        _deleteBtn.Visibility = _lists.CanDeleteList(entry.FileName)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         try
         {
             _editor.Text = _lists.ReadList(entry.FileName);
@@ -232,6 +246,34 @@ public sealed class StrategyListsWindow : Window
             ConsoleLog.Instance.Write($"Создан список: {_currentFile}");
             RefreshList();
             SelectFile(_currentFile);
+        }
+        catch (Exception ex)
+        {
+            UiHelpers.ShowError(ex.Message);
+        }
+    }
+
+    private void DeleteCurrentList()
+    {
+        if (_currentFile is null) return;
+        if (!_lists.CanDeleteList(_currentFile))
+        {
+            UiHelpers.ShowError(
+                "Нельзя удалить встроенные списки (list-general.txt, list-google.txt и т.п.). " +
+                "Можно удалять пользовательские (*-user.txt) и созданные вручную файлы.");
+            return;
+        }
+
+        if (!UiHelpers.Confirm($"Удалить файл списка {_currentFile} из папки lists/?"))
+            return;
+
+        try
+        {
+            _lists.DeleteList(_currentFile);
+            ConsoleLog.Instance.Write($"Удалён список: {_currentFile}");
+            _currentFile = null;
+            RefreshList();
+            UiHelpers.ShowInfo("Файл списка удалён");
         }
         catch (Exception ex)
         {

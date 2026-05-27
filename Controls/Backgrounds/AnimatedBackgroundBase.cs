@@ -5,6 +5,9 @@ namespace ZapretUI.Controls.Backgrounds;
 
 public abstract class AnimatedBackgroundBase : FrameworkElement
 {
+    /// <summary>Общий множитель скорости движения (меньше = медленнее).</summary>
+    protected const double MotionScale = 0.45;
+
     protected double AreaWidth;
     protected double AreaHeight;
     protected readonly Random Rng = new();
