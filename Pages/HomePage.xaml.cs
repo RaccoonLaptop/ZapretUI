@@ -17,7 +17,9 @@ public partial class HomePage : UserControl
     private Button _toggleBtn = null!;
     private Ellipse _statusIndicator = null!;
     private TextBlock _statusLabel = null!;
+    private TextBlock _actionStatus = null!;
     private readonly DispatcherTimer _statusTimer;
+    private bool _isStarting;
 
     public HomePage(ZapretPaths paths, StrategyService strategy, AppSettings settings)
     {
@@ -107,6 +109,17 @@ public partial class HomePage : UserControl
         _toggleBtn.Click += async (_, _) => await ToggleAsync();
         center.Children.Add(_toggleBtn);
 
+        _actionStatus = new TextBlock
+        {
+            Text = "",
+            FontSize = 13,
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 10, 0, 0),
+            Visibility = Visibility.Collapsed
+        };
+        center.Children.Add(_actionStatus);
+
         Content = center;
     }
 
@@ -151,8 +164,11 @@ public partial class HomePage : UserControl
                 _statusLabel.Text = $"Работает — {title}";
         }
 
-        _toggleBtn.Content = running ? "⏹   ОСТАНОВИТЬ" : "▶   ЗАПУСТИТЬ";
-        _strategyCombo.IsEnabled = !running;
+        _toggleBtn.Content = _isStarting
+            ? "⏳   ЗАПУСКАЕТСЯ..."
+            : (running ? "⏹   ОСТАНОВИТЬ" : "▶   ЗАПУСТИТЬ");
+        _toggleBtn.IsEnabled = !_isStarting;
+        _strategyCombo.IsEnabled = !running && !_isStarting;
     }
 
     private async Task ToggleAsync()
@@ -173,16 +189,35 @@ public partial class HomePage : UserControl
 
         try
         {
+            _isStarting = true;
+            _actionStatus.Visibility = Visibility.Visible;
+            _actionStatus.Text = "Подготовка запуска...";
+            RefreshToggleUi();
+
             _settings.LastStrategy = strategy;
             _settings.Save();
             ConsoleLog.Instance.Write($"Запуск: {strategy}");
+
+            _actionStatus.Text = "Запускаем winws, подождите...";
             await _strategy.StartStrategyAsync(strategy);
+
             ConsoleLog.Instance.Write("Запущено");
+            _actionStatus.Text = "Запуск завершен";
         }
         catch (Exception ex)
         {
             ConsoleLog.Instance.Write($"Ошибка: {ex.Message}");
             UiHelpers.ShowError(ex.Message);
+            _actionStatus.Text = "Ошибка запуска";
+        }
+        finally
+        {
+            _isStarting = false;
+            if (_strategy.IsRunning())
+            {
+                _ = Task.Delay(1200).ContinueWith(_ =>
+                    Dispatcher.Invoke(() => _actionStatus.Visibility = Visibility.Collapsed));
+            }
         }
         RefreshToggleUi();
     }
