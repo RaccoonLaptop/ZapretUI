@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using ZapretUI;
 using ZapretUI.Helpers;
 using ZapretUI.Services;
 
@@ -219,17 +220,43 @@ public partial class ServicePage : UserControl
             }
 
             if (UiHelpers.Confirm(
-                    $"Доступна новая версия Zapret UI: {result.RemoteVersion}\nУ вас: {result.LocalVersion}\n\nУстановить сейчас?"))
+                    $"Доступна новая версия Zapret UI: {result.RemoteVersion}\nУ вас: {result.LocalVersion}\n\nСкачать обновление?"))
             {
                 if (result.Manifest is not null)
                 {
-                    var install = await updater.InstallUpdateAsync(result.Manifest);
-                    if (install.RequiresRestart && Application.Current.MainWindow is MainWindow mw)
-                        mw.ShutdownApplication();
-                    else if (!install.Success)
-                        UiHelpers.ShowError(install.Message);
-                    else
-                        UiHelpers.ShowInfo(install.Message);
+                    PreparedAppUpdate? prepared = null;
+                    var progress = new UpdateDownloadWindow("Обновление Zapret UI", "Загрузка пакета обновления...");
+                    if (OwnerWindow is not null) progress.Owner = OwnerWindow;
+                    progress.Show();
+                    try
+                    {
+                        var preparedResult = await updater.PrepareUpdateAsync(result.Manifest);
+                        if (!preparedResult.Success || preparedResult.Payload is null)
+                        {
+                            UiHelpers.ShowError(preparedResult.Message);
+                            return;
+                        }
+
+                        prepared = preparedResult.Payload;
+                        progress.SetStatus("Загрузка завершена. Пакет готов к установке.");
+
+                        if (UiHelpers.Confirm(
+                                $"Пакет обновления Zapret UI {result.RemoteVersion} загружен.\n\nУстановить сейчас?"))
+                        {
+                            var install = await updater.InstallPreparedUpdateAsync(prepared);
+                            if (install.RequiresRestart && Application.Current.MainWindow is MainWindow mw)
+                                mw.ShutdownApplication();
+                            else if (!install.Success)
+                                UiHelpers.ShowError(install.Message);
+                            else
+                                UiHelpers.ShowInfo(install.Message);
+                        }
+                    }
+                    finally
+                    {
+                        progress.Close();
+                        AppSelfUpdateService.CleanupPreparedUpdate(prepared);
+                    }
                 }
             }
         }

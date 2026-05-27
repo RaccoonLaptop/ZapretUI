@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using ZapretUI;
 using ZapretUI.Helpers;
 
 namespace ZapretUI.Services;
@@ -44,16 +45,40 @@ public sealed class StartupUpdateService
                     $"Доступна новая версия Zapret UI.\n\n" +
                     $"Новая: {appCheck.RemoteVersion}\n" +
                     $"У вас: {appCheck.LocalVersion}\n\n" +
-                    "Установить обновление сейчас?"))
+                    "Скачать обновление сейчас?"))
             {
-                var install = await appUpdater.InstallUpdateAsync(appCheck.Manifest!);
-                ConsoleLog.Instance.Write(install.Message);
-
-                if (install.RequiresRestart)
-                    return true;
-
-                if (!install.Success)
-                    UiHelpers.ShowError(install.Message);
+                PreparedAppUpdate? prepared = null;
+                var progress = new UpdateDownloadWindow("Обновление Zapret UI", "Загрузка пакета обновления...");
+                progress.Owner = owner;
+                progress.Show();
+                try
+                {
+                    var preparedResult = await appUpdater.PrepareUpdateAsync(appCheck.Manifest!);
+                    if (!preparedResult.Success || preparedResult.Payload is null)
+                    {
+                        UiHelpers.ShowError(preparedResult.Message);
+                    }
+                    else
+                    {
+                        prepared = preparedResult.Payload;
+                        progress.SetStatus("Загрузка завершена. Пакет готов к установке.");
+                        if (UiHelpers.Confirm(
+                                $"Пакет обновления Zapret UI {appCheck.RemoteVersion} загружен.\n\nУстановить сейчас?"))
+                        {
+                            var install = await appUpdater.InstallPreparedUpdateAsync(prepared);
+                            ConsoleLog.Instance.Write(install.Message);
+                            if (install.RequiresRestart)
+                                return true;
+                            if (!install.Success)
+                                UiHelpers.ShowError(install.Message);
+                        }
+                    }
+                }
+                finally
+                {
+                    progress.Close();
+                    AppSelfUpdateService.CleanupPreparedUpdate(prepared);
+                }
             }
         }
 
