@@ -5,14 +5,15 @@ namespace ZapretUI.Controls.Backgrounds;
 
 /// <summary>
 /// https://github.com/BEDOLAGA-DEV/bedolaga-cabinet/blob/main/src/components/ui/backgrounds/shooting-stars.tsx
+/// Скорость в пикселях/сек (не на кадр).
 /// </summary>
 public sealed class ShootingStarsBackground : AnimatedBackgroundBase
 {
     private const double StarDensity = 0.00015;
-    private const double MinSpeed = 10;
-    private const double MaxSpeed = 30;
+    private const double MinSpeedPxPerSec = 70;
+    private const double MaxSpeedPxPerSec = 140;
     private const double TrailLength = 80;
-    private const double FadeDistance = 700;
+    private const double FadeDistance = 750;
 
     private static readonly Color StarColor = ParseColor("#9E00FF");
     private static readonly Color TrailColor = ParseColor("#2EB9DF");
@@ -20,7 +21,7 @@ public sealed class ShootingStarsBackground : AnimatedBackgroundBase
     private readonly List<BgStar> _bgStars = new();
     private readonly List<ShootingStar> _shootingStars = new();
     private double _lastShootingMs;
-    private double _nextShootingDelayMs = 5500;
+    private double _nextShootingDelayMs = 6500;
 
     private sealed class BgStar
     {
@@ -30,7 +31,7 @@ public sealed class ShootingStarsBackground : AnimatedBackgroundBase
 
     private sealed class ShootingStar
     {
-        public double X, Y, Angle, Scale, Speed, Distance, Opacity;
+        public double X, Y, Angle, Scale, SpeedPxPerSec, Distance, Opacity;
     }
 
     protected override void OnDimensionsChanged() => RebuildStars();
@@ -38,6 +39,7 @@ public sealed class ShootingStarsBackground : AnimatedBackgroundBase
     protected override void AnimateFrame(double timeMs, double deltaMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
+        var dt = DtSec(deltaMs);
 
         if (timeMs - _lastShootingMs > _nextShootingDelayMs)
         {
@@ -47,18 +49,18 @@ public sealed class ShootingStarsBackground : AnimatedBackgroundBase
                 Y = Rng.NextDouble() * AreaHeight * 0.5,
                 Angle = Math.PI / 4 + (Rng.NextDouble() - 0.5) * 0.3,
                 Scale = 0.5 + Rng.NextDouble() * 0.5,
-                Speed = MinSpeed + Rng.NextDouble() * (MaxSpeed - MinSpeed),
+                SpeedPxPerSec = MinSpeedPxPerSec + Rng.NextDouble() * (MaxSpeedPxPerSec - MinSpeedPxPerSec),
                 Distance = 0,
                 Opacity = 1
             });
             _lastShootingMs = timeMs;
-            _nextShootingDelayMs = 5500 + Rng.NextDouble() * 5500;
+            _nextShootingDelayMs = 6500 + Rng.NextDouble() * 6000;
         }
 
         for (var i = _shootingStars.Count - 1; i >= 0; i--)
         {
             var star = _shootingStars[i];
-            star.Distance += star.Speed * CanvasMotionScale;
+            star.Distance += star.SpeedPxPerSec * dt;
             star.Opacity = Math.Max(0, 1 - star.Distance / FadeDistance);
             if (star.Opacity <= 0) _shootingStars.RemoveAt(i);
         }
