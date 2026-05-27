@@ -179,10 +179,10 @@ public partial class ServicePage : UserControl
         // Links
         root.Children.Add(Section("Ссылки"));
         var linksCard = Card();
-        var linksStack = new StackPanel();
-        linksStack.Children.Add(LinkButton("Flowseal/zapret-discord-youtube", FlowsealUrl));
-        linksStack.Children.Add(LinkButton("Zapret UI (Niko)", AppUrl));
-        linksCard.Child = linksStack;
+        var linksRow = new WrapPanel();
+        linksRow.Children.Add(LinkButton("Flowseal/zapret-discord-youtube", FlowsealUrl));
+        linksRow.Children.Add(LinkButton("Zapret UI (Niko)", AppUrl));
+        linksCard.Child = linksRow;
         root.Children.Add(linksCard);
 
         scroll.Content = root;
@@ -246,7 +246,8 @@ public partial class ServicePage : UserControl
             }
 
             if (UiHelpers.Confirm(
-                    $"Доступна новая версия Zapret UI: {result.RemoteVersion}\nУ вас: {result.LocalVersion}\n\nСкачать обновление?"))
+                    $"Доступна новая версия Zapret UI: {result.RemoteVersion}\nУ вас: {result.LocalVersion}\n\nСкачать обновление?",
+                    OwnerWindow))
             {
                 if (result.Manifest is not null)
                 {
@@ -402,9 +403,10 @@ public partial class ServicePage : UserControl
 
     private void RefreshStatuses()
     {
-        _gameFilterStatus.Text = $"Game Filter: {_settingsSvc.GetGameFilterStatus()}";
-        _ipsetStatus.Text = $"IPSet Filter: {_settingsSvc.GetIpsetStatus()}";
-        _autoUpdateStatus.Text = $"Auto-Update Check: {(_settingsSvc.IsAutoUpdateEnabled() ? "enabled" : "disabled")}";
+        SetStatusText(_gameFilterStatus, "Game Filter", _settingsSvc.GetGameFilterStatus());
+        SetStatusText(_ipsetStatus, "IPSet Filter", _settingsSvc.GetIpsetStatus());
+        SetStatusText(_autoUpdateStatus, "Auto-Update Check",
+            _settingsSvc.IsAutoUpdateEnabled() ? "enabled" : "disabled");
     }
 
     private string GetSelectedStrategy() =>
@@ -432,10 +434,33 @@ public partial class ServicePage : UserControl
 
     private static TextBlock StatusLine(string name) => new()
     {
-        Text = $"{name}: ...",
         FontWeight = FontWeights.SemiBold,
         Margin = new Thickness(0, 0, 0, 4)
     };
+
+    private static void SetStatusText(TextBlock block, string label, string value)
+    {
+        block.Inlines.Clear();
+        block.Inlines.Add(new Run($"{label}: ")
+        {
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush")
+        });
+        block.Inlines.Add(new Run(value)
+        {
+            Foreground = GetStatusValueBrush(value),
+            FontWeight = FontWeights.SemiBold
+        });
+    }
+
+    private static Brush GetStatusValueBrush(string value)
+    {
+        var normalized = value.Trim().ToLowerInvariant();
+        if (normalized is "enabled" or "on" or "yes" or "true")
+            return (Brush)Application.Current.FindResource("SuccessBrush");
+        if (normalized is "disabled" or "off" or "no" or "false")
+            return (Brush)Application.Current.FindResource("WarningBrush");
+        return (Brush)Application.Current.FindResource("AccentBrush");
+    }
 
     private Button ActionBtn(string text, Action action) => ActionBtn(text, () => { action(); return Task.CompletedTask; });
 
