@@ -36,16 +36,16 @@ public partial class StrategiesPage : UserControl
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         var header = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
-        header.Children.Add(new TextBlock { Text = "Стратегии", FontSize = 28, FontWeight = FontWeights.Bold });
+        header.Children.Add(new TextBlock { Text = Loc.T("strategies.title"), FontSize = 28, FontWeight = FontWeights.Bold });
         header.Children.Add(new TextBlock
         {
-            Text = "Конфиги запуска Zapret (.bat). Выберите файл слева, отредактируйте и сохраните.",
+            Text = Loc.T("strategies.subtitle"),
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             TextWrapping = TextWrapping.Wrap
         });
         header.Children.Add(new TextBlock
         {
-            Text = "Конфиг Niko_ALT11 — авторская стратегия Niko. «Списки» — .txt из выбранного .bat.",
+            Text = Loc.T("strategies.hint"),
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12,
@@ -72,9 +72,9 @@ public partial class StrategiesPage : UserControl
         leftStack.Children.Add(_list);
 
         var leftBtns = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
-        _runBtn = new Button { Content = "Запустить", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 0, 8) };
+        _runBtn = new Button { Content = Loc.T("strategies.run"), Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 0, 8) };
         _runBtn.Click += async (_, _) => await RunSelectedAsync();
-        var newBtn = new Button { Content = "Новый конфиг", Style = (Style)Application.Current.FindResource("SecondaryButton") };
+        var newBtn = new Button { Content = Loc.T("strategies.new"), Style = (Style)Application.Current.FindResource("SecondaryButton") };
         newBtn.Click += (_, _) => CreateNew();
         leftBtns.Children.Add(_runBtn);
         leftBtns.Children.Add(newBtn);
@@ -106,13 +106,13 @@ public partial class StrategiesPage : UserControl
         var editorToolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
         DockPanel.SetDock(editorToolbar, Dock.Top);
 
-        var saveBtn = MakeToolbarBtn("Сохранить", "PrimaryButton", (_, _) => SaveCurrent());
-        var revertBtn = MakeToolbarBtn("Отменить", "SecondaryButton", (_, _) => LoadSelected());
-        var copyBtn = MakeToolbarBtn("Создать копию", "SecondaryButton", (_, _) => CreateCopy());
-        var renameBtn = MakeToolbarBtn("Переименовать", "SecondaryButton", (_, _) => RenameCurrent());
-        var deleteBtn = MakeToolbarBtn("Удалить", "SecondaryButton", (_, _) => DeleteCurrent());
-        var listsBtn = MakeToolbarBtn("Списки", "SecondaryButton", (_, _) => OpenListsWindow());
-        var findBtn = MakeToolbarBtn("Найти / заменить", "SecondaryButton", (_, _) => OpenFindReplace());
+        var saveBtn = MakeToolbarBtn(Loc.T("strategies.save"), "PrimaryButton", (_, _) => SaveCurrent());
+        var revertBtn = MakeToolbarBtn(Loc.T("strategies.revert"), "SecondaryButton", (_, _) => LoadSelected());
+        var copyBtn = MakeToolbarBtn(Loc.T("strategies.copy"), "SecondaryButton", (_, _) => CreateCopy());
+        var renameBtn = MakeToolbarBtn(Loc.T("strategies.rename"), "SecondaryButton", (_, _) => RenameCurrent());
+        var deleteBtn = MakeToolbarBtn(Loc.T("strategies.delete"), "SecondaryButton", (_, _) => DeleteCurrent());
+        var listsBtn = MakeToolbarBtn(Loc.T("strategies.lists"), "SecondaryButton", (_, _) => OpenListsWindow());
+        var findBtn = MakeToolbarBtn(Loc.T("strategies.find"), "SecondaryButton", (_, _) => OpenFindReplace());
 
         editorToolbar.Children.Add(saveBtn);
         editorToolbar.Children.Add(revertBtn);
@@ -174,7 +174,7 @@ public partial class StrategiesPage : UserControl
         var file = _currentFile ?? _list.SelectedItem as string;
         if (string.IsNullOrEmpty(file))
         {
-            UiHelpers.ShowError("Сначала выберите конфиг (.bat) слева");
+            UiHelpers.ShowError(Loc.T("strategies.select_first"));
             return;
         }
 
@@ -209,7 +209,7 @@ public partial class StrategiesPage : UserControl
         {
             _strategy.SaveStrategyContent(_currentFile, _editor.Text);
             ConsoleLog.Instance.Write($"Сохранено: {_currentFile}");
-            UiHelpers.ShowInfo("Файл сохранён");
+            UiHelpers.ShowInfo(Loc.T("strategies.saved"));
         }
         catch (Exception ex)
         {
@@ -227,25 +227,25 @@ public partial class StrategiesPage : UserControl
         {
             _isStarting = true;
             _runBtn.IsEnabled = false;
-            _runBtn.Content = "Запускается...";
-            _runStatus.Text = "Подготовка запуска...";
+            _runBtn.Content = Loc.T("strategies.running");
+            _runStatus.Text = Loc.T("strategies.prep");
             _runStatus.Visibility = Visibility.Visible;
 
-            _runStatus.Text = "Запускаем winws, подождите...";
+            _runStatus.Text = Loc.T("strategies.wait");
             await _strategy.StartStrategyAsync(file);
-            ConsoleLog.Instance.Write($"Запущена стратегия: {file}");
-            _runStatus.Text = "Запуск завершен";
+            ConsoleLog.Instance.Write(Loc.F("strategies.log_run", file));
+            _runStatus.Text = Loc.T("strategies.done");
         }
         catch (Exception ex)
         {
-            _runStatus.Text = "Ошибка запуска";
+            _runStatus.Text = Loc.T("strategies.run_error");
             UiHelpers.ShowError(ex.Message);
         }
         finally
         {
             _isStarting = false;
             _runBtn.IsEnabled = true;
-            _runBtn.Content = "Запустить";
+            _runBtn.Content = Loc.T("strategies.run");
             if (_strategy.IsRunning())
                 _runStatus.Visibility = Visibility.Collapsed;
         }

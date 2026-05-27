@@ -10,6 +10,9 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        var settings = AppSettings.Load();
+        LocalizationService.Initialize(settings.Language);
+
         if (UpdateProgressLauncher.TryParseArgs(e.Args, out var progressLog, out var progressVersion))
         {
             var progressWin = new UpdateInstallProgressWindow(progressLog, progressVersion);
@@ -33,15 +36,14 @@ public partial class App : Application
             catch { /* ignore */ }
 
             MessageBox.Show(
-                args.Exception.Message + "\n\nПодробности: %LocalAppData%\\ZapretUI\\last-error.log",
-                "Zapret UI — ошибка",
+                LocalizationService.F("app.error_details", args.Exception.Message),
+                LocalizationService.T("app.error_title"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             args.Handled = true;
             Shutdown();
         };
 
-        var settings = AppSettings.Load();
         if (!EnsureZapretInstalled(settings))
         {
             Shutdown();

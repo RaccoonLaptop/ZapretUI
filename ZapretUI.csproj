@@ -10,14 +10,14 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <AssemblyName>ZapretUI</AssemblyName>
     <RootNamespace>ZapretUI</RootNamespace>
-    <Version>1.5.4</Version>
+    <Version>1.6.0</Version>
     <Authors>Niko</Authors>
     <Company>Niko</Company>
     <Product>Zapret UI</Product>
     <Copyright>Copyright © Niko</Copyright>
     <Description>Modern UI for Zapret (Flowseal configs)</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <SatelliteResourceLanguages>en;ru</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,6 +30,11 @@
     <None Remove="tools/**" />
     <Content Remove="tools/**" />
     <EmbeddedResource Remove="tools/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Strings.ru.json" />
+    <EmbeddedResource Include="Resources\Strings.en.json" />
   </ItemGroup>
 
   <ItemGroup>
