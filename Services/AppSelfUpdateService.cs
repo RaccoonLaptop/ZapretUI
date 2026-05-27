@@ -4,7 +4,6 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-
 namespace ZapretUI.Services;
 
 public sealed class AppSelfUpdateService
@@ -81,7 +80,10 @@ public sealed class AppSelfUpdateService
         }
     }
 
-    public async Task<AppUpdatePrepareResult> PrepareUpdateAsync(AppUpdateManifest manifest, CancellationToken ct = default)
+    public async Task<AppUpdatePrepareResult> PrepareUpdateAsync(
+        AppUpdateManifest manifest,
+        IProgress<DownloadProgress>? progress = null,
+        CancellationToken ct = default)
     {
         var tempRoot = Path.Combine(Path.GetTempPath(), "ZapretUI-update-" + Guid.NewGuid().ToString("N"));
         var extractDir = Path.Combine(tempRoot, "extract");
@@ -90,12 +92,13 @@ public sealed class AppSelfUpdateService
         {
             Directory.CreateDirectory(extractDir);
 
-            var packagePath = await ResolvePackagePathAsync(manifest, tempRoot, ct);
+            var packagePath = await ResolvePackagePathAsync(manifest, tempRoot, progress, ct);
             if (packagePath is null)
                 return AppUpdatePrepareResult.Fail("Файл обновления не найден");
 
             if (packagePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {
+                progress?.Report(new DownloadProgress { Phase = "Распаковка архива..." });
                 ZipFile.ExtractToDirectory(packagePath, extractDir, overwriteFiles: true);
             }
             else if (Directory.Exists(packagePath))
@@ -125,50 +128,66 @@ public sealed class AppSelfUpdateService
         }
     }
 
-    public async Task<AppUpdateInstallResult> InstallPreparedUpdateAsync(PreparedAppUpdate prepared, CancellationToken ct = default)
+    public Task<AppUpdateInstallResult> InstallPreparedUpdateAsync(PreparedAppUpdate prepared, CancellationToken ct = default)
     {
         try
         {
             var scriptPath = ResolveUpdateScript();
             if (scriptPath is null)
-                return AppUpdateInstallResult.Fail("Скрипт apply-update.ps1 не найден");
+                return Task.FromResult(AppUpdateInstallResult.Fail("Скрипт apply-update.ps1 не найден"));
 
-            var logFile = Path.Combine(prepared.TempRoot, "update.log");
+            var installPayloadDir = Path.Combine(
+                Path.GetTempPath(),
+                "ZapretUI-install-payload",
+                prepared.ManifestVersion);
+            if (Directory.Exists(installPayloadDir))
+                Directory.Delete(installPayloadDir, true);
+            CopyDirectory(prepared.SourceDir, installPayloadDir);
+
+            var logFile = Path.Combine(Path.GetTempPath(), "ZapretUI-update.log");
             var exePath = Path.Combine(_installDir, "ZapretUI.exe");
             var pid = Process.GetCurrentProcess().Id;
             var args = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{scriptPath}\" " +
-                       $"-SourceDir \"{prepared.SourceDir}\" -TargetDir \"{_installDir}\" -ProcessId {pid} " +
-                       $"-ExePath \"{exePath}\" -LogFile \"{logFile}\"";
+                       $"-SourceDir \"{installPayloadDir}\" -TargetDir \"{_installDir}\" -ProcessId {pid} " +
+                       $"-ExePath \"{exePath}\" -LogFile \"{logFile}\" " +
+                       $"-StagingDir \"{prepared.TempRoot}\"";
 
-            Process.Start(new ProcessStartInfo
+            var process = Process.Start(new ProcessStartInfo
             {
                 FileName = "powershell.exe",
                 Arguments = args,
-                UseShellExecute = true,
-                CreateNoWindow = true
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
             });
+
+            if (process is null)
+                return Task.FromResult(AppUpdateInstallResult.Fail("Не удалось запустить установку обновления."));
 
             _settings.LastInstalledVersion = prepared.ManifestVersion;
             _settings.Save();
-            return AppUpdateInstallResult.Ok("Обновление запускается, программа перезапустится...", restart: true);
+            return Task.FromResult(AppUpdateInstallResult.Ok(
+                "Обновление запускается, программа перезапустится...",
+                restart: true,
+                keepPreparedFiles: true));
         }
         catch (Exception ex)
         {
-            return AppUpdateInstallResult.Fail(ex.Message);
+            return Task.FromResult(AppUpdateInstallResult.Fail(ex.Message));
         }
     }
 
     public async Task<AppUpdateInstallResult> InstallUpdateAsync(AppUpdateManifest manifest, CancellationToken ct = default)
     {
-        var prepared = await PrepareUpdateAsync(manifest, ct);
+        var prepared = await PrepareUpdateAsync(manifest, progress: null, ct);
         if (!prepared.Success || prepared.Payload is null)
             return AppUpdateInstallResult.Fail(prepared.Message);
         return await InstallPreparedUpdateAsync(prepared.Payload, ct);
     }
 
-    public static void CleanupPreparedUpdate(PreparedAppUpdate? prepared)
+    public static void CleanupPreparedUpdate(PreparedAppUpdate? prepared, bool keepForInstall = false)
     {
-        if (prepared is null) return;
+        if (prepared is null || keepForInstall) return;
         try
         {
             if (Directory.Exists(prepared.TempRoot))
@@ -344,7 +363,11 @@ public sealed class AppSelfUpdateService
         return best ?? manifests[0];
     }
 
-    private async Task<string?> ResolvePackagePathAsync(AppUpdateManifest manifest, string tempRoot, CancellationToken ct)
+    private async Task<string?> ResolvePackagePathAsync(
+        AppUpdateManifest manifest,
+        string tempRoot,
+        IProgress<DownloadProgress>? progress,
+        CancellationToken ct)
     {
         if (!string.IsNullOrWhiteSpace(manifest.PackageFile))
         {
@@ -370,10 +393,7 @@ public sealed class AppSelfUpdateService
             }
 
             var zipPath = Path.Combine(tempRoot, "package.zip");
-            using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
-            response.EnsureSuccessStatusCode();
-            await using var fs = File.Create(zipPath);
-            await response.Content.CopyToAsync(fs, ct);
+            await DownloadFileWithProgressAsync(url, zipPath, progress, ct);
             return zipPath;
         }
 
@@ -424,6 +444,66 @@ public sealed class AppSelfUpdateService
         return string.Join('.', list.Take(3));
     }
 
+    private async Task DownloadFileWithProgressAsync(
+        string url,
+        string destinationPath,
+        IProgress<DownloadProgress>? progress,
+        CancellationToken ct)
+    {
+        using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+
+        var totalBytes = response.Content.Headers.ContentLength;
+        progress?.Report(new DownloadProgress
+        {
+            Phase = "Загрузка обновления...",
+            BytesReceived = 0,
+            TotalBytes = totalBytes,
+            BytesPerSecond = 0
+        });
+
+        await using var network = await response.Content.ReadAsStreamAsync(ct);
+        await using var file = File.Create(destinationPath);
+
+        var buffer = new byte[1024 * 128];
+        long received = 0;
+        var stopwatch = Stopwatch.StartNew();
+        var lastReport = stopwatch.Elapsed;
+        long bytesAtLastReport = 0;
+
+        while (true)
+        {
+            var read = await network.ReadAsync(buffer, ct);
+            if (read == 0) break;
+
+            await file.WriteAsync(buffer.AsMemory(0, read), ct);
+            received += read;
+
+            if (stopwatch.Elapsed - lastReport >= TimeSpan.FromMilliseconds(250))
+            {
+                var elapsed = (stopwatch.Elapsed - lastReport).TotalSeconds;
+                var speed = elapsed > 0 ? (received - bytesAtLastReport) / elapsed : 0;
+                progress?.Report(new DownloadProgress
+                {
+                    Phase = "Загрузка обновления...",
+                    BytesReceived = received,
+                    TotalBytes = totalBytes,
+                    BytesPerSecond = speed
+                });
+                lastReport = stopwatch.Elapsed;
+                bytesAtLastReport = received;
+            }
+        }
+
+        progress?.Report(new DownloadProgress
+        {
+            Phase = "Загрузка завершена",
+            BytesReceived = received,
+            TotalBytes = totalBytes ?? received,
+            BytesPerSecond = 0
+        });
+    }
+
     private static void CopyDirectory(string source, string dest)
     {
         Directory.CreateDirectory(dest);
@@ -469,9 +549,10 @@ public sealed class AppUpdateInstallResult
     public bool Success { get; init; }
     public string Message { get; init; } = "";
     public bool RequiresRestart { get; init; }
+    public bool KeepPreparedFiles { get; init; }
 
-    public static AppUpdateInstallResult Ok(string msg, bool restart = false) =>
-        new() { Success = true, Message = msg, RequiresRestart = restart };
+    public static AppUpdateInstallResult Ok(string msg, bool restart = false, bool keepPreparedFiles = false) =>
+        new() { Success = true, Message = msg, RequiresRestart = restart, KeepPreparedFiles = keepPreparedFiles };
 
     public static AppUpdateInstallResult Fail(string msg) =>
         new() { Success = false, Message = msg };
