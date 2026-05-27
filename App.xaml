@@ -44,10 +44,6 @@
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         </Style>
 
-        <Style TargetType="ScrollViewer">
-            <Setter Property="Background" Value="{StaticResource BgBrush}"/>
-        </Style>
-
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         </Style>
