@@ -54,21 +54,12 @@ if ($LASTEXITCODE -ne 0) { exit 1 }
 
 $setupExe = Join-Path $DistDir "ZapretUI-Setup.exe"
 
-# Update zip for in-app auto-update (same self-contained build)
-$UpdateDir = Join-Path $ParentDir "ZapretUI-update"
-$ZipName = "ZapretUI-Program.zip"
-New-Item -ItemType Directory -Path $UpdateDir -Force | Out-Null
-if (Test-Path (Join-Path $UpdateDir $ZipName)) { Remove-Item (Join-Path $UpdateDir $ZipName) -Force }
-Compress-Archive -Path "$StagingDir\*" -DestinationPath (Join-Path $UpdateDir $ZipName) -Force
-
+# Манифест обновлений (только Setup.exe на GitHub)
 $manifest = @{
     version = $version
-    packageFile = $ZipName
-    downloadUrl = "https://github.com/RaccoonLaptop/ZapretUI/releases/download/v$version/$ZipName"
     installerUrl = "https://github.com/RaccoonLaptop/ZapretUI/releases/download/v$version/ZapretUI-Setup.exe"
 } | ConvertTo-Json -Depth 3
-Set-Content -Path (Join-Path $UpdateDir "update.json") -Value $manifest -Encoding UTF8
-Copy-Item (Join-Path $UpdateDir "update.json") (Join-Path $ProjectDir "update.json") -Force
+Set-Content -Path (Join-Path $ProjectDir "update.json") -Value $manifest -Encoding UTF8
 
 # Do not ship update.json inside the installed app (it would shadow GitHub checks).
 $staleManifest = Join-Path $StagingDir "update.json"
@@ -76,5 +67,4 @@ if (Test-Path $staleManifest) { Remove-Item $staleManifest -Force }
 
 Write-Host ""
 Write-Host "Done: $setupExe" -ForegroundColor Green
-Write-Host "Update zip: $UpdateDir\$ZipName" -ForegroundColor Green
 Write-Host "Give users ZapretUI-Setup.exe - one file, no .NET install." -ForegroundColor Yellow

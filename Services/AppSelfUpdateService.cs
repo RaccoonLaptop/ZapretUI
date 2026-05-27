@@ -86,10 +86,24 @@ public sealed class AppSelfUpdateService
         CancellationToken ct = default)
     {
         var tempRoot = Path.Combine(Path.GetTempPath(), "ZapretUI-update-" + Guid.NewGuid().ToString("N"));
-        var extractDir = Path.Combine(tempRoot, "extract");
 
         try
         {
+            Directory.CreateDirectory(tempRoot);
+
+            if (!string.IsNullOrWhiteSpace(manifest.InstallerUrl))
+            {
+                var setupPath = Path.Combine(tempRoot, "ZapretUI-Setup.exe");
+                await DownloadFileWithProgressAsync(manifest.InstallerUrl.Trim(), setupPath, progress, ct);
+                return AppUpdatePrepareResult.Ok(new PreparedAppUpdate
+                {
+                    TempRoot = tempRoot,
+                    InstallerExePath = setupPath,
+                    ManifestVersion = manifest.Version
+                });
+            }
+
+            var extractDir = Path.Combine(tempRoot, "extract");
             Directory.CreateDirectory(extractDir);
 
             var packagePath = await ResolvePackagePathAsync(manifest, tempRoot, progress, ct);
@@ -132,6 +146,9 @@ public sealed class AppSelfUpdateService
     {
         try
         {
+            if (!string.IsNullOrWhiteSpace(prepared.InstallerExePath))
+                return InstallViaInstallerAsync(prepared);
+
             var scriptPath = ResolveUpdateScript();
             if (scriptPath is null)
                 return Task.FromResult(AppUpdateInstallResult.Fail("Скрипт apply-update.ps1 не найден"));
@@ -306,7 +323,6 @@ public sealed class AppSelfUpdateService
             var tag = root.GetProperty("tag_name").GetString()?.Trim().TrimStart('v') ?? "";
             if (string.IsNullOrEmpty(tag)) return null;
 
-            string? zipUrl = null;
             string? setupUrl = null;
             if (root.TryGetProperty("assets", out var assets))
             {
@@ -315,8 +331,6 @@ public sealed class AppSelfUpdateService
                     var name = asset.GetProperty("name").GetString() ?? "";
                     var url = asset.GetProperty("browser_download_url").GetString();
                     if (string.IsNullOrEmpty(url)) continue;
-                    if (name.Equals("ZapretUI-Program.zip", StringComparison.OrdinalIgnoreCase))
-                        zipUrl = url;
                     if (name.Equals("ZapretUI-Setup.exe", StringComparison.OrdinalIgnoreCase))
                         setupUrl = url;
                 }
@@ -325,7 +339,6 @@ public sealed class AppSelfUpdateService
             return new AppUpdateManifest
             {
                 Version = tag,
-                DownloadUrl = zipUrl,
                 InstallerUrl = setupUrl,
                 BaseDirectory = ""
             };
@@ -426,6 +439,55 @@ public sealed class AppSelfUpdateService
             if (File.Exists(full)) return full;
         }
         return null;
+    }
+
+    private static string? ResolveInstallerUpdateScript()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "Scripts", "apply-update-installer.ps1"),
+            Path.Combine(AppContext.BaseDirectory, "apply-update-installer.ps1")
+        };
+        foreach (var c in candidates)
+        {
+            var full = Path.GetFullPath(c);
+            if (File.Exists(full)) return full;
+        }
+        return null;
+    }
+
+    private Task<AppUpdateInstallResult> InstallViaInstallerAsync(PreparedAppUpdate prepared)
+    {
+        var scriptPath = ResolveInstallerUpdateScript();
+        if (scriptPath is null)
+            return Task.FromResult(AppUpdateInstallResult.Fail("Скрипт apply-update-installer.ps1 не найден"));
+
+        var logFile = Path.Combine(Path.GetTempPath(), "ZapretUI-update.log");
+        var exePath = Path.Combine(_installDir, "ZapretUI.exe");
+        var pid = Process.GetCurrentProcess().Id;
+        var args = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{scriptPath}\" " +
+                   $"-InstallerPath \"{prepared.InstallerExePath}\" -TargetDir \"{_installDir}\" -ProcessId {pid} " +
+                   $"-ExePath \"{exePath}\" -LogFile \"{logFile}\" " +
+                   $"-StagingDir \"{prepared.TempRoot}\"";
+
+        var process = Process.Start(new ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            Arguments = args,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden
+        });
+
+        if (process is null)
+            return Task.FromResult(AppUpdateInstallResult.Fail("Не удалось запустить установку обновления."));
+
+        _settings.LastInstalledVersion = prepared.ManifestVersion;
+        _settings.Save();
+        return Task.FromResult(AppUpdateInstallResult.Ok(
+            "Загружен установщик. Программа закроется и обновится...",
+            restart: true,
+            keepPreparedFiles: true));
     }
 
     private static bool IsNewerVersion(string remote, string local)
@@ -575,5 +637,6 @@ public sealed class PreparedAppUpdate
 {
     public string TempRoot { get; init; } = "";
     public string SourceDir { get; init; } = "";
+    public string? InstallerExePath { get; init; }
     public string ManifestVersion { get; init; } = "";
 }

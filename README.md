@@ -27,7 +27,7 @@
 Результат:
 
 - `ZapretUI-dist\ZapretUI-Setup.exe` — установщик
-- `ZapretUI-update\ZapretUI-Program.zip` — пакет для in-app обновления
+- Обновление из программы: скачивается `ZapretUI-Setup.exe` с GitHub Releases
 
 ## Требования
 
