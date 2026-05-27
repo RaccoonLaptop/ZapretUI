@@ -24,14 +24,11 @@ public partial class MainWindow : Window
     private HomePage? _homePage;
     private ToolsWindow? _toolsWindow;
     private bool _isShuttingDown;
-    private bool _initingBgSpeed;
 
     public MainWindow()
     {
         _settings = AppSettings.Load();
-        _initingBgSpeed = true;
         InitializeComponent();
-        _initingBgSpeed = false;
         TrySetWindowIcon();
 
         InitAppBackground();
@@ -57,8 +54,6 @@ public partial class MainWindow : Window
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
 
         VersionText.Text = $"v{AppSelfUpdateService.GetLocalVersion()} · Flowseal {_paths.GetLocalVersion()}";
-        ConsoleLog.Instance.Write($"Zapret UI из: {AppContext.BaseDirectory}");
-        ConsoleLog.Instance.Write($"Скорость фона: {_settings.BackgroundSpeedPercent}% (×{CurrentBgMotionSpeed():F2})");
 
         BuildNavigation();
         NavigateHome();
@@ -200,65 +195,12 @@ public partial class MainWindow : Window
 
     private void InitAppBackground()
     {
-        _initingBgSpeed = true;
-        BgSpeedSlider.Value = _settings.BackgroundSpeedPercent;
-        _initingBgSpeed = false;
-
-        var speed = CurrentBgMotionSpeed();
-        AnimatedBackgroundBase.GlobalSpeed = speed;
-        AppBackgroundHost.SetBackground(_settings.HomeBackground, speed);
-        UpdateBgSpeedLabel();
+        AnimatedBackgroundBase.GlobalSpeed = BackgroundMotion.DefaultSpeed;
+        AppBackgroundHost.SetBackground(_settings.HomeBackground, BackgroundMotion.DefaultSpeed);
         UpdateBgSwitchLabel();
 
         BgSwitchBtn.MouseEnter += (_, _) => BgSwitchBtn.Opacity = 0.72;
         BgSwitchBtn.MouseLeave += (_, _) => BgSwitchBtn.Opacity = 0.38;
-    }
-
-    private int CurrentBgSpeedPercent() => (int)Math.Round(BgSpeedSlider.Value);
-
-    private double CurrentBgMotionSpeed() =>
-        BackgroundMotion.SpeedFromPercent(CurrentBgSpeedPercent());
-
-    private void ApplyBackgroundAnimSpeed()
-    {
-        var percent = CurrentBgSpeedPercent();
-        var speed = BackgroundMotion.SpeedFromPercent(percent);
-        _settings.BackgroundSpeedPercent = percent;
-        _settings.BackgroundAnimSpeed = speed;
-        _settings.Save();
-
-        AnimatedBackgroundBase.GlobalSpeed = speed;
-        AppBackgroundHost.ApplyMotionSpeed(speed);
-        UpdateBgSpeedLabel();
-        ConsoleLog.Instance.Write($"Скорость фона: {percent}% (×{speed:F2})");
-    }
-
-    private void UpdateBgSpeedLabel()
-    {
-        var percent = CurrentBgSpeedPercent();
-        var mult = BackgroundMotion.SpeedFromPercent(percent);
-        if (!HomeBackgroundCatalog.SupportsMotionSpeed(_settings.HomeBackground))
-            BgSpeedLabel.Text = "Скорость · не для этого фона";
-        else
-            BgSpeedLabel.Text = $"Скорость · {percent}% (×{mult:F1})";
-    }
-
-    private void BgSlowBtn_Click(object sender, RoutedEventArgs e) => SetBgSpeedPercent(5);
-
-    private void BgFastBtn_Click(object sender, RoutedEventArgs e) => SetBgSpeedPercent(100);
-
-    private void SetBgSpeedPercent(int percent)
-    {
-        _initingBgSpeed = true;
-        BgSpeedSlider.Value = percent;
-        _initingBgSpeed = false;
-        ApplyBackgroundAnimSpeed();
-    }
-
-    private void BgSpeedSlider_ValueChanged(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_initingBgSpeed || BgSpeedLabel is null) return;
-        ApplyBackgroundAnimSpeed();
     }
 
     private void UpdateBgSwitchLabel()
@@ -272,8 +214,7 @@ public partial class MainWindow : Window
         var next = HomeBackgroundCatalog.Next(_settings.HomeBackground);
         _settings.HomeBackground = next.Id;
         _settings.Save();
-        AppBackgroundHost.SetBackground(next.Id, CurrentBgMotionSpeed());
-        UpdateBgSpeedLabel();
+        AppBackgroundHost.SetBackground(next.Id, BackgroundMotion.DefaultSpeed);
         UpdateBgSwitchLabel();
         ConsoleLog.Instance.Write($"Фон: {next.Label}");
     }

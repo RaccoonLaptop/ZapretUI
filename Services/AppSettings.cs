@@ -1,6 +1,5 @@
 using System.IO;
 using System.Text.Json;
-using ZapretUI.Controls.Backgrounds;
 
 namespace ZapretUI.Services;
 
@@ -24,12 +23,6 @@ public sealed class AppSettings
     /// <summary>ID фона главной страницы (см. HomeBackgroundCatalog).</summary>
     public string HomeBackground { get; set; } = "shooting-stars";
 
-    /// <summary>Скорость анимации фона, 5–100% (ползунок на «Главной»).</summary>
-    public int BackgroundSpeedPercent { get; set; } = 15;
-
-    /// <summary>Устарело — миграция в <see cref="BackgroundSpeedPercent"/>.</summary>
-    public double BackgroundAnimSpeed { get; set; } = 0.15;
-
     public static AppSettings Load()
     {
         try
@@ -42,11 +35,6 @@ public sealed class AppSettings
                 if (settings.AutoUpdateApp && !settings.CheckUpdatesOnStartup)
                     settings.CheckUpdatesOnStartup = true;
                 settings.AutoUpdateApp = false;
-                if (settings.BackgroundSpeedPercent is < 5 or > 100)
-                    settings.BackgroundSpeedPercent = BackgroundMotion.PercentFromLegacyMultiplier(
-                        settings.BackgroundAnimSpeed);
-                if (settings.BackgroundSpeedPercent < 8)
-                    settings.BackgroundSpeedPercent = 15;
                 return settings;
             }
         }
