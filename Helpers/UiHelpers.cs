@@ -12,6 +12,9 @@ public static class UiHelpers
     public static void ShowInfo(string message) =>
         MessageBox.Show(message, "Zapret UI", MessageBoxButton.OK, MessageBoxImage.Information);
 
+    public static void ShowResult(Window? owner, string title, string text) =>
+        ResultWindow.Show(owner, title, text);
+
     public static bool Confirm(string message) =>
         MessageBox.Show(message, "Zapret UI", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
 
