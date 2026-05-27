@@ -70,6 +70,10 @@ $manifest = @{
 Set-Content -Path (Join-Path $UpdateDir "update.json") -Value $manifest -Encoding UTF8
 Copy-Item (Join-Path $UpdateDir "update.json") (Join-Path $ProjectDir "update.json") -Force
 
+# Do not ship update.json inside the installed app (it would shadow GitHub checks).
+$staleManifest = Join-Path $StagingDir "update.json"
+if (Test-Path $staleManifest) { Remove-Item $staleManifest -Force }
+
 Write-Host ""
 Write-Host "Done: $setupExe" -ForegroundColor Green
 Write-Host "Update zip: $UpdateDir\$ZipName" -ForegroundColor Green

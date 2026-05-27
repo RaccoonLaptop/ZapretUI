@@ -68,10 +68,30 @@ Type: filesandordirs; Name: "{app}\Scripts"
 Type: files; Name: "{app}\settings.json"
 
 [Code]
+function StopZapretBeforeUninstall(): Boolean;
+var
+  ResultCode: Integer;
+  ScriptPath: String;
+begin
+  ScriptPath := ExpandConstant('{app}\Scripts\stop-zapret-components.ps1');
+  if not FileExists(ScriptPath) then
+  begin
+    Result := True;
+    Exit;
+  end;
+  Result := ShellExec('runas',
+    ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + ScriptPath + '"',
+    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   AppDir: String;
 begin
+  if CurUninstallStep = usUninstall then
+    StopZapretBeforeUninstall();
+
   if CurUninstallStep = usPostUninstall then
   begin
     AppDir := ExpandConstant('{app}');

@@ -13,6 +13,9 @@ public sealed class AppSelfUpdateService
     public const string DefaultManifestUrl =
         "https://raw.githubusercontent.com/RaccoonLaptop/ZapretUI/main/update.json";
 
+    private const string GitHubReleasesApi =
+        "https://api.github.com/repos/RaccoonLaptop/ZapretUI/releases/latest";
+
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromMinutes(5) };
     private readonly AppSettings _settings;
     private readonly string _installDir;
@@ -194,55 +197,151 @@ public sealed class AppSelfUpdateService
 
     private async Task<AppUpdateManifest?> LoadManifestAsync(CancellationToken ct)
     {
-        foreach (var source in GetManifestSources())
+        var candidates = new List<AppUpdateManifest>();
+
+        foreach (var url in GetRemoteManifestUrls())
         {
-            try
-            {
-                if (source.IsFile && File.Exists(source.Path))
-                {
-                    var json = await File.ReadAllTextAsync(source.Path, ct);
-                    var manifest = JsonSerializer.Deserialize<AppUpdateManifest>(json, JsonOptions);
-                    if (manifest is not null)
-                    {
-                        manifest.BaseDirectory = Path.GetDirectoryName(source.Path)!;
-                        return manifest;
-                    }
-                }
-                else if (source.IsUrl)
-                {
-                    using var req = new HttpRequestMessage(HttpMethod.Get, source.Path);
-                    req.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true };
-                    var res = await _http.SendAsync(req, ct);
-                    if (!res.IsSuccessStatusCode) continue;
-                    var json = await res.Content.ReadAsStringAsync(ct);
-                    var manifest = JsonSerializer.Deserialize<AppUpdateManifest>(json, JsonOptions);
-                    if (manifest is not null)
-                    {
-                        manifest.BaseDirectory = Path.GetDirectoryName(source.Path) ?? "";
-                        return manifest;
-                    }
-                }
-            }
-            catch { /* try next source */ }
+            var manifest = await TryLoadManifestUrlAsync(url, ct);
+            if (manifest is not null)
+                candidates.Add(manifest);
         }
+
+        var fromRelease = await TryLoadManifestFromGitHubReleaseAsync(ct);
+        if (fromRelease is not null)
+            candidates.Add(fromRelease);
+
+        if (candidates.Count > 0)
+            return PickNewestManifest(candidates);
+
+        foreach (var path in GetLocalManifestPaths())
+        {
+            var manifest = await TryLoadManifestFileAsync(path, ct);
+            if (manifest is not null)
+                return manifest;
+        }
+
         return null;
     }
 
-    private IEnumerable<(string Path, bool IsFile, bool IsUrl)> GetManifestSources()
+    private IEnumerable<string> GetRemoteManifestUrls()
     {
-        var localInstall = Path.Combine(_installDir, "update.json");
-        yield return (localInstall, true, false);
+        if (!string.IsNullOrWhiteSpace(_settings.UpdateManifestUrl))
+            yield return _settings.UpdateManifestUrl.Trim();
+
+        yield return DefaultManifestUrl;
+    }
+
+    private IEnumerable<string> GetLocalManifestPaths()
+    {
+        yield return Path.Combine(_installDir, "update.json");
 
         if (!string.IsNullOrEmpty(_zapretRoot))
+            yield return Path.Combine(_zapretRoot, "ZapretUI-update", "update.json");
+    }
+
+    private async Task<AppUpdateManifest?> TryLoadManifestUrlAsync(string url, CancellationToken ct)
+    {
+        try
         {
-            var localBundle = Path.Combine(_zapretRoot, "ZapretUI-update", "update.json");
-            yield return (localBundle, true, false);
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true };
+            req.Headers.TryAddWithoutValidation("Pragma", "no-cache");
+            var res = await _http.SendAsync(req, ct);
+            if (!res.IsSuccessStatusCode) return null;
+            var json = await res.Content.ReadAsStringAsync(ct);
+            return ParseManifest(json, "");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task<AppUpdateManifest?> TryLoadManifestFileAsync(string path, CancellationToken ct)
+    {
+        try
+        {
+            if (!File.Exists(path)) return null;
+            var json = await File.ReadAllTextAsync(path, ct);
+            return ParseManifest(json, Path.GetDirectoryName(path)!);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task<AppUpdateManifest?> TryLoadManifestFromGitHubReleaseAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, GitHubReleasesApi);
+            req.Headers.UserAgent.ParseAdd("ZapretUI-Updater");
+            req.Headers.Accept.ParseAdd("application/vnd.github+json");
+            var res = await _http.SendAsync(req, ct);
+            if (!res.IsSuccessStatusCode) return null;
+
+            var json = await res.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var tag = root.GetProperty("tag_name").GetString()?.Trim().TrimStart('v') ?? "";
+            if (string.IsNullOrEmpty(tag)) return null;
+
+            string? zipUrl = null;
+            string? setupUrl = null;
+            if (root.TryGetProperty("assets", out var assets))
+            {
+                foreach (var asset in assets.EnumerateArray())
+                {
+                    var name = asset.GetProperty("name").GetString() ?? "";
+                    var url = asset.GetProperty("browser_download_url").GetString();
+                    if (string.IsNullOrEmpty(url)) continue;
+                    if (name.Equals("ZapretUI-Program.zip", StringComparison.OrdinalIgnoreCase))
+                        zipUrl = url;
+                    if (name.Equals("ZapretUI-Setup.exe", StringComparison.OrdinalIgnoreCase))
+                        setupUrl = url;
+                }
+            }
+
+            return new AppUpdateManifest
+            {
+                Version = tag,
+                DownloadUrl = zipUrl,
+                InstallerUrl = setupUrl,
+                BaseDirectory = ""
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static AppUpdateManifest? ParseManifest(string json, string baseDirectory)
+    {
+        var manifest = JsonSerializer.Deserialize<AppUpdateManifest>(json, JsonOptions);
+        if (manifest is null) return null;
+        manifest.BaseDirectory = baseDirectory;
+        return manifest;
+    }
+
+    private static AppUpdateManifest PickNewestManifest(IReadOnlyList<AppUpdateManifest> manifests)
+    {
+        AppUpdateManifest? best = null;
+        Version? bestVersion = null;
+
+        foreach (var m in manifests)
+        {
+            if (!Version.TryParse(NormalizeVersion(m.Version), out var v))
+                continue;
+            if (bestVersion is null || v > bestVersion)
+            {
+                bestVersion = v;
+                best = m;
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(_settings.UpdateManifestUrl))
-            yield return (_settings.UpdateManifestUrl.Trim(), false, true);
-        else
-            yield return (DefaultManifestUrl, false, true);
+        return best ?? manifests[0];
     }
 
     private async Task<string?> ResolvePackagePathAsync(AppUpdateManifest manifest, string tempRoot, CancellationToken ct)
