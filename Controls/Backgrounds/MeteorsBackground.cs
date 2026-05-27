@@ -9,7 +9,8 @@ namespace ZapretUI.Controls.Backgrounds;
 /// </summary>
 public sealed class MeteorsBackground : AnimatedBackgroundBase
 {
-    private const double TravelPx = 500;
+    private const double TravelPx = 480;
+    private const double DurationScale = 2.8;
     private const double AngleRad = 215 * Math.PI / 180;
 
     private readonly List<Meteor> _meteors = new();
@@ -29,7 +30,7 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
         _meteors.Clear();
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
 
-        var count = Math.Clamp(20, 1, 50);
+        var count = 16;
         for (var i = 0; i < count; i++)
             _meteors.Add(CreateMeteor());
     }
@@ -93,8 +94,8 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
     {
         StartX = Rng.NextDouble() * AreaWidth,
         StartY = -10 - Rng.NextDouble() * AreaHeight * 0.08,
-        DurationMs = 2000 + Rng.NextDouble() * 6000,
-        DelayMs = Rng.NextDouble() * 5000,
+        DurationMs = (2000 + Rng.NextDouble() * 6000) * DurationScale,
+        DelayMs = Rng.NextDouble() * 6000,
         Size = 1 + Rng.NextDouble(),
         Started = false
     };
@@ -103,8 +104,8 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
     {
         m.StartX = Rng.NextDouble() * AreaWidth;
         m.StartY = -10 - Rng.NextDouble() * AreaHeight * 0.08;
-        m.DurationMs = 2000 + Rng.NextDouble() * 6000;
-        m.DelayMs = Rng.NextDouble() * 2000;
+        m.DurationMs = (2000 + Rng.NextDouble() * 6000) * DurationScale;
+        m.DelayMs = Rng.NextDouble() * 4000;
         m.ElapsedMs = 0;
         m.Started = false;
     }

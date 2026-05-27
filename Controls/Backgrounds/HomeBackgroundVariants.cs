@@ -5,7 +5,7 @@ namespace ZapretUI.Controls.Backgrounds;
 
 public sealed class SparklesBackground : AnimatedBackgroundBase
 {
-    private const double Speed = 2;
+    private const double Speed = 0.75;
 
     private readonly List<Particle> _particles = new();
 
@@ -18,7 +18,7 @@ public sealed class SparklesBackground : AnimatedBackgroundBase
     {
         _particles.Clear();
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var count = Math.Clamp((int)(AreaWidth * AreaHeight / 1_000_000 * 800), 50, 1200);
+        var count = Math.Clamp((int)(AreaWidth * AreaHeight / 1_000_000 * 450), 40, 700);
         for (var i = 0; i < count; i++)
             _particles.Add(CreateParticle());
     }
@@ -99,7 +99,7 @@ public sealed class VortexBackground : AnimatedBackgroundBase
             {
                 Angle = Rng.NextDouble() * Math.PI * 2,
                 Radius = Rng.NextDouble() * Math.Min(AreaWidth, AreaHeight) * 0.45,
-                Speed = 0.0009 + Rng.NextDouble() * 0.0016,
+                Speed = (0.0009 + Rng.NextDouble() * 0.0016) * CanvasMotionScale,
                 Size = 0.6 + Rng.NextDouble() * 1.4
             });
         }

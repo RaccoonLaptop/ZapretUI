@@ -12,7 +12,7 @@ public sealed class ShootingStarsBackground : AnimatedBackgroundBase
     private const double MinSpeed = 10;
     private const double MaxSpeed = 30;
     private const double TrailLength = 80;
-    private const double FadeDistance = 500;
+    private const double FadeDistance = 700;
 
     private static readonly Color StarColor = ParseColor("#9E00FF");
     private static readonly Color TrailColor = ParseColor("#2EB9DF");
@@ -20,7 +20,7 @@ public sealed class ShootingStarsBackground : AnimatedBackgroundBase
     private readonly List<BgStar> _bgStars = new();
     private readonly List<ShootingStar> _shootingStars = new();
     private double _lastShootingMs;
-    private double _nextShootingDelayMs = 4200;
+    private double _nextShootingDelayMs = 5500;
 
     private sealed class BgStar
     {
@@ -52,13 +52,13 @@ public sealed class ShootingStarsBackground : AnimatedBackgroundBase
                 Opacity = 1
             });
             _lastShootingMs = timeMs;
-            _nextShootingDelayMs = 4200 + Rng.NextDouble() * 4500;
+            _nextShootingDelayMs = 5500 + Rng.NextDouble() * 5500;
         }
 
         for (var i = _shootingStars.Count - 1; i >= 0; i--)
         {
             var star = _shootingStars[i];
-            star.Distance += star.Speed;
+            star.Distance += star.Speed * CanvasMotionScale;
             star.Opacity = Math.Max(0, 1 - star.Distance / FadeDistance);
             if (star.Opacity <= 0) _shootingStars.RemoveAt(i);
         }
