@@ -4,44 +4,42 @@ using System.Windows.Media;
 namespace ZapretUI.Controls.Backgrounds;
 
 /// <summary>
-/// Движок как в v1.2.6: CompositionTarget.Rendering + время стены.
-/// <see cref="MotionSpeed"/> — множитель (15% на ползунке = 1.0, как при первой установке).
+/// Фон v1.2.6: кадровая физика. Цикл отрисовки ведёт <see cref="HomeBackgroundHost"/>.
+/// Скорость — только через статический <see cref="GlobalSpeed"/> (ползунок на «Главной»).
 /// </summary>
 public abstract class AnimatedBackgroundBase : FrameworkElement
 {
+    /// <summary>Множитель скорости; читается каждый кадр из ползунка.</summary>
     public static double GlobalSpeed { get; set; } = 1.0;
 
-    public double MotionSpeed { get; private set; } = 1.0;
+    protected double Speed => GlobalSpeed;
 
     protected double AreaWidth;
     protected double AreaHeight;
     protected readonly Random Rng = new();
-    protected double StartMs;
-    private bool _isRunning;
 
     protected AnimatedBackgroundBase()
     {
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
-        Loaded += (_, _) =>
-        {
-            StartMs = NowMs();
-            StartLoop();
-        };
-        Unloaded += (_, _) => StopLoop();
-        SizeChanged += (_, _) => UpdateDimensions();
         IsHitTestVisible = false;
         ClipToBounds = true;
+        SizeChanged += (_, _) => UpdateDimensions();
     }
 
-    public void SetMotionSpeed(double speed)
+    public void SetMotionSpeed(double speed) => GlobalSpeed = Math.Clamp(speed, 0.1, 6.0);
+
+    protected double ScaledTimeSec(double timeMs) => timeMs / 1000.0 * Speed;
+
+    internal void Step(double timeMs)
     {
-        MotionSpeed = Math.Clamp(speed, 0.1, 6.0);
-        InvalidateVisual();
-    }
+        _lastTimeMs = timeMs;
+        if (ActualWidth <= 1 && ActualHeight <= 1)
+            UpdateDimensions();
+        if (AreaWidth <= 1 || AreaHeight <= 1) return;
 
-    /// <summary>Время для RenderFrame (с учётом ползунка).</summary>
-    protected double ScaledTimeSec(double timeMs) => timeMs / 1000.0 * MotionSpeed;
+        AnimateFrame(timeMs);
+    }
 
     protected void UpdateDimensions()
     {
@@ -58,44 +56,16 @@ public abstract class AnimatedBackgroundBase : FrameworkElement
     {
         AreaWidth = finalSize.Width > 1 ? finalSize.Width : AreaWidth;
         AreaHeight = finalSize.Height > 1 ? finalSize.Height : AreaHeight;
-        if (_isRunning && AreaWidth > 1 && AreaHeight > 1)
-            OnDimensionsChanged();
         return finalSize;
-    }
-
-    private void StartLoop()
-    {
-        if (_isRunning) return;
-        _isRunning = true;
-        UpdateDimensions();
-        CompositionTarget.Rendering += OnRendering;
-    }
-
-    private void StopLoop()
-    {
-        if (!_isRunning) return;
-        _isRunning = false;
-        CompositionTarget.Rendering -= OnRendering;
-    }
-
-    private void OnRendering(object? sender, EventArgs e)
-    {
-        if (!_isRunning || ActualWidth <= 1 || ActualHeight <= 1) return;
-        if (Math.Abs(AreaWidth - ActualWidth) > 1 || Math.Abs(AreaHeight - ActualHeight) > 1)
-            UpdateDimensions();
-
-        var timeMs = NowMs() - StartMs;
-        AnimateFrame(timeMs);
-        InvalidateVisual();
     }
 
     protected virtual void AnimateFrame(double timeMs) { }
 
-    protected override void OnRender(DrawingContext dc) => RenderFrame(dc, NowMs() - StartMs);
+    private double _lastTimeMs;
+
+    protected override void OnRender(DrawingContext dc) => RenderFrame(dc, _lastTimeMs);
 
     protected abstract void RenderFrame(DrawingContext dc, double timeMs);
-
-    protected static double NowMs() => (DateTime.UtcNow - DateTime.UnixEpoch).TotalMilliseconds;
 
     protected static Color ParseColor(string hex) => (Color)ColorConverter.ConvertFromString(hex)!;
 

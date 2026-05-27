@@ -23,7 +23,7 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
 
     protected override void AnimateFrame(double timeMs)
     {
-        _spawnAccum += 16 * MotionSpeed;
+        _spawnAccum += 16 * Speed;
         if (_spawnAccum > 400 && _meteors.Count < 35)
         {
             _meteors.Add(CreateMeteor());
@@ -33,7 +33,7 @@ public sealed class MeteorsBackground : AnimatedBackgroundBase
         for (var i = _meteors.Count - 1; i >= 0; i--)
         {
             var m = _meteors[i];
-            m.Phase += m.Speed * MotionSpeed;
+            m.Phase += m.Speed * Speed;
             m.Opacity = Math.Max(0, 1 - m.Phase / 900);
             if (m.Opacity <= 0 || m.X > AreaWidth + 200 || m.Y > AreaHeight + 200)
                 _meteors.RemoveAt(i);
@@ -94,9 +94,9 @@ public sealed class SparklesBackground : AnimatedBackgroundBase
     {
         foreach (var p in _particles)
         {
-            p.X += p.SpeedX * MotionSpeed;
-            p.Y += p.SpeedY * MotionSpeed;
-            p.Opacity += p.OpacityDir * p.OpacitySpeed * MotionSpeed;
+            p.X += p.SpeedX * Speed;
+            p.Y += p.SpeedY * Speed;
+            p.Opacity += p.OpacityDir * p.OpacitySpeed * Speed;
             if (p.Opacity <= 0) { p.Opacity = 0; p.OpacityDir = 1; }
             else if (p.Opacity >= 1) { p.Opacity = 1; p.OpacityDir = -1; }
             if (p.X < 0) p.X = AreaWidth;
@@ -171,7 +171,7 @@ public sealed class VortexBackground : AnimatedBackgroundBase
     protected override void AnimateFrame(double timeMs)
     {
         foreach (var p in _particles)
-            p.Angle += p.Speed * MotionSpeed;
+            p.Angle += p.Speed * Speed;
     }
 
     protected override void RenderFrame(DrawingContext dc, double timeMs)
@@ -246,7 +246,7 @@ public sealed class RippleBackground : AnimatedBackgroundBase
 
     protected override void AnimateFrame(double timeMs)
     {
-        if (Rng.NextDouble() < 0.02 * MotionSpeed && _ripples.Count < 6)
+        if (Rng.NextDouble() < 0.02 * Speed && _ripples.Count < 6)
         {
             _ripples.Add(new Ripple
             {
@@ -260,7 +260,7 @@ public sealed class RippleBackground : AnimatedBackgroundBase
 
         for (var i = _ripples.Count - 1; i >= 0; i--)
         {
-            _ripples[i].Radius += _ripples[i].Speed * MotionSpeed;
+            _ripples[i].Radius += _ripples[i].Speed * Speed;
             if (_ripples[i].Radius > _ripples[i].MaxRadius)
                 _ripples.RemoveAt(i);
         }
@@ -311,7 +311,7 @@ public sealed class GradientAnimationBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 5000.0 * MotionSpeed;
+        var t = timeMs / 5000.0 * Speed;
         var c1 = ParseColor("#1271FF");
         var c2 = ParseColor("#DD4AFF");
         var c3 = ParseColor("#64DCFF");

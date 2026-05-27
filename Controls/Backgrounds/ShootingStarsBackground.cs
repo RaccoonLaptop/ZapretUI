@@ -39,7 +39,7 @@ public sealed class ShootingStarsBackground : AnimatedBackgroundBase
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
 
-        if (timeMs - _lastShootingMs > _nextShootingDelayMs / MotionSpeed)
+        if (timeMs - _lastShootingMs > _nextShootingDelayMs / Speed)
         {
             _shootingStars.Add(new ShootingStar
             {
@@ -58,7 +58,7 @@ public sealed class ShootingStarsBackground : AnimatedBackgroundBase
         for (var i = _shootingStars.Count - 1; i >= 0; i--)
         {
             var star = _shootingStars[i];
-            star.Distance += star.Speed * MotionSpeed;
+            star.Distance += star.Speed * Speed;
             star.Opacity = Math.Max(0, 1 - star.Distance / FadeDistance);
             if (star.Opacity <= 0) _shootingStars.RemoveAt(i);
         }
