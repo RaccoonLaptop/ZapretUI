@@ -150,9 +150,19 @@ public partial class HomePage : UserControl
             _strategyCombo.SelectedIndex = 0;
     }
 
+    private void CompleteStartingUi()
+    {
+        if (!_isStarting) return;
+        _isStarting = false;
+        _actionStatus.Visibility = Visibility.Collapsed;
+    }
+
     public void RefreshToggleUi()
     {
         var running = _strategy.IsRunning();
+        if (_isStarting && running)
+            CompleteStartingUi();
+
         _statusIndicator.Fill = running
             ? (Brush)Application.Current.FindResource("SuccessBrush")
             : (Brush)Application.Current.FindResource("ErrorBrush");
@@ -212,13 +222,11 @@ public partial class HomePage : UserControl
         }
         finally
         {
-            _isStarting = false;
             if (_strategy.IsRunning())
-            {
-                _ = Task.Delay(1200).ContinueWith(_ =>
-                    Dispatcher.Invoke(() => _actionStatus.Visibility = Visibility.Collapsed));
-            }
+                CompleteStartingUi();
+            else
+                _isStarting = false;
+            RefreshToggleUi();
         }
-        RefreshToggleUi();
     }
 }

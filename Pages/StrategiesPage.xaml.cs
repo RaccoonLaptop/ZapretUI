@@ -247,10 +247,7 @@ public partial class StrategiesPage : UserControl
             _runBtn.IsEnabled = true;
             _runBtn.Content = "Запустить";
             if (_strategy.IsRunning())
-            {
-                _ = Task.Delay(1200).ContinueWith(_ =>
-                    Dispatcher.Invoke(() => _runStatus.Visibility = Visibility.Collapsed));
-            }
+                _runStatus.Visibility = Visibility.Collapsed;
         }
     }
 

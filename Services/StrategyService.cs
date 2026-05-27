@@ -48,7 +48,9 @@ public sealed class StrategyService
         _runner.SetZapretRoot(_paths.Root);
         await _runner.RunBridgeAsync("StartStrategy", batFileName, ct);
         _lastStartedStrategy = Path.GetFileNameWithoutExtension(batFileName);
-        await Task.Delay(1500, ct);
+
+        for (var i = 0; i < 10 && !IsRunning(); i++)
+            await Task.Delay(200, ct);
 
         if (!IsRunning())
             throw new InvalidOperationException(
