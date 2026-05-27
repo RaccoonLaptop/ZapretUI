@@ -195,10 +195,30 @@ public partial class MainWindow : Window
 
     private void InitAppBackground()
     {
+        BgSpeedSlider.Value = Math.Clamp(_settings.BackgroundAnimSpeed, 0.05, 1.0) * 100;
+        ApplyBackgroundAnimSpeed(restartBackground: false);
         AppBackgroundHost.SetBackground(_settings.HomeBackground);
         UpdateBgSwitchLabel();
         BgSwitchBtn.MouseEnter += (_, _) => BgSwitchBtn.Opacity = 0.72;
         BgSwitchBtn.MouseLeave += (_, _) => BgSwitchBtn.Opacity = 0.38;
+    }
+
+    private void ApplyBackgroundAnimSpeed(bool restartBackground)
+    {
+        var speed = Math.Clamp(BgSpeedSlider.Value / 100.0, 0.05, 1.0);
+        _settings.BackgroundAnimSpeed = speed;
+        _settings.Save();
+        AnimatedBackgroundBase.GlobalSpeed = speed;
+        BgSpeedLabel.Text = $"Скорость фона · {(int)(speed * 100)}%";
+
+        if (restartBackground)
+            AppBackgroundHost.SetBackground(_settings.HomeBackground);
+    }
+
+    private void BgSpeedSlider_ValueChanged(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (!IsLoaded) return;
+        ApplyBackgroundAnimSpeed(restartBackground: true);
     }
 
     private void UpdateBgSwitchLabel()
@@ -264,7 +284,8 @@ public partial class MainWindow : Window
     private void Navigate(UserControl page)
     {
         PageHost.Content = page;
-        BgSwitchBtn.Visibility = page is HomePage ? Visibility.Visible : Visibility.Collapsed;
+        var onHome = page is HomePage;
+        BgControlsPanel.Visibility = onHome ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void RefreshStatus()

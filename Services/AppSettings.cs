@@ -23,6 +23,9 @@ public sealed class AppSettings
     /// <summary>ID фона главной страницы (см. HomeBackgroundCatalog).</summary>
     public string HomeBackground { get; set; } = "shooting-stars";
 
+    /// <summary>Скорость анимации фона: 0.05 (очень медленно) … 1.0 (быстро).</summary>
+    public double BackgroundAnimSpeed { get; set; } = 0.15;
+
     public static AppSettings Load()
     {
         try
@@ -35,6 +38,8 @@ public sealed class AppSettings
                 if (settings.AutoUpdateApp && !settings.CheckUpdatesOnStartup)
                     settings.CheckUpdatesOnStartup = true;
                 settings.AutoUpdateApp = false;
+                if (settings.BackgroundAnimSpeed is <= 0 or > 1)
+                    settings.BackgroundAnimSpeed = 0.15;
                 return settings;
             }
         }

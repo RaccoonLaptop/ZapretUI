@@ -85,16 +85,35 @@
                     <Grid Grid.Column="1" Margin="24">
                         <ContentControl x:Name="PageHost" Background="Transparent"/>
 
-                        <Button x:Name="BgSwitchBtn"
-                                Style="{StaticResource SecondaryButton}"
-                                FontSize="11"
-                                Padding="10,4"
-                                Opacity="0.38"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Bottom"
-                                Margin="0,0,20,16"
-                                ToolTip="Сменить фоновую анимацию"
-                                Click="BgSwitchBtn_Click"/>
+                        <StackPanel x:Name="BgControlsPanel"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Bottom"
+                                    Margin="0,0,20,16"
+                                    Visibility="Collapsed">
+                            <TextBlock x:Name="BgSpeedLabel"
+                                       Text="Скорость фона"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,4"/>
+                            <Slider x:Name="BgSpeedSlider"
+                                    Width="150"
+                                    Minimum="5"
+                                    Maximum="100"
+                                    TickFrequency="5"
+                                    IsSnapToTickEnabled="True"
+                                    Opacity="0.55"
+                                    ToolTip="5% — очень медленно, 100% — быстро"
+                                    ValueChanged="BgSpeedSlider_ValueChanged"/>
+                            <Button x:Name="BgSwitchBtn"
+                                    Style="{StaticResource SecondaryButton}"
+                                    FontSize="11"
+                                    Padding="10,4"
+                                    Opacity="0.38"
+                                    Margin="0,8,0,0"
+                                    ToolTip="Сменить фоновую анимацию"
+                                    Click="BgSwitchBtn_Click"/>
+                        </StackPanel>
                     </Grid>
                 </Grid>
             </Grid>
