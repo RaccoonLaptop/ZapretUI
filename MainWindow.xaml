@@ -1,12 +1,20 @@
 ﻿<Window x:Class="ZapretUI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Zapret UI — Niko"
         Height="720" Width="1100"
         MinHeight="560" MinWidth="900"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="CanResizeWithGrip">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="44"
+                            ResizeBorderThickness="6"
+                            CornerRadius="0"
+                            GlassFrameThickness="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
     <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Background="{StaticResource BgBrush}">
         <Grid>
             <Grid.RowDefinitions>
@@ -16,18 +24,22 @@
 
             <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <DockPanel LastChildFill="True">
-                    <StackPanel Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
                         <Image Source="Assets/source.png" Width="20" Height="20" Stretch="Uniform"/>
                         <TextBlock Text="Zapret UI" Margin="8,0,0,0" FontWeight="SemiBold"/>
                         <TextBlock Text="• Автор: Niko" Margin="8,0,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="12"/>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
                         <Button Content="—" Style="{StaticResource TitleBarButton}" Click="MinimizeButton_Click"/>
                         <Button Content="▢" Style="{StaticResource TitleBarButton}" Click="MaximizeButton_Click"/>
                         <Button Content="✕" Style="{StaticResource TitleBarCloseButton}" Click="CloseButton_Click"/>
                     </StackPanel>
-                </DockPanel>
+                </Grid>
             </Border>
 
             <Grid Grid.Row="1">
@@ -41,7 +53,7 @@
                         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,20">
                             <TextBlock Text="Zapret UI" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
                             <TextBlock Text="Автор: Niko" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                            <TextBlock x:Name="VersionText" Text="v1.1.9" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                            <TextBlock x:Name="VersionText" Text="v1.2.0" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
                         </StackPanel>
 
                         <StackPanel x:Name="NavPanel" DockPanel.Dock="Top"/>

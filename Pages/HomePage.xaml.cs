@@ -34,6 +34,9 @@ public partial class HomePage : UserControl
 
     private void BuildUi()
     {
+        var root = new Grid();
+        root.Children.Add(CreateAnimatedBackground());
+
         var center = new StackPanel
         {
             VerticalAlignment = VerticalAlignment.Center,
@@ -108,7 +111,83 @@ public partial class HomePage : UserControl
         _toggleBtn.Click += async (_, _) => await ToggleAsync();
         center.Children.Add(_toggleBtn);
 
-        Content = center;
+        root.Children.Add(center);
+        Content = root;
+    }
+
+    private UIElement CreateAnimatedBackground()
+    {
+        var canvas = new Canvas
+        {
+            Width = 980,
+            Height = 620,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            IsHitTestVisible = false
+        };
+
+        var orbA = MakeBackgroundOrb(70, 140, 260, "AccentBrush", 0.09);
+        var orbB = MakeBackgroundOrb(620, 80, 220, "SuccessBrush", 0.08);
+        var orbC = MakeBackgroundOrb(740, 360, 240, "WarningBrush", 0.07);
+
+        canvas.Children.Add(orbA);
+        canvas.Children.Add(orbB);
+        canvas.Children.Add(orbC);
+
+        StartBackgroundOrbAnimation(orbA, 0.0, 44, 30, 11000);
+        StartBackgroundOrbAnimation(orbB, 1.0, -36, 26, 9000);
+        StartBackgroundOrbAnimation(orbC, 2.0, 32, -34, 12000);
+
+        return canvas;
+    }
+
+    private static Ellipse MakeBackgroundOrb(double left, double top, double size, string brushKey, double opacity)
+    {
+        var orb = new Ellipse
+        {
+            Width = size,
+            Height = size,
+            Fill = (Brush)Application.Current.FindResource(brushKey),
+            Opacity = opacity
+        };
+        Canvas.SetLeft(orb, left);
+        Canvas.SetTop(orb, top);
+        return orb;
+    }
+
+    private static void StartBackgroundOrbAnimation(UIElement element, double beginSeconds, double moveX, double moveY, int durationMs)
+    {
+        var xAnim = new DoubleAnimation
+        {
+            By = moveX,
+            Duration = TimeSpan.FromMilliseconds(durationMs),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            BeginTime = TimeSpan.FromSeconds(beginSeconds),
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
+        var yAnim = new DoubleAnimation
+        {
+            By = moveY,
+            Duration = TimeSpan.FromMilliseconds(durationMs + 1400),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            BeginTime = TimeSpan.FromSeconds(beginSeconds + 0.2),
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
+        var oAnim = new DoubleAnimation
+        {
+            From = 0.04,
+            To = 0.12,
+            Duration = TimeSpan.FromMilliseconds(durationMs - 1000),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            BeginTime = TimeSpan.FromSeconds(beginSeconds + 0.1)
+        };
+
+        element.BeginAnimation(Canvas.LeftProperty, xAnim);
+        element.BeginAnimation(Canvas.TopProperty, yAnim);
+        element.BeginAnimation(OpacityProperty, oAnim);
     }
 
     private UIElement CreateAnimatedHeader()
