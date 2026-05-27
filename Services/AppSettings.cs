@@ -22,6 +22,8 @@ public sealed class AppSettings
     public bool SecuritySetupSkipped { get; set; }
     /// <summary>ID фона главной страницы (см. HomeBackgroundCatalog).</summary>
     public string HomeBackground { get; set; } = "wavy";
+    /// <summary>Язык интерфейса: ru или en.</summary>
+    public string Language { get; set; } = "ru";
 
     public static AppSettings Load()
     {

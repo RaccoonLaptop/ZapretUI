@@ -33,7 +33,7 @@ public sealed class ResultWindow : Window
 
         var closeBtn = new Button
         {
-            Content = "Закрыть",
+            Content = Loc.T("common.close"),
             Style = (Style)Application.Current.FindResource("PrimaryButton"),
             HorizontalAlignment = HorizontalAlignment.Right,
             MinWidth = 100,

@@ -23,9 +23,9 @@ public sealed class TrayIconService : IDisposable
         };
 
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Открыть Zapret UI", null, (_, _) => ShowWindow());
+        menu.Items.Add(Loc.T("tray.open"), null, (_, _) => ShowWindow());
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Выход", null, (_, _) => RequestExit());
+        menu.Items.Add(Loc.T("tray.exit"), null, (_, _) => RequestExit());
         _notifyIcon.ContextMenuStrip = menu;
 
         _notifyIcon.DoubleClick += (_, _) => ShowWindow();
@@ -36,8 +36,8 @@ public sealed class TrayIconService : IDisposable
         _notifyIcon.Visible = true;
         _notifyIcon.ShowBalloonTip(
             2500,
-            "Zapret UI",
-            "Обход работает — приложение в трее. Дважды кликните по иконке, чтобы открыть.",
+            Loc.T("app.title"),
+            Loc.T("tray.balloon"),
             ToolTipIcon.Info);
     }
 

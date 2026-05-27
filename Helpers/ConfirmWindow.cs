@@ -10,7 +10,7 @@ public sealed class ConfirmWindow : Window
 
     public ConfirmWindow(string message, Window? owner = null)
     {
-        Title = "Zapret UI";
+        Title = Loc.T("app.title");
         Width = 460;
         SizeToContent = SizeToContent.Height;
         MinWidth = 360;
@@ -44,7 +44,7 @@ public sealed class ConfirmWindow : Window
 
         var noBtn = new Button
         {
-            Content = "Нет",
+            Content = Loc.T("common.no"),
             Style = (Style)Application.Current.FindResource("SecondaryButton"),
             MinWidth = 96,
             Margin = new Thickness(0, 0, 8, 0),
@@ -58,7 +58,7 @@ public sealed class ConfirmWindow : Window
 
         var yesBtn = new Button
         {
-            Content = "Да",
+            Content = Loc.T("common.yes"),
             Style = (Style)Application.Current.FindResource("PrimaryButton"),
             MinWidth = 96,
             IsDefault = true

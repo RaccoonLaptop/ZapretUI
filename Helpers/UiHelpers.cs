@@ -7,10 +7,10 @@ namespace ZapretUI.Helpers;
 public static class UiHelpers
 {
     public static void ShowError(string message, Window? owner = null) =>
-        MessageWindow.Show(message, "Zapret UI", owner ?? GetActiveWindow());
+        MessageWindow.Show(message, Loc.T("app.title"), owner ?? GetActiveWindow());
 
     public static void ShowInfo(string message, Window? owner = null) =>
-        MessageWindow.Show(message, "Zapret UI", owner ?? GetActiveWindow());
+        MessageWindow.Show(message, Loc.T("app.title"), owner ?? GetActiveWindow());
 
     public static void ShowResult(Window? owner, string title, string text) =>
         ResultWindow.Show(owner, title, text);

@@ -6,9 +6,9 @@ namespace ZapretUI.Helpers;
 
 public sealed class MessageWindow : Window
 {
-    public MessageWindow(string message, string title = "Zapret UI", Window? owner = null)
+    public MessageWindow(string message, string? title = null, Window? owner = null)
     {
-        Title = title;
+        Title = title ?? Loc.T("app.title");
         Width = 460;
         SizeToContent = SizeToContent.Height;
         MinWidth = 360;
@@ -36,7 +36,7 @@ public sealed class MessageWindow : Window
 
         var okBtn = new Button
         {
-            Content = "OK",
+            Content = Loc.T("common.ok"),
             Style = (Style)Application.Current.FindResource("PrimaryButton"),
             MinWidth = 96,
             HorizontalAlignment = HorizontalAlignment.Right,
@@ -64,7 +64,7 @@ public sealed class MessageWindow : Window
         };
     }
 
-    public static void Show(string message, string title = "Zapret UI", Window? owner = null)
+    public static void Show(string message, string? title = null, Window? owner = null)
     {
         var dialog = new MessageWindow(message, title, owner);
         dialog.ShowDialog();

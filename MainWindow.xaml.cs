@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     {
         _settings = AppSettings.Load();
         InitializeComponent();
+        ApplyShellLocalization();
         AppIcon.ApplyTo(this);
 
         InitAppBackground();
@@ -38,8 +39,8 @@ public partial class MainWindow : Window
         if (!_paths.IsValid)
         {
             MessageBox.Show(
-                "Компоненты zapret не установлены. Перезапустите программу.",
-                "Zapret UI",
+                Loc.T("app.zapret_missing"),
+                Loc.T("app.title"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Application.Current.Shutdown();
@@ -84,7 +85,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            ConsoleLog.Instance.Write($"Ошибка при запуске: {ex.Message}");
+            ConsoleLog.Instance.Write(Loc.F("startup.error", ex.Message));
         }
     }
 
@@ -152,7 +153,7 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                ConsoleLog.Instance.Write($"Ошибка при остановке winws перед выходом: {ex.Message}");
+                ConsoleLog.Instance.Write(Loc.F("shutdown.stop_error", ex.Message));
             }
         }
 
@@ -208,28 +209,36 @@ public partial class MainWindow : Window
         BgSwitchBtn.MouseLeave += (_, _) => BgSwitchBtn.Opacity = 0.38;
     }
 
+    private void ApplyShellLocalization()
+    {
+        TitleBarAuthor.Text = Loc.T("app.author_short");
+        SidebarAuthor.Text = Loc.T("app.author");
+        StatusHeader.Text = Loc.T("status.label");
+        BgSwitchBtn.ToolTip = Loc.T("bg.switch_tooltip");
+    }
+
     private void UpdateBgSwitchLabel()
     {
-        var entry = HomeBackgroundCatalog.Get(_settings.HomeBackground);
-        BgSwitchBtn.Content = $"✦  {entry.Label}";
+        var (_, label) = HomeBackgroundCatalog.Get(_settings.HomeBackground);
+        BgSwitchBtn.Content = $"✦  {label}";
     }
 
     private void BgSwitchBtn_Click(object sender, RoutedEventArgs e)
     {
-        var next = HomeBackgroundCatalog.Next(_settings.HomeBackground);
-        _settings.HomeBackground = next.Id;
+        var (nextId, nextLabel) = HomeBackgroundCatalog.Next(_settings.HomeBackground);
+        _settings.HomeBackground = nextId;
         _settings.Save();
-        AppBackgroundHost.SetBackground(next.Id, BackgroundMotion.DefaultSpeed);
+        AppBackgroundHost.SetBackground(nextId, BackgroundMotion.DefaultSpeed);
         UpdateBgSwitchLabel();
-        ConsoleLog.Instance.Write($"Фон: {next.Label}");
+        ConsoleLog.Instance.Write(Loc.F("bg.log", nextLabel));
     }
 
     private void BuildNavigation()
     {
-        AddNav("Главная", NavigateHome);
-        AddNav("Стратегии", () => Navigate(new StrategiesPage(_paths, _strategy, _settings)));
-        AddNav("Сервис", () => Navigate(new ServicePage(_paths, _strategy)));
-        AddNav("Консоль", OpenToolsWindow);
+        AddNav(Loc.T("nav.home"), NavigateHome);
+        AddNav(Loc.T("nav.strategies"), () => Navigate(new StrategiesPage(_paths, _strategy, _settings)));
+        AddNav(Loc.T("nav.service"), () => Navigate(new ServicePage(_paths, _strategy)));
+        AddNav(Loc.T("nav.console"), OpenToolsWindow);
     }
 
     private void NavigateHome()
@@ -281,12 +290,12 @@ public partial class MainWindow : Window
         StatusDot.Fill = running
             ? (Brush)FindResource("SuccessBrush")
             : (Brush)FindResource("ErrorBrush");
-        StatusText.Text = running ? "Работает" : "Остановлен";
+        StatusText.Text = running ? Loc.T("status.running") : Loc.T("status.stopped");
         if (running)
         {
             var title = _strategy.GetRunningStrategyTitle();
             if (!string.IsNullOrEmpty(title))
-                StatusText.Text = $"Работает — {title}";
+                StatusText.Text = Loc.F("status.running_with", title);
         }
         _homePage?.RefreshToggleUi();
     }

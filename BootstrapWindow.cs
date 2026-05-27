@@ -18,7 +18,7 @@ public sealed class BootstrapWindow : Window
     {
         _targetDir = targetDir;
 
-        Title = "Zapret UI — установка компонентов";
+        Title = Loc.T("bootstrap.title");
         Width = 520;
         Height = 280;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
@@ -29,14 +29,14 @@ public sealed class BootstrapWindow : Window
         var root = new StackPanel { Margin = new Thickness(24) };
         root.Children.Add(new TextBlock
         {
-            Text = "Загрузка zapret",
+            Text = Loc.T("bootstrap.heading"),
             FontSize = 22,
             FontWeight = FontWeights.Bold,
             Margin = new Thickness(0, 0, 0, 8)
         });
         root.Children.Add(new TextBlock
         {
-            Text = "Скачиваем конфиги Flowseal (zapret-discord-youtube) с GitHub. Это нужно один раз — дальше всё работает автоматически.",
+            Text = Loc.T("bootstrap.desc"),
             TextWrapping = TextWrapping.Wrap,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 0, 0, 20)
@@ -52,7 +52,7 @@ public sealed class BootstrapWindow : Window
 
         _statusText = new TextBlock
         {
-            Text = "Подготовка...",
+            Text = Loc.T("bootstrap.prep"),
             TextWrapping = TextWrapping.Wrap,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 0, 0, 16)
@@ -61,7 +61,7 @@ public sealed class BootstrapWindow : Window
 
         _retryButton = new Button
         {
-            Content = "Повторить",
+            Content = Loc.T("bootstrap.retry"),
             Style = (Style)Application.Current.FindResource("SecondaryButton"),
             HorizontalAlignment = HorizontalAlignment.Left,
             Visibility = Visibility.Collapsed,
