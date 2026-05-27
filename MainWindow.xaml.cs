@@ -57,6 +57,8 @@ public partial class MainWindow : Window
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
 
         VersionText.Text = $"v{AppSelfUpdateService.GetLocalVersion()} · Flowseal {_paths.GetLocalVersion()}";
+        ConsoleLog.Instance.Write($"Zapret UI из: {AppContext.BaseDirectory}");
+        ConsoleLog.Instance.Write($"Скорость фона: {_settings.BackgroundSpeedPercent}% (×{CurrentBgMotionSpeed():F2})");
 
         BuildNavigation();
         NavigateHome();
@@ -234,10 +236,23 @@ public partial class MainWindow : Window
     private void UpdateBgSpeedLabel()
     {
         var percent = CurrentBgSpeedPercent();
+        var mult = BackgroundMotion.SpeedFromPercent(percent);
         if (!HomeBackgroundCatalog.SupportsMotionSpeed(_settings.HomeBackground))
             BgSpeedLabel.Text = "Скорость · не для этого фона";
         else
-            BgSpeedLabel.Text = $"Скорость фона · {percent}%";
+            BgSpeedLabel.Text = $"Скорость · {percent}% (×{mult:F1})";
+    }
+
+    private void BgSlowBtn_Click(object sender, RoutedEventArgs e) => SetBgSpeedPercent(5);
+
+    private void BgFastBtn_Click(object sender, RoutedEventArgs e) => SetBgSpeedPercent(100);
+
+    private void SetBgSpeedPercent(int percent)
+    {
+        _initingBgSpeed = true;
+        BgSpeedSlider.Value = percent;
+        _initingBgSpeed = false;
+        ApplyBackgroundAnimSpeed();
     }
 
     private void BgSpeedSlider_ValueChanged(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e)
