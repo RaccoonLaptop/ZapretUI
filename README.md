@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Assets/icon-readme.png" alt="Zapret UI" width="128">
+</p>
+
 # Zapret UI
 
 Современный WPF-интерфейс для запуска и управления конфигами Zapret на Windows.
