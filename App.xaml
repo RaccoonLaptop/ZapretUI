@@ -20,6 +20,8 @@
         <Color x:Key="TextMutedColor">#a8b3d0</Color>
 
         <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}"/>
+        <SolidColorBrush x:Key="ShellOverlayBrush" Color="#CC10121A"/>
+        <SolidColorBrush x:Key="TitleBarOverlayBrush" Color="#D210121A"/>
         <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
         <SolidColorBrush x:Key="SurfaceLightBrush" Color="{StaticResource SurfaceLightColor}"/>
         <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="{StaticResource SurfaceElevatedColor}"/>
@@ -41,7 +43,7 @@
         </Style>
 
         <Style TargetType="UserControl">
-            <Setter Property="Background" Value="{StaticResource BgBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         </Style>
 

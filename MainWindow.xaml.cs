@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using ZapretUI.Controls.Backgrounds;
 using ZapretUI.Pages;
 using ZapretUI.Services;
 
@@ -30,6 +31,7 @@ public partial class MainWindow : Window
         TrySetWindowIcon();
 
         _settings = AppSettings.Load();
+        InitAppBackground();
         _paths = new ZapretPaths(_settings.ZapretRoot);
 
         if (!_paths.IsValid)
@@ -189,6 +191,30 @@ public partial class MainWindow : Window
         WindowState = WindowState == WindowState.Maximized
             ? WindowState.Normal
             : WindowState.Maximized;
+    }
+
+    private void InitAppBackground()
+    {
+        AppBackgroundHost.SetBackground(_settings.HomeBackground);
+        UpdateBgSwitchLabel();
+        BgSwitchBtn.MouseEnter += (_, _) => BgSwitchBtn.Opacity = 0.72;
+        BgSwitchBtn.MouseLeave += (_, _) => BgSwitchBtn.Opacity = 0.38;
+    }
+
+    private void UpdateBgSwitchLabel()
+    {
+        var entry = HomeBackgroundCatalog.Get(_settings.HomeBackground);
+        BgSwitchBtn.Content = $"✦  {entry.Label}";
+    }
+
+    private void BgSwitchBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var next = HomeBackgroundCatalog.Next(_settings.HomeBackground);
+        _settings.HomeBackground = next.Id;
+        _settings.Save();
+        AppBackgroundHost.SetBackground(next.Id);
+        UpdateBgSwitchLabel();
+        ConsoleLog.Instance.Write($"Фон: {next.Label}");
     }
 
     private void BuildNavigation()

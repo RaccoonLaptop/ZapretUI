@@ -33,6 +33,17 @@ public abstract class AnimatedBackgroundBase : FrameworkElement
 
     protected virtual void OnDimensionsChanged() { }
 
+    protected override Size MeasureOverride(Size availableSize) => availableSize;
+
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        AreaWidth = finalSize.Width > 1 ? finalSize.Width : AreaWidth;
+        AreaHeight = finalSize.Height > 1 ? finalSize.Height : AreaHeight;
+        if (_isRunning && AreaWidth > 1 && AreaHeight > 1)
+            OnDimensionsChanged();
+        return finalSize;
+    }
+
     private void StartLoop()
     {
         if (_isRunning) return;
