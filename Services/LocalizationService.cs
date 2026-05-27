@@ -53,17 +53,64 @@ public static class LocalizationService
     private static void LoadStrings(string language)
     {
         var suffix = language == "en" ? "en" : "ru";
-        var resourceName = $"ZapretUI.Resources.Strings.{suffix}.json";
-        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
-        if (stream is null)
+        var fileName = $"Strings.{suffix}.json";
+
+        foreach (var path in GetCandidatePaths(fileName))
         {
-            _strings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            return;
+            if (!File.Exists(path)) continue;
+            try
+            {
+                var json = File.ReadAllText(path);
+                _strings = Deserialize(json);
+                return;
+            }
+            catch { /* try next source */ }
         }
 
-        using var reader = new StreamReader(stream);
-        var json = reader.ReadToEnd();
-        _strings = JsonSerializer.Deserialize<Dictionary<string, string>>(json)
-                   ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = assembly.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith(fileName, StringComparison.OrdinalIgnoreCase));
+        if (resourceName is not null)
+        {
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream is not null)
+            {
+                using var reader = new StreamReader(stream);
+                _strings = Deserialize(reader.ReadToEnd());
+                return;
+            }
+        }
+
+        _strings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
+
+    private static IEnumerable<string> GetCandidatePaths(string fileName)
+    {
+        var baseDir = AppContext.BaseDirectory;
+        yield return Path.Combine(baseDir, "Resources", fileName);
+
+        var exeDir = Path.GetDirectoryName(Environment.ProcessPath ?? baseDir);
+        if (!string.IsNullOrWhiteSpace(exeDir))
+            yield return Path.Combine(exeDir, "Resources", fileName);
+
+        var devPath = FindDevResourcePath(fileName);
+        if (devPath is not null)
+            yield return devPath;
+    }
+
+    private static string? FindDevResourcePath(string fileName)
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var i = 0; i < 8 && dir is not null; i++, dir = dir.Parent!)
+        {
+            var candidate = Path.Combine(dir.FullName, "Resources", fileName);
+            if (File.Exists(candidate))
+                return candidate;
+        }
+        return null;
+    }
+
+    private static Dictionary<string, string> Deserialize(string json) =>
+        JsonSerializer.Deserialize<Dictionary<string, string>>(json)
+        ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 }
