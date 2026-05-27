@@ -10,7 +10,23 @@ public partial class App : Application
         base.OnStartup(e);
         DispatcherUnhandledException += (_, args) =>
         {
-            MessageBox.Show(args.Exception.Message, "Zapret UI — ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            try
+            {
+                var logDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "ZapretUI");
+                Directory.CreateDirectory(logDir);
+                File.WriteAllText(
+                    Path.Combine(logDir, "last-error.log"),
+                    args.Exception.ToString());
+            }
+            catch { /* ignore */ }
+
+            MessageBox.Show(
+                args.Exception.Message + "\n\nПодробности: %LocalAppData%\\ZapretUI\\last-error.log",
+                "Zapret UI — ошибка",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
             args.Handled = true;
             Shutdown();
         };

@@ -38,7 +38,9 @@ public sealed class AppSettings
                 if (settings.AutoUpdateApp && !settings.CheckUpdatesOnStartup)
                     settings.CheckUpdatesOnStartup = true;
                 settings.AutoUpdateApp = false;
-                if (settings.BackgroundAnimSpeed is <= 0 or > 1)
+                if (double.IsNaN(settings.BackgroundAnimSpeed) ||
+                    settings.BackgroundAnimSpeed <= 0 ||
+                    settings.BackgroundAnimSpeed > 1.5)
                     settings.BackgroundAnimSpeed = 0.15;
                 return settings;
             }
