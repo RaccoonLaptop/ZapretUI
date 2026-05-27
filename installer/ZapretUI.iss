@@ -6,11 +6,11 @@
 #endif
 
 #ifndef SourceDir
-  #define SourceDir "..\ZapretUI-installer-staging"
+  #define SourceDir "..\build\staging"
 #endif
 
 #ifndef OutputDir
-  #define OutputDir "..\ZapretUI-dist"
+  #define OutputDir "..\dist"
 #endif
 
 [Setup]
