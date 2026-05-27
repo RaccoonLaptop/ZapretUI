@@ -48,23 +48,23 @@ public sealed class TrayIconService : IDisposable
 
         _statusItem = new ToolStripMenuItem
         {
-            Enabled = false,
             AutoSize = true,
             Padding = new Padding(12, 8, 12, 4),
             Font = new DFont("Segoe UI", 9.5f, DFontStyle.Bold),
             ForeColor = TrayMenuTheme.Text,
             Tag = new TrayStatusTag { Running = false }
         };
+        _statusItem.Click += (_, _) => { /* status row — no action */ };
 
         _strategyItem = new ToolStripMenuItem
         {
-            Enabled = false,
             AutoSize = true,
             Padding = new Padding(28, 0, 12, 8),
             ForeColor = TrayMenuTheme.TextMuted,
             Font = new DFont("Segoe UI", 8.5f),
             Visible = false
         };
+        _strategyItem.Click += (_, _) => { /* info row — no action */ };
 
         _toggleItem = new ToolStripMenuItem
         {
