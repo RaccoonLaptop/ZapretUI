@@ -72,24 +72,24 @@ internal sealed class TrayMenuRenderer : ToolStripProfessionalRenderer
 
     private static void DrawStatusText(ToolStripItemTextRenderEventArgs e, TrayStatusTag tag)
     {
+        var text = string.IsNullOrWhiteSpace(e.Item.Text) ? e.Text : e.Item.Text;
+        if (string.IsNullOrWhiteSpace(text)) return;
+
         var g = e.Graphics;
-        var y = (e.Item.Height - e.TextRectangle.Height) / 2;
+        var itemH = Math.Max(e.Item.Height, 24);
+        var dotY = (itemH - 8) / 2;
         using var dotBrush = new SolidBrush(tag.Running ? TrayMenuTheme.Success : TrayMenuTheme.Error);
-        g.FillEllipse(dotBrush, 14, y + 4, 8, 8);
+        g.FillEllipse(dotBrush, 14, dotY, 8, 8);
 
         using var textBrush = new SolidBrush(TrayMenuTheme.Text);
-        var textRect = new System.Drawing.RectangleF(
-            28,
-            e.TextRectangle.Y,
-            Math.Max(80, e.TextRectangle.Width - 16),
-            e.TextRectangle.Height);
+        var textRect = new System.Drawing.RectangleF(28, 0, Math.Max(120, e.Item.Width - 40), itemH);
         using var format = new System.Drawing.StringFormat
         {
             LineAlignment = System.Drawing.StringAlignment.Center,
             Alignment = System.Drawing.StringAlignment.Near,
             Trimming = System.Drawing.StringTrimming.EllipsisCharacter
         };
-        g.DrawString(e.Text, e.TextFont ?? e.Item.Font, textBrush, textRect, format);
+        g.DrawString(text, e.Item.Font, textBrush, textRect, format);
     }
 
     private static void DrawItemText(System.Drawing.Graphics g, ToolStripItem item, DColor color)
