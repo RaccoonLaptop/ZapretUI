@@ -8,25 +8,54 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Пользовательские данные — не удалять при обновлении
+$PreserveNames = @('zapret', 'settings.json')
+
 function Write-Log($Message) {
     $line = "[$(Get-Date -Format 'HH:mm:ss')] $Message"
     if ($LogFile) { Add-Content -LiteralPath $LogFile -Value $line -Encoding UTF8 }
 }
 
+function Remove-DirContentsExcept {
+    param([string]$Dir, [string[]]$KeepNames)
+    if (-not (Test-Path -LiteralPath $Dir)) { return }
+    Get-ChildItem -LiteralPath $Dir -Force | ForEach-Object {
+        if ($KeepNames -contains $_.Name) {
+            Write-Log "Preserve: $($_.Name)"
+            return
+        }
+        Write-Log "Remove: $($_.Name)"
+        Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction Stop
+    }
+}
+
+function Copy-Tree {
+    param([string]$From, [string]$To, [string[]]$SkipNames)
+    New-Item -ItemType Directory -Path $To -Force | Out-Null
+    Get-ChildItem -LiteralPath $From -Force | ForEach-Object {
+        if ($SkipNames -contains $_.Name) {
+            Write-Log "Skip copy: $($_.Name)"
+            return
+        }
+        $dest = Join-Path $To $_.Name
+        Copy-Item -LiteralPath $_.FullName -Destination $dest -Recurse -Force
+    }
+}
+
 try {
-    Write-Log "Updater started"
+    Write-Log "Updater started (full replace)"
     Write-Log "Source: $SourceDir"
     Write-Log "Target: $TargetDir"
 
     if ($ProcessId -gt 0) {
         Write-Log "Waiting for process $ProcessId..."
         $waited = 0
-        while ($waited -lt 60) {
+        while ($waited -lt 120) {
             if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) { break }
             Start-Sleep -Milliseconds 500
             $waited++
         }
-        Start-Sleep -Seconds 1
+        Start-Sleep -Seconds 2
     }
 
     if (-not (Test-Path -LiteralPath $SourceDir)) {
@@ -34,44 +63,53 @@ try {
     }
 
     $backupDir = Join-Path $env:TEMP ("ZapretUI-backup-" + [guid]::NewGuid().ToString("N"))
-    Write-Log "Backup: $backupDir"
+    Write-Log "Backup program files: $backupDir"
     New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
 
     if (Test-Path -LiteralPath $TargetDir) {
-        Copy-Item -LiteralPath $TargetDir -Destination $backupDir -Recurse -Force
+        Get-ChildItem -LiteralPath $TargetDir -Force | ForEach-Object {
+            if ($PreserveNames -contains $_.Name) { return }
+            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $backupDir $_.Name) -Recurse -Force
+        }
     }
 
     New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
 
     $copied = $false
-    for ($i = 1; $i -le 15; $i++) {
+    for ($i = 1; $i -le 20; $i++) {
         try {
-            Write-Log "Copy attempt $i..."
-            Get-ChildItem -LiteralPath $SourceDir -Force | ForEach-Object {
-                $dest = Join-Path $TargetDir $_.Name
-                Copy-Item -LiteralPath $_.FullName -Destination $dest -Recurse -Force
-            }
+            Write-Log "Full replace attempt $i..."
+            Remove-DirContentsExcept -Dir $TargetDir -KeepNames $PreserveNames
+            Copy-Tree -From $SourceDir -To $TargetDir -SkipNames @('zapret')
             $copied = $true
             break
         }
         catch {
-            Write-Log "Copy failed: $($_.Exception.Message)"
+            Write-Log "Replace failed: $($_.Exception.Message)"
             Start-Sleep -Seconds 1
         }
     }
 
     if (-not $copied) {
         Write-Log "Restore from backup..."
+        Remove-DirContentsExcept -Dir $TargetDir -KeepNames $PreserveNames
         if (Test-Path -LiteralPath $backupDir) {
-            Get-ChildItem -LiteralPath $TargetDir -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-            Get-ChildItem -LiteralPath $backupDir | ForEach-Object {
-                Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $TargetDir $_.Name) -Recurse -Force
-            }
+            Copy-Tree -From $backupDir -To $TargetDir -SkipNames @()
         }
-        throw "Failed to copy update files after multiple attempts"
+        throw "Failed to apply update after multiple attempts"
     }
 
-    Write-Log "Update applied successfully"
+    $required = @(
+        (Join-Path $TargetDir "ZapretUI.exe"),
+        (Join-Path $TargetDir "Assets\BatchZapret.xshd")
+    )
+    foreach ($f in $required) {
+        if (-not (Test-Path -LiteralPath $f)) {
+            Write-Log "WARNING: missing after update: $f"
+        }
+    }
+
+    Write-Log "Update applied successfully (full replace)"
     Remove-Item -LiteralPath $backupDir -Recurse -Force -ErrorAction SilentlyContinue
 
     $launch = $ExePath
@@ -81,7 +119,7 @@ try {
 
     if (Test-Path -LiteralPath $launch) {
         Write-Log "Starting: $launch"
-        Start-Process -FilePath $launch -WorkingDirectory $TargetDir
+        Start-Process -FilePath $launch -WorkingDirectory $TargetDir -Verb RunAs
     }
 
     exit 0
@@ -91,7 +129,7 @@ catch {
     try {
         Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
         [System.Windows.Forms.MessageBox]::Show(
-            "Ne udalos obnovit Zapret UI.`n$($_.Exception.Message)",
+            "Не удалось обновить Zapret UI.`n$($_.Exception.Message)",
             "Zapret UI",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
