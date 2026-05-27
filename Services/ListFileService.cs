@@ -21,6 +21,17 @@ public sealed class ListFileService
         return File.ReadAllLines(path).Count(l => !string.IsNullOrWhiteSpace(l));
     }
 
+    public bool ListExists(string fileName) =>
+        File.Exists(Path.Combine(_paths.Lists, fileName));
+
+    public void CreateList(string fileName, string? initialContent = null)
+    {
+        Directory.CreateDirectory(_paths.Lists);
+        var path = Path.Combine(_paths.Lists, fileName);
+        if (!File.Exists(path))
+            File.WriteAllText(path, initialContent ?? Environment.NewLine);
+    }
+
     public void EnsureUserLists()
     {
         Directory.CreateDirectory(_paths.Lists);
