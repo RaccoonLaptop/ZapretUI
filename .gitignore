@@ -22,3 +22,9 @@ obj/
 tools/innosetup/
 Thumbs.db
 Desktop.ini
+
+# Private docs (local only — not published to GitHub)
+AGENTS.md
+docs/project/
+_private/
+Assets/icon-readme-1024.png
