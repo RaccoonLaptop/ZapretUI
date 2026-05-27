@@ -28,10 +28,12 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        _settings = AppSettings.Load();
+        _initingBgSpeed = true;
         InitializeComponent();
+        _initingBgSpeed = false;
         TrySetWindowIcon();
 
-        _settings = AppSettings.Load();
         InitAppBackground();
         _paths = new ZapretPaths(_settings.ZapretRoot);
 
@@ -242,7 +244,7 @@ public partial class MainWindow : Window
 
     private void BgSpeedSlider_ValueChanged(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_initingBgSpeed) return;
+        if (_initingBgSpeed || BgSpeedLabel is null) return;
         ApplyBackgroundAnimSpeed(restartBackground: false);
     }
 
