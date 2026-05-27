@@ -9,6 +9,7 @@ public static class HomeBackgroundCatalog
 
     public static readonly Entry[] All =
     [
+        new("wavy", "Волнистый"),
         new("shooting-stars", "Падающие звёзды"),
         new("meteors", "Метеоры"),
         new("sparkles", "Искры"),
@@ -17,7 +18,6 @@ public static class HomeBackgroundCatalog
         new("grid", "Сетка"),
         new("dots", "Точки"),
         new("ripple", "Волны (ripple)"),
-        new("wavy", "Волнистый"),
         new("gradient", "Градиент"),
         new("lines", "Линии"),
         new("spotlight", "Прожектор"),
