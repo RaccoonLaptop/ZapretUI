@@ -91,6 +91,8 @@ public sealed class StrategyService
     {
         if (batFileName.StartsWith("service", StringComparison.OrdinalIgnoreCase))
             return false;
+        if (BundledStrategiesService.IsProtected(batFileName))
+            return false;
         return true;
     }
 

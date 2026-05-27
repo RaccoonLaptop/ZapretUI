@@ -81,7 +81,8 @@ public sealed class ZapretPaths
         return Directory.GetFiles(Root, "*.bat")
             .Select(Path.GetFileName)
             .Where(f => f is not null && !f.StartsWith("service", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(f => f.Equals(BundledStrategiesService.FeaturedStrategy, StringComparison.OrdinalIgnoreCase))
+            .ThenBy(f => f, StringComparer.OrdinalIgnoreCase)
             .Cast<string>();
     }
 
