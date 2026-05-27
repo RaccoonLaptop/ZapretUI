@@ -122,11 +122,7 @@ public partial class MainWindow : Window
 
     public void ShutdownApplication()
     {
-        _isShuttingDown = true;
-        _toolsWindow?.Close();
-        _statusTimer.Stop();
-        _tray.Dispose();
-        Application.Current.Shutdown();
+        ExecuteShutdown();
     }
 
     private void OnClosing(object? sender, CancelEventArgs e)
@@ -140,7 +136,26 @@ public partial class MainWindow : Window
             return;
         }
 
+        ExecuteShutdown();
+    }
+
+    private void ExecuteShutdown()
+    {
         _isShuttingDown = true;
+
+        // Если обход был запущен, сначала останавливаем winws, затем закрываем UI.
+        if (_strategy.IsRunning())
+        {
+            try
+            {
+                _strategy.StopStrategyAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                ConsoleLog.Instance.Write($"Ошибка при остановке winws перед выходом: {ex.Message}");
+            }
+        }
+
         _toolsWindow?.Close();
         _statusTimer.Stop();
         _tray.Dispose();
