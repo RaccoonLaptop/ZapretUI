@@ -24,7 +24,7 @@ try {
     }
 
     if ($ProcessId -gt 0) {
-        Write-Log "Waiting for process $ProcessId..."
+        Write-Log "Ожидание закрытия программы (PID $ProcessId)..."
         $waited = 0
         while ($waited -lt 120) {
             if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) { break }
@@ -41,6 +41,7 @@ try {
         "/CLOSEAPPLICATIONS",
         "/DIR=`"$TargetDir`""
     )
+    Write-Log "Установка обновления..."
     Write-Log "Running: $InstallerPath $($args -join ' ')"
     $proc = Start-Process -FilePath $InstallerPath -ArgumentList $args -Wait -PassThru
     if ($proc.ExitCode -ne 0) {
@@ -57,6 +58,7 @@ try {
     }
 
     if (Test-Path -LiteralPath $launch) {
+        Write-Log "Запуск Zapret UI..."
         Write-Log "Starting: $launch"
         Start-Process -FilePath $launch -WorkingDirectory $TargetDir -Verb RunAs
     }
