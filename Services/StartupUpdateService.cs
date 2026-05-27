@@ -45,7 +45,8 @@ public sealed class StartupUpdateService
                     $"Доступна новая версия Zapret UI.\n\n" +
                     $"Новая: {appCheck.RemoteVersion}\n" +
                     $"У вас: {appCheck.LocalVersion}\n\n" +
-                    "Скачать обновление сейчас?"))
+                    "Скачать обновление сейчас?",
+                    owner))
             {
                 PreparedAppUpdate? prepared = null;
                 var keepPrepared = false;
@@ -66,7 +67,8 @@ public sealed class StartupUpdateService
                         prepared = preparedResult.Payload;
                         progressWin.SetStatus("Загрузка завершена. Пакет готов к установке.");
                         if (UiHelpers.Confirm(
-                                $"Пакет обновления Zapret UI {appCheck.RemoteVersion} загружен.\n\nУстановить сейчас?"))
+                                $"Пакет обновления Zapret UI {appCheck.RemoteVersion} загружен.\n\nУстановить сейчас?",
+                                owner))
                         {
                             progressWin.SetStatus("Запуск установки…");
                             progressWin.ReportProgress(new DownloadProgress
@@ -100,7 +102,8 @@ public sealed class StartupUpdateService
                     $"Новая: {flowCheck.RemoteVersion}\n" +
                     $"У вас: {flowCheck.LocalVersion}\n\n" +
                     "Переустановить компоненты zapret из GitHub?\n" +
-                    "Ваши правки в .bat и lists могут быть заменены."))
+                    "Ваши правки в .bat и lists могут быть заменены.",
+                    owner))
             {
                 await FlowsealReinstallService.ReinstallAsync(owner, paths);
             }
