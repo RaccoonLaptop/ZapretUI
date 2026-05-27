@@ -29,18 +29,13 @@ public sealed class ServiceDefaultsService
 
         try
         {
-            await _updates.UpdateIpsetListAsync(ct);
+            await _updates.UpdateIpsetListAsync(ct).ConfigureAwait(false);
         }
         catch
         {
             // Keep going: game filter default is still useful even if IPSet download fails offline.
         }
 
-        File.WriteAllText(marker, DateTime.UtcNow.ToString("O"));
-    }
-
-    public void ApplyFreshInstallDefaults()
-    {
-        ApplyFreshInstallDefaultsAsync().GetAwaiter().GetResult();
+        await File.WriteAllTextAsync(marker, DateTime.UtcNow.ToString("O"), ct).ConfigureAwait(false);
     }
 }
