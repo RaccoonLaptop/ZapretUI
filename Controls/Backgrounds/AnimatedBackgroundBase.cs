@@ -6,22 +6,25 @@ namespace ZapretUI.Controls.Backgrounds;
 
 public abstract class AnimatedBackgroundBase : FrameworkElement
 {
-    /// <summary>Глобальное замедление canvas-фонов относительно bedolaga (WPF/desktop).</summary>
+    /// <summary>Синхронизация с настройками (ползунок на «Главной»).</summary>
     public static double GlobalSpeed { get; set; } = 0.15;
 
-    protected const double MotionScale = 0.45;
+    /// <summary>Скорость этого экземпляра фона (0.05…1.5).</summary>
+    public double MotionSpeed { get; set; } = 0.15;
 
     private const double MaxStepMs = 50;
 
     private DispatcherTimer? _timer;
     private double _lastTickMs;
+    /// <summary>Симулированное время (мс); растёт с учётом <see cref="MotionSpeed"/>.</summary>
+    private double _simTimeMs;
     protected double AreaWidth;
     protected double AreaHeight;
     protected readonly Random Rng = new();
     protected double StartMs;
     private bool _isRunning;
 
-    protected static double DtSec(double deltaMs) => (deltaMs / 1000.0) * GlobalSpeed;
+    protected double DtSec(double deltaMs) => (deltaMs / 1000.0) * MotionSpeed;
 
     protected AnimatedBackgroundBase()
     {
@@ -29,6 +32,7 @@ public abstract class AnimatedBackgroundBase : FrameworkElement
         {
             StartMs = NowMs();
             _lastTickMs = 0;
+            _simTimeMs = 0;
             StartLoop();
         };
         Unloaded += (_, _) => StopLoop();
@@ -95,14 +99,15 @@ public abstract class AnimatedBackgroundBase : FrameworkElement
         var deltaMs = _lastTickMs > 0 ? now - _lastTickMs : 1000.0 / 60.0;
         _lastTickMs = now;
         deltaMs = Math.Clamp(deltaMs, 1, MaxStepMs);
+        _simTimeMs += deltaMs * MotionSpeed;
 
-        AnimateFrame(now - StartMs, deltaMs);
+        AnimateFrame(_simTimeMs, deltaMs);
         InvalidateVisual();
     }
 
     protected virtual void AnimateFrame(double timeMs, double deltaMs) { }
 
-    protected override void OnRender(DrawingContext dc) => RenderFrame(dc, NowMs() - StartMs);
+    protected override void OnRender(DrawingContext dc) => RenderFrame(dc, _simTimeMs);
 
     protected abstract void RenderFrame(DrawingContext dc, double timeMs);
 

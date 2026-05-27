@@ -102,7 +102,8 @@
                                     Maximum="100"
                                     TickFrequency="5"
                                     IsSnapToTickEnabled="True"
-                                    Opacity="0.55"
+                                    IsMoveToPointEnabled="True"
+                                    Opacity="0.85"
                                     ToolTip="5% — очень медленно, 100% — быстро"
                                     ValueChanged="BgSpeedSlider_ValueChanged"/>
                             <Button x:Name="BgSwitchBtn"
