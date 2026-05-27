@@ -48,6 +48,9 @@ public partial class App : Application
             return;
         }
 
+        var zapretRoot = ZapretPaths.DetectRoot(settings.ZapretRoot);
+        BundledStrategiesService.DeployTo(zapretRoot);
+
         var main = new MainWindow();
         MainWindow = main;
         main.Show();
@@ -60,6 +63,7 @@ public partial class App : Application
         {
             settings.ZapretRoot = root;
             settings.Save();
+            BundledStrategiesService.DeployTo(root);
             return true;
         }
 
@@ -73,6 +77,7 @@ public partial class App : Application
 
         settings.ZapretRoot = target;
         settings.Save();
+        BundledStrategiesService.DeployTo(target);
         return true;
     }
 }

@@ -42,7 +42,7 @@ public partial class StrategiesPage : UserControl
         });
         header.Children.Add(new TextBlock
         {
-            Text = "«Списки» — только .txt, указанные в выбранном конфиге. «Создать копию» / «Переименовать» — работа с .bat.",
+            Text = "Конфиг Niko_ALT11 — авторская стратегия Niko (из CDPi UI). «Списки» — .txt из выбранного .bat.",
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12,
@@ -290,7 +290,10 @@ public partial class StrategiesPage : UserControl
 
         if (!_strategy.CanDeleteStrategy(_currentFile))
         {
-            UiHelpers.ShowError("Нельзя удалить служебный файл service.bat");
+            var msg = BundledStrategiesService.IsProtected(_currentFile)
+                ? $"Нельзя удалить встроенный конфиг {_currentFile}."
+                : "Нельзя удалить служебный файл service.bat";
+            UiHelpers.ShowError(msg);
             return;
         }
 
