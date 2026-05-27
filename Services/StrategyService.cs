@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using ZapretUI.Helpers;
 
 namespace ZapretUI.Services;
 
@@ -50,11 +51,16 @@ public sealed class StrategyService
         _lastStartedStrategy = Path.GetFileNameWithoutExtension(batFileName);
 
         for (var i = 0; i < 10 && !IsRunning(); i++)
+        {
+            ct.ThrowIfCancellationRequested();
             await Task.Delay(200, ct);
+        }
 
         if (!IsRunning())
-            throw new InvalidOperationException(
-                "winws.exe не запустился. Запустите Zapret UI от имени администратора.");
+        {
+            ct.ThrowIfCancellationRequested();
+            throw new InvalidOperationException(Loc.T("strategy.winws_not_started"));
+        }
     }
 
     public Task StopStrategyAsync(CancellationToken ct = default)

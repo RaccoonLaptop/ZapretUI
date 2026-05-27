@@ -97,16 +97,16 @@ public sealed class ProcessRunner
         void Capture(string line) => captured.AppendLine(line);
 
         OutputReceived += Capture;
+        int exitCode;
         try
         {
-            await RunAsync("powershell.exe", args, root, ct);
+            exitCode = await RunAsync("powershell.exe", args, root, ct);
         }
         finally
         {
             OutputReceived -= Capture;
         }
 
-        var exitCode = await RunAsync("powershell.exe", args, root, ct);
         var result = captured.Length > 0 ? captured.ToString().TrimEnd() : "Операция завершена.";
         if (exitCode != 0)
             throw new InvalidOperationException(string.IsNullOrWhiteSpace(result) ? $"Ошибка: {action}" : result);

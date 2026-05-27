@@ -49,6 +49,7 @@
   "home.log_start": "Starting: {0}",
   "home.log_started": "Started",
   "home.log_stopped": "Stopped",
+  "strategy.winws_not_started": "winws.exe did not start. Run Zapret UI as administrator.",
   "strategies.title": "Strategies",
   "strategies.subtitle": "Zapret launch configs (.bat). Select a file on the left, edit and save.",
   "strategies.hint": "Niko_ALT11 is a custom strategy by Niko (from CDPi UI). Lists opens .txt files referenced by the selected .bat.",
