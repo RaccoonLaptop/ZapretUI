@@ -1,6 +1,4 @@
 ﻿{
-    "installerUrl":  "https://github.com/RaccoonLaptop/ZapretUI/releases/download/v1.4.2/ZapretUI-Setup.exe",
-    "packageFile":  "ZapretUI-Program.zip",
-    "version":  "1.4.2",
-    "downloadUrl":  "https://github.com/RaccoonLaptop/ZapretUI/releases/download/v1.4.2/ZapretUI-Program.zip"
+  "version": "1.4.2",
+  "installerUrl": "https://github.com/RaccoonLaptop/ZapretUI/releases/download/v1.4.2/ZapretUI-Setup.exe"
 }
