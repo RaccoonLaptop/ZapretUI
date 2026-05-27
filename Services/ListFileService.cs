@@ -32,6 +32,30 @@ public sealed class ListFileService
             File.WriteAllText(path, initialContent ?? Environment.NewLine);
     }
 
+    private static readonly HashSet<string> ProtectedBuiltInLists = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "list-general.txt",
+        "list-google.txt",
+        "list-exclude.txt",
+        "ipset-all.txt",
+        "ipset-exclude.txt"
+    };
+
+    public bool CanDeleteList(string fileName) =>
+        ListExists(fileName) && !ProtectedBuiltInLists.Contains(fileName);
+
+    public void DeleteList(string fileName)
+    {
+        if (!CanDeleteList(fileName))
+            throw new InvalidOperationException(
+                $"Нельзя удалить встроенный список {fileName}. Можно удалять пользовательские и созданные вручную файлы.");
+
+        var path = Path.Combine(_paths.Lists, fileName);
+        if (!File.Exists(path))
+            throw new FileNotFoundException("Файл не найден", fileName);
+        File.Delete(path);
+    }
+
     public void EnsureUserLists()
     {
         Directory.CreateDirectory(_paths.Lists);

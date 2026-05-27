@@ -87,6 +87,25 @@ public sealed class StrategyService
         return newName;
     }
 
+    public bool CanDeleteStrategy(string batFileName)
+    {
+        if (batFileName.StartsWith("service", StringComparison.OrdinalIgnoreCase))
+            return false;
+        return true;
+    }
+
+    public void DeleteStrategy(string batFileName)
+    {
+        if (!CanDeleteStrategy(batFileName))
+            throw new InvalidOperationException("Нельзя удалить служебный файл service.bat");
+
+        var path = Path.Combine(_paths.Root, batFileName);
+        if (!File.Exists(path))
+            throw new FileNotFoundException("Файл не найден", batFileName);
+
+        File.Delete(path);
+    }
+
     public string RenameStrategy(string oldName, string newName)
     {
         if (!newName.EndsWith(".bat", StringComparison.OrdinalIgnoreCase))

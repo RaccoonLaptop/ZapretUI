@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using ICSharpCode.AvalonEdit;
 using ZapretUI.Helpers;
 using ZapretUI.Services;
@@ -97,13 +98,17 @@ public partial class StrategiesPage : UserControl
         var revertBtn = MakeToolbarBtn("Отменить", "SecondaryButton", (_, _) => LoadSelected());
         var copyBtn = MakeToolbarBtn("Создать копию", "SecondaryButton", (_, _) => CreateCopy());
         var renameBtn = MakeToolbarBtn("Переименовать", "SecondaryButton", (_, _) => RenameCurrent());
+        var deleteBtn = MakeToolbarBtn("Удалить", "SecondaryButton", (_, _) => DeleteCurrent());
         var listsBtn = MakeToolbarBtn("Списки", "SecondaryButton", (_, _) => OpenListsWindow());
+        var findBtn = MakeToolbarBtn("Найти / заменить", "SecondaryButton", (_, _) => OpenFindReplace());
 
         editorToolbar.Children.Add(saveBtn);
         editorToolbar.Children.Add(revertBtn);
         editorToolbar.Children.Add(copyBtn);
         editorToolbar.Children.Add(renameBtn);
+        editorToolbar.Children.Add(deleteBtn);
         editorToolbar.Children.Add(listsBtn);
+        editorToolbar.Children.Add(findBtn);
         rightStack.Children.Add(editorToolbar);
 
         _editor = new TextEditor
@@ -117,6 +122,10 @@ public partial class StrategiesPage : UserControl
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
         };
         BatchSyntaxHighlighting.Apply(_editor);
+        _editor.InputBindings.Add(new KeyBinding(
+            new RelayCommand(OpenFindReplace),
+            Key.F,
+            ModifierKeys.Control));
         rightStack.Children.Add(_editor);
         rightPanel.Child = rightStack;
         Grid.SetColumn(rightPanel, 1);
@@ -272,6 +281,52 @@ public partial class StrategiesPage : UserControl
         }
     }
 
+    private void OpenFindReplace() =>
+        FindReplaceDialog.ShowFor(_editor, Window.GetWindow(this));
+
+    private void DeleteCurrent()
+    {
+        if (_currentFile is null) return;
+
+        if (!_strategy.CanDeleteStrategy(_currentFile))
+        {
+            UiHelpers.ShowError("Нельзя удалить служебный файл service.bat");
+            return;
+        }
+
+        if (_currentFile.StartsWith("general", StringComparison.OrdinalIgnoreCase) &&
+            !_currentFile.Contains("custom", StringComparison.OrdinalIgnoreCase) &&
+            !_currentFile.Contains("copy", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!UiHelpers.Confirm(
+                    $"Удалить базовый конфиг {_currentFile}?\nРекомендуется удалять только копии и свои файлы."))
+                return;
+        }
+        else if (!UiHelpers.Confirm($"Удалить конфиг {_currentFile}? Файл будет удалён с диска."))
+        {
+            return;
+        }
+
+        try
+        {
+            var deleted = _currentFile;
+            _strategy.DeleteStrategy(deleted);
+            if (_settings.LastStrategy == deleted)
+            {
+                _settings.LastStrategy = null;
+                _settings.Save();
+            }
+            _currentFile = null;
+            RefreshList();
+            ConsoleLog.Instance.Write($"Удалён конфиг: {deleted}");
+            UiHelpers.ShowInfo($"Удалён: {deleted}");
+        }
+        catch (Exception ex)
+        {
+            UiHelpers.ShowError(ex.Message);
+        }
+    }
+
     private void CreateNew()
     {
         var name = Prompt(
@@ -332,5 +387,14 @@ public partial class StrategiesPage : UserControl
         dlg.Content = stack;
         dlg.ShowDialog();
         return result;
+    }
+
+    private sealed class RelayCommand : ICommand
+    {
+        private readonly Action _action;
+        public RelayCommand(Action action) => _action = action;
+        public event EventHandler? CanExecuteChanged { add { } remove { } }
+        public bool CanExecute(object? parameter) => true;
+        public void Execute(object? parameter) => _action();
     }
 }
