@@ -7,6 +7,7 @@ public sealed class StrategyService
 {
     private readonly ZapretPaths _paths;
     private readonly ProcessRunner _runner;
+    private string? _lastStartedStrategy;
 
     public StrategyService(ZapretPaths paths, ProcessRunner runner)
     {
@@ -31,7 +32,8 @@ public sealed class StrategyService
             }
             catch { /* ignore */ }
         }
-        return null;
+
+        return IsRunning() ? _lastStartedStrategy : null;
     }
 
     public async Task StartStrategyAsync(string batFileName, CancellationToken ct = default)
@@ -43,15 +45,9 @@ public sealed class StrategyService
         if (IsRunning())
             await StopStrategyAsync(ct);
 
-        var psi = new ProcessStartInfo
-        {
-            FileName = "cmd.exe",
-            Arguments = $"/c \"{batPath}\"",
-            WorkingDirectory = _paths.Root,
-            UseShellExecute = true,
-            CreateNoWindow = false
-        };
-        Process.Start(psi);
+        _runner.SetZapretRoot(_paths.Root);
+        await _runner.RunBridgeAsync("StartStrategy", batFileName, ct);
+        _lastStartedStrategy = Path.GetFileNameWithoutExtension(batFileName);
         await Task.Delay(1500, ct);
     }
 
@@ -61,6 +57,7 @@ public sealed class StrategyService
         {
             try { p.Kill(true); } catch { /* ignore */ }
         }
+        _lastStartedStrategy = null;
         return Task.CompletedTask;
     }
 
