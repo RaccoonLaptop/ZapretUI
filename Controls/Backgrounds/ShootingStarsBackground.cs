@@ -9,8 +9,8 @@ namespace ZapretUI.Controls.Backgrounds;
 public sealed class ShootingStarsBackground : AnimatedBackgroundBase
 {
     private const double StarDensity = 0.00015;
-    private const double MinSpeed = 5;
-    private const double MaxSpeed = 14;
+    private const double MinSpeed = 10;
+    private const double MaxSpeed = 30;
     private const double TrailLength = 80;
     private const double FadeDistance = 500;
 
@@ -35,7 +35,7 @@ public sealed class ShootingStarsBackground : AnimatedBackgroundBase
 
     protected override void OnDimensionsChanged() => RebuildStars();
 
-    protected override void AnimateFrame(double timeMs)
+    protected override void AnimateFrame(double timeMs, double deltaMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
 
@@ -47,7 +47,7 @@ public sealed class ShootingStarsBackground : AnimatedBackgroundBase
                 Y = Rng.NextDouble() * AreaHeight * 0.5,
                 Angle = Math.PI / 4 + (Rng.NextDouble() - 0.5) * 0.3,
                 Scale = 0.5 + Rng.NextDouble() * 0.5,
-                Speed = (MinSpeed + Rng.NextDouble() * (MaxSpeed - MinSpeed)) * MotionScale,
+                Speed = MinSpeed + Rng.NextDouble() * (MaxSpeed - MinSpeed),
                 Distance = 0,
                 Opacity = 1
             });

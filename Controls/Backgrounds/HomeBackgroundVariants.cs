@@ -3,77 +3,10 @@ using System.Windows.Media;
 
 namespace ZapretUI.Controls.Backgrounds;
 
-public sealed class MeteorsBackground : AnimatedBackgroundBase
-{
-    private readonly List<Meteor> _meteors = new();
-    private double _spawnAccum;
-
-    private sealed class Meteor
-    {
-        public double X, Y, Angle, Speed, Length, Opacity, Phase;
-    }
-
-    protected override void OnDimensionsChanged()
-    {
-        _meteors.Clear();
-        var count = Math.Clamp((int)(AreaWidth * AreaHeight / 25000), 12, 28);
-        for (var i = 0; i < count; i++)
-            _meteors.Add(CreateMeteor(randomPhase: true));
-    }
-
-    protected override void AnimateFrame(double timeMs)
-    {
-        _spawnAccum += 16;
-        if (_spawnAccum > 400 && _meteors.Count < 35)
-        {
-            _meteors.Add(CreateMeteor());
-            _spawnAccum = 0;
-        }
-
-        for (var i = _meteors.Count - 1; i >= 0; i--)
-        {
-            var m = _meteors[i];
-            m.Phase += m.Speed * MotionScale;
-            m.Opacity = Math.Max(0, 1 - m.Phase / 1200);
-            if (m.Opacity <= 0 || m.X > AreaWidth + 200 || m.Y > AreaHeight + 200)
-                _meteors.RemoveAt(i);
-        }
-    }
-
-    protected override void RenderFrame(DrawingContext dc, double timeMs)
-    {
-        foreach (var m in _meteors)
-        {
-            var head = new Point(m.X + Math.Cos(m.Angle) * m.Phase, m.Y + Math.Sin(m.Angle) * m.Phase);
-            var tail = new Point(m.X + Math.Cos(m.Angle) * (m.Phase - m.Length), m.Y + Math.Sin(m.Angle) * (m.Phase - m.Length));
-            var pen = new Pen(new SolidColorBrush(Color.FromArgb((byte)(m.Opacity * 200), 255, 255, 255)), 1.5)
-            {
-                StartLineCap = PenLineCap.Round,
-                EndLineCap = PenLineCap.Round
-            };
-            pen.Freeze();
-            dc.DrawLine(pen, tail, head);
-        }
-    }
-
-    private Meteor CreateMeteor(bool randomPhase = false)
-    {
-        var angle = Math.PI / 4 + (Rng.NextDouble() - 0.5) * 0.15;
-        return new Meteor
-        {
-            X = Rng.NextDouble() * AreaWidth * 1.2 - AreaWidth * 0.1,
-            Y = Rng.NextDouble() * AreaHeight * 0.55,
-            Angle = angle,
-            Speed = 2 + Rng.NextDouble() * 3,
-            Length = 60 + Rng.NextDouble() * 80,
-            Opacity = 1,
-            Phase = randomPhase ? Rng.NextDouble() * 400 : 0
-        };
-    }
-}
-
 public sealed class SparklesBackground : AnimatedBackgroundBase
 {
+    private const double Speed = 2;
+
     private readonly List<Particle> _particles = new();
 
     private sealed class Particle
@@ -85,18 +18,18 @@ public sealed class SparklesBackground : AnimatedBackgroundBase
     {
         _particles.Clear();
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var count = Math.Clamp((int)(AreaWidth * AreaHeight / 8000), 60, 400);
+        var count = Math.Clamp((int)(AreaWidth * AreaHeight / 1_000_000 * 800), 50, 1200);
         for (var i = 0; i < count; i++)
             _particles.Add(CreateParticle());
     }
 
-    protected override void AnimateFrame(double timeMs)
+    protected override void AnimateFrame(double timeMs, double deltaMs)
     {
         foreach (var p in _particles)
         {
-            p.X += p.SpeedX * MotionScale;
-            p.Y += p.SpeedY * MotionScale;
-            p.Opacity += p.OpacityDir * p.OpacitySpeed * MotionScale;
+            p.X += p.SpeedX;
+            p.Y += p.SpeedY;
+            p.Opacity += p.OpacityDir * p.OpacitySpeed;
             if (p.Opacity <= 0) { p.Opacity = 0; p.OpacityDir = 1; }
             else if (p.Opacity >= 1) { p.Opacity = 1; p.OpacityDir = -1; }
             if (p.X < 0) p.X = AreaWidth;
@@ -109,7 +42,7 @@ public sealed class SparklesBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         foreach (var p in _particles)
-            DrawCircle(dc, Colors.White, p.Opacity * 0.85, new Point(p.X, p.Y), p.Size);
+            DrawCircle(dc, Colors.White, p.Opacity, new Point(p.X, p.Y), p.Size);
     }
 
     private Particle CreateParticle() => new()
@@ -117,11 +50,11 @@ public sealed class SparklesBackground : AnimatedBackgroundBase
         X = Rng.NextDouble() * AreaWidth,
         Y = Rng.NextDouble() * AreaHeight,
         Size = 0.4 + Rng.NextDouble() * 1.0,
-        SpeedX = (Rng.NextDouble() - 0.5) * 0.25,
-        SpeedY = (Rng.NextDouble() - 0.5) * 0.25,
+        SpeedX = (Rng.NextDouble() - 0.5) * Speed * 0.2,
+        SpeedY = (Rng.NextDouble() - 0.5) * Speed * 0.2,
         Opacity = Rng.NextDouble(),
         OpacityDir = Rng.NextDouble() > 0.5 ? 1 : -1,
-        OpacitySpeed = 0.004 + Rng.NextDouble() * 0.01
+        OpacitySpeed = 0.005 + Rng.NextDouble() * 0.01 * Speed
     };
 }
 
@@ -159,22 +92,23 @@ public sealed class VortexBackground : AnimatedBackgroundBase
     protected override void OnDimensionsChanged()
     {
         _particles.Clear();
-        for (var i = 0; i < 280; i++)
+        var count = Math.Clamp(180, 50, 500);
+        for (var i = 0; i < count; i++)
         {
             _particles.Add(new VParticle
             {
                 Angle = Rng.NextDouble() * Math.PI * 2,
                 Radius = Rng.NextDouble() * Math.Min(AreaWidth, AreaHeight) * 0.45,
-                Speed = (0.001 + Rng.NextDouble() * 0.002) * MotionScale,
+                Speed = 0.0009 + Rng.NextDouble() * 0.0016,
                 Size = 0.6 + Rng.NextDouble() * 1.4
             });
         }
     }
 
-    protected override void AnimateFrame(double timeMs)
+    protected override void AnimateFrame(double timeMs, double deltaMs)
     {
         foreach (var p in _particles)
-            p.Angle += p.Speed; // Speed already scaled at creation
+            p.Angle += p.Speed;
     }
 
     protected override void RenderFrame(DrawingContext dc, double timeMs)
@@ -248,7 +182,7 @@ public sealed class RippleBackground : AnimatedBackgroundBase
 
     protected override void OnDimensionsChanged() => _ripples.Clear();
 
-    protected override void AnimateFrame(double timeMs)
+    protected override void AnimateFrame(double timeMs, double deltaMs)
     {
         if (Rng.NextDouble() < 0.02 && _ripples.Count < 6)
         {
@@ -257,7 +191,7 @@ public sealed class RippleBackground : AnimatedBackgroundBase
                 X = Rng.NextDouble() * AreaWidth,
                 Y = Rng.NextDouble() * AreaHeight,
                 Radius = 0,
-                Speed = (0.5 + Rng.NextDouble() * 0.5) * MotionScale,
+                Speed = 1.2 + Rng.NextDouble(),
                 MaxRadius = 80 + Rng.NextDouble() * 160
             });
         }
