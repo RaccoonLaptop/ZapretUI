@@ -49,29 +49,38 @@ function Parse-StrategyArgs {
 
     foreach ($rawLine in $lines) {
         $line = $rawLine -replace '!', 'EXCL_MARK'
-        if ($line -match [regex]::Escape('%BIN%winws.exe')) { $capture = $true; continue }
-        if (-not $capture) { continue }
 
-        if ($line -match 'winws\.exe') {
-            $line = $line -replace '.*winws\.exe', ''
+        if ($line -match [regex]::Escape('%BIN%winws.exe')) {
+            $capture = $true
+            $line = $line -replace '.*["'']?%BIN%winws\.exe["'']?\s*', ''
         }
+        elseif ($line -match 'winws\.exe') {
+            $capture = $true
+            $line = $line -replace '.*winws\.exe["'']?\s*', ''
+        }
+        elseif (-not $capture) {
+            continue
+        }
+
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
 
         $tokens = $line -split '\s+' | Where-Object { $_ -and $_ -ne '^' }
         foreach ($arg in $tokens) {
             if ($arg.StartsWith("--") -and $mergeargs -ne 0) { $mergeargs = 0 }
 
             $a = $arg
-            if ($a.StartsWith($quote) -and $a.EndsWith($quote)) {
+            $a = $a -replace '%GameFilterTCP%', $gf.GameFilterTCP
+            $a = $a -replace '%GameFilterUDP%', $gf.GameFilterUDP
+            $a = $a -replace '%GameFilter%', $gf.GameFilter
+            $a = $a -replace '%BIN%', $BinPath
+            $a = $a -replace '%LISTS%', $ListsPath
+
+            if ($a.StartsWith($quote) -and $a.EndsWith($quote) -and $a.Length -ge 2) {
                 $a = $a.Substring(1, $a.Length - 2)
                 if ($a -match ':') { $a = "$quote$a$quote" }
                 elseif ($a.StartsWith('@')) { $a = "$quote$($Root)\$($a.Substring(1))$quote" }
-                elseif ($a.StartsWith('%BIN%')) { $a = "$quote$BinPath$($a.Substring(5))$quote" }
-                elseif ($a.StartsWith('%LISTS%')) { $a = "$quote$ListsPath$($a.Substring(7))$quote" }
-                else { $a = "$quote$Root\$a$quote" }
+                else { $a = "$quote$a$quote" }
             }
-            elseif ($a.StartsWith('%GameFilterTCP%')) { $a = $gf.GameFilterTCP }
-            elseif ($a.StartsWith('%GameFilterUDP%')) { $a = $gf.GameFilterUDP }
-            elseif ($a.StartsWith('%GameFilter%')) { $a = $gf.GameFilter }
 
             if ($mergeargs -eq 1) { $result += ",$a" }
             elseif ($mergeargs -eq 3) { $result += "=$a"; $mergeargs = 1 }
@@ -224,7 +233,7 @@ switch ($Action) {
         Push-Location $Root
         foreach ($prep in @("status_zapret", "check_updates", "load_game_filter", "load_user_lists")) {
             Start-Process -FilePath "cmd.exe" -ArgumentList "/c call service.bat $prep" `
-                -WorkingDirectory $Root -WindowStyle Hidden -Wait -NoNewWindow | Out-Null
+                -WorkingDirectory $Root -WindowStyle Hidden -Wait | Out-Null
         }
         Pop-Location
 
@@ -241,7 +250,15 @@ switch ($Action) {
         $psi.UseShellExecute = $false
         $psi.CreateNoWindow = $true
         $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-        [void][System.Diagnostics.Process]::Start($psi)
+        $proc = [System.Diagnostics.Process]::Start($psi)
+        if (-not $proc) { Write-Color "Failed to start winws.exe" Red; exit 1 }
+
+        Start-Sleep -Milliseconds 900
+        $running = Get-Process winws -ErrorAction SilentlyContinue
+        if (-not $running) {
+            Write-Color "winws.exe завершился сразу. Запустите Zapret UI от имени администратора." Red
+            exit 1
+        }
 
         $name = [System.IO.Path]::GetFileNameWithoutExtension($Extra)
         Write-Color "Strategy started (hidden): $name" Green
