@@ -1,4 +1,5 @@
 using System.Windows;
+using ZapretUI.Helpers;
 using ZapretUI.Services;
 
 namespace ZapretUI;
@@ -8,6 +9,15 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        if (UpdateProgressLauncher.TryParseArgs(e.Args, out var progressLog, out var progressVersion))
+        {
+            var progressWin = new UpdateInstallProgressWindow(progressLog, progressVersion);
+            MainWindow = progressWin;
+            progressWin.Show();
+            return;
+        }
+
         DispatcherUnhandledException += (_, args) =>
         {
             try

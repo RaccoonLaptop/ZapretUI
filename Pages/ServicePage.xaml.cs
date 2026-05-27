@@ -252,7 +252,7 @@ public partial class ServicePage : UserControl
                 {
                     PreparedAppUpdate? prepared = null;
                     var keepPrepared = false;
-                    var progressWin = new UpdateDownloadWindow("Обновление Zapret UI", "Загрузка пакета обновления...");
+                    UpdateDownloadWindow? progressWin = new UpdateDownloadWindow("Обновление Zapret UI", "Загрузка пакета обновления...");
                     if (OwnerWindow is not null) progressWin.Owner = OwnerWindow;
                     progressWin.Show();
                     try
@@ -272,7 +272,14 @@ public partial class ServicePage : UserControl
                         if (UiHelpers.Confirm(
                                 $"Пакет обновления Zapret UI {result.RemoteVersion} загружен.\n\nУстановить сейчас?"))
                         {
+                            progressWin.SetStatus("Запуск установки…");
+                            progressWin.ReportProgress(new DownloadProgress
+                            {
+                                Phase = "Сейчас откроется окно обновления"
+                            });
                             var install = await updater.InstallPreparedUpdateAsync(prepared);
+                            progressWin.Close();
+                            progressWin = null!;
                             keepPrepared = install.KeepPreparedFiles;
                             if (install.RequiresRestart && Application.Current.MainWindow is MainWindow mw)
                                 mw.ShutdownApplication();
@@ -284,7 +291,7 @@ public partial class ServicePage : UserControl
                     }
                     finally
                     {
-                        progressWin.Close();
+                        progressWin?.Close();
                         AppSelfUpdateService.CleanupPreparedUpdate(prepared, keepPrepared);
                     }
                 }

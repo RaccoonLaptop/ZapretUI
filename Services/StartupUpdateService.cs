@@ -49,7 +49,7 @@ public sealed class StartupUpdateService
             {
                 PreparedAppUpdate? prepared = null;
                 var keepPrepared = false;
-                var progressWin = new UpdateDownloadWindow("Обновление Zapret UI", "Загрузка пакета обновления...");
+                UpdateDownloadWindow? progressWin = new UpdateDownloadWindow("Обновление Zapret UI", "Загрузка пакета обновления...");
                 progressWin.Owner = owner;
                 progressWin.Show();
                 try
@@ -68,7 +68,14 @@ public sealed class StartupUpdateService
                         if (UiHelpers.Confirm(
                                 $"Пакет обновления Zapret UI {appCheck.RemoteVersion} загружен.\n\nУстановить сейчас?"))
                         {
+                            progressWin.SetStatus("Запуск установки…");
+                            progressWin.ReportProgress(new DownloadProgress
+                            {
+                                Phase = "Сейчас откроется окно обновления"
+                            });
                             var install = await appUpdater.InstallPreparedUpdateAsync(prepared);
+                            progressWin.Close();
+                            progressWin = null!;
                             ConsoleLog.Instance.Write(install.Message);
                             keepPrepared = install.KeepPreparedFiles;
                             if (install.RequiresRestart)
@@ -80,7 +87,7 @@ public sealed class StartupUpdateService
                 }
                 finally
                 {
-                    progressWin.Close();
+                    progressWin?.Close();
                     AppSelfUpdateService.CleanupPreparedUpdate(prepared, keepPrepared);
                 }
             }
