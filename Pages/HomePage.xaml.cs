@@ -1,9 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using ZapretUI.Controls;
 using ZapretUI.Helpers;
 using ZapretUI.Services;
 
@@ -44,7 +44,7 @@ public partial class HomePage : UserControl
             MaxWidth = 460
         };
 
-        center.Children.Add(CreateAnimatedHeader());
+        center.Children.Add(CreateHeader());
 
         center.Children.Add(new TextBlock
         {
@@ -115,168 +115,22 @@ public partial class HomePage : UserControl
         Content = root;
     }
 
-    private UIElement CreateAnimatedBackground()
+    private static UIElement CreateAnimatedBackground() => new ShootingStarsBackground
     {
-        var canvas = new Canvas
-        {
-            Width = 980,
-            Height = 620,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            IsHitTestVisible = false
-        };
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+        VerticalAlignment = VerticalAlignment.Stretch,
+        IsHitTestVisible = false
+    };
 
-        var orbA = MakeBackgroundOrb(70, 140, 260, "AccentBrush", 0.09);
-        var orbB = MakeBackgroundOrb(620, 80, 220, "SuccessBrush", 0.08);
-        var orbC = MakeBackgroundOrb(740, 360, 240, "WarningBrush", 0.07);
-
-        canvas.Children.Add(orbA);
-        canvas.Children.Add(orbB);
-        canvas.Children.Add(orbC);
-
-        StartBackgroundOrbAnimation(orbA, 0.0, 44, 30, 11000);
-        StartBackgroundOrbAnimation(orbB, 1.0, -36, 26, 9000);
-        StartBackgroundOrbAnimation(orbC, 2.0, 32, -34, 12000);
-
-        return canvas;
-    }
-
-    private static Ellipse MakeBackgroundOrb(double left, double top, double size, string brushKey, double opacity)
+    private static UIElement CreateHeader() => new TextBlock
     {
-        var orb = new Ellipse
-        {
-            Width = size,
-            Height = size,
-            Fill = (Brush)Application.Current.FindResource(brushKey),
-            Opacity = opacity
-        };
-        Canvas.SetLeft(orb, left);
-        Canvas.SetTop(orb, top);
-        return orb;
-    }
-
-    private static void StartBackgroundOrbAnimation(UIElement element, double beginSeconds, double moveX, double moveY, int durationMs)
-    {
-        var xAnim = new DoubleAnimation
-        {
-            By = moveX,
-            Duration = TimeSpan.FromMilliseconds(durationMs),
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-            BeginTime = TimeSpan.FromSeconds(beginSeconds),
-            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
-        };
-        var yAnim = new DoubleAnimation
-        {
-            By = moveY,
-            Duration = TimeSpan.FromMilliseconds(durationMs + 1400),
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-            BeginTime = TimeSpan.FromSeconds(beginSeconds + 0.2),
-            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
-        };
-        var oAnim = new DoubleAnimation
-        {
-            From = 0.04,
-            To = 0.12,
-            Duration = TimeSpan.FromMilliseconds(durationMs - 1000),
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-            BeginTime = TimeSpan.FromSeconds(beginSeconds + 0.1)
-        };
-
-        element.BeginAnimation(Canvas.LeftProperty, xAnim);
-        element.BeginAnimation(Canvas.TopProperty, yAnim);
-        element.BeginAnimation(OpacityProperty, oAnim);
-    }
-
-    private UIElement CreateAnimatedHeader()
-    {
-        var root = new Grid
-        {
-            Width = 360,
-            Height = 120,
-            Margin = new Thickness(0, 0, 0, 12)
-        };
-
-        var canvas = new Canvas { Width = 360, Height = 120 };
-
-        var line1 = new Line
-        {
-            X1 = 40,
-            Y1 = 62,
-            X2 = 320,
-            Y2 = 62,
-            StrokeThickness = 1.5,
-            Stroke = (Brush)Application.Current.FindResource("BorderBrush"),
-            Opacity = 0.7
-        };
-        canvas.Children.Add(line1);
-
-        var line2 = new Line
-        {
-            X1 = 40,
-            Y1 = 78,
-            X2 = 320,
-            Y2 = 78,
-            StrokeThickness = 1.2,
-            Stroke = (Brush)Application.Current.FindResource("SurfaceLightBrush"),
-            Opacity = 0.8
-        };
-        canvas.Children.Add(line2);
-
-        var dotA = MakeDot(56, 62, "AccentBrush", 9);
-        var dotB = MakeDot(182, 62, "SuccessBrush", 8);
-        var dotC = MakeDot(304, 62, "WarningBrush", 9);
-        canvas.Children.Add(dotA);
-        canvas.Children.Add(dotB);
-        canvas.Children.Add(dotC);
-
-        StartDotAnimation(dotA, 0.0, 12.0, 1400);
-        StartDotAnimation(dotB, 0.2, 14.0, 1700);
-        StartDotAnimation(dotC, 0.4, 10.0, 1500);
-
-        root.Children.Add(canvas);
-        return root;
-    }
-
-    private static Ellipse MakeDot(double x, double y, string brushKey, double size)
-    {
-        var dot = new Ellipse
-        {
-            Width = size,
-            Height = size,
-            Fill = (Brush)Application.Current.FindResource(brushKey)
-        };
-        Canvas.SetLeft(dot, x - size / 2);
-        Canvas.SetTop(dot, y - size / 2);
-        return dot;
-    }
-
-    private static void StartDotAnimation(UIElement element, double beginSeconds, double rise, int durationMs)
-    {
-        var move = new DoubleAnimation
-        {
-            By = -rise,
-            Duration = TimeSpan.FromMilliseconds(durationMs),
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-            BeginTime = TimeSpan.FromSeconds(beginSeconds),
-            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
-        };
-        element.BeginAnimation(Canvas.TopProperty, move);
-
-        var fade = new DoubleAnimation
-        {
-            From = 0.45,
-            To = 1.0,
-            Duration = TimeSpan.FromMilliseconds(durationMs + 220),
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-            BeginTime = TimeSpan.FromSeconds(beginSeconds)
-        };
-        element.BeginAnimation(OpacityProperty, fade);
-    }
+        Text = "✦",
+        FontSize = 42,
+        HorizontalAlignment = HorizontalAlignment.Center,
+        Foreground = (Brush)Application.Current.FindResource("AccentBrush"),
+        Opacity = 0.85,
+        Margin = new Thickness(0, 0, 0, 8)
+    };
 
     private void SelectDefaultStrategy()
     {

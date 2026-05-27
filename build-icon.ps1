@@ -1,14 +1,13 @@
-# Build valid multi-size app.ico from generated round PNG.
+# Build multi-size app.ico + source.png for Zapret UI (taskbar, tray, installer).
 $ErrorActionPreference = "Stop"
 $ProjectDir = $PSScriptRoot
 $SourcePng = Join-Path $ProjectDir "Assets\source.png"
 $OutIco = Join-Path $ProjectDir "Assets\app.ico"
 
 New-Item -ItemType Directory -Path (Split-Path $OutIco) -Force | Out-Null
-
 Add-Type -AssemblyName System.Drawing
 
-function New-RoundPng {
+function New-ZapretIconPng {
     param([string]$Path)
 
     $size = 512
@@ -16,36 +15,37 @@ function New-RoundPng {
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     try {
         $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+        $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
         $g.Clear([System.Drawing.Color]::Transparent)
 
-        $rect = New-Object System.Drawing.Rectangle 16, 16, ($size - 32), ($size - 32)
-        $grad = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect,
-            ([System.Drawing.Color]::FromArgb(16, 18, 26)),
-            ([System.Drawing.Color]::FromArgb(34, 38, 51)),
-            45
-        $g.FillEllipse($grad, $rect)
+        $outer = New-Object System.Drawing.Rectangle 8, 8, ($size - 16), ($size - 16)
+        $grad = New-Object System.Drawing.Drawing2D.LinearGradientBrush $outer,
+            ([System.Drawing.Color]::FromArgb(12, 14, 22)),
+            ([System.Drawing.Color]::FromArgb(32, 38, 58)),
+            135
+        $g.FillEllipse($grad, $outer)
         $grad.Dispose()
 
-        $ringPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(107, 159, 255), 18)
-        $g.DrawEllipse($ringPen, 48, 48, $size - 96, $size - 96)
-        $ringPen.Dispose()
+        $ring = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(107, 159, 255), 10)
+        $g.DrawEllipse($ring, 24, 24, $size - 48, $size - 48)
+        $ring.Dispose()
 
-        $green = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(143, 212, 96))
-        $warn = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(232, 184, 106))
-        $accent = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(107, 159, 255))
+        $arcPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(143, 212, 96), 9)
+        $arcPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+        $arcPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+        $g.DrawArc($arcPen, 72, 72, 368, 368, 210, 95)
+        $arcPen.Dispose()
 
-        $g.FillEllipse($green, 118, 244, 62, 62)
-        $g.FillEllipse($warn, 226, 198, 62, 62)
-        $g.FillEllipse($accent, 334, 152, 62, 62)
-
-        $line = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(240, 112, 136), 11)
-        $g.DrawLine($line, 149, 274, 257, 229)
-        $g.DrawLine($line, 257, 229, 365, 183)
-
-        $line.Dispose()
-        $green.Dispose()
-        $warn.Dispose()
-        $accent.Dispose()
+        $font = New-Object System.Drawing.Font("Segoe UI", 248, [System.Drawing.FontStyle]::Bold)
+        $textBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(235, 238, 248))
+        $format = New-Object System.Drawing.StringFormat
+        $format.Alignment = [System.Drawing.StringAlignment]::Center
+        $format.LineAlignment = [System.Drawing.StringAlignment]::Center
+        $textRect = New-Object System.Drawing.RectangleF 0, 18, $size, $size
+        $g.DrawString("Z", $font, $textBrush, $textRect, $format)
+        $font.Dispose()
+        $textBrush.Dispose()
+        $format.Dispose()
     }
     finally {
         $g.Dispose()
@@ -59,9 +59,9 @@ function Convert-PngToIcoBytes {
     param([string]$Path)
     $image = [System.Drawing.Image]::FromFile($Path)
     try {
-        $sizes = @(16, 32, 48, 256)
+        $sizes = @(16, 24, 32, 48, 64, 128, 256)
         $stream = New-Object System.IO.MemoryStream
-        $writer = New-Object System.IO.BinaryWriter($stream)
+        $writer = New-Object System.IO.BinaryWriter $stream
         $writer.Write([uint16]0)
         $writer.Write([uint16]1)
         $writer.Write([uint16]$sizes.Count)
@@ -93,7 +93,8 @@ function Convert-PngToIcoBytes {
     finally { $image.Dispose() }
 }
 
-New-RoundPng -Path $SourcePng
+New-ZapretIconPng -Path $SourcePng
 $bytes = Convert-PngToIcoBytes -Path $SourcePng
 [System.IO.File]::WriteAllBytes($OutIco, $bytes)
 Write-Host "Icon created: $OutIco ($($bytes.Length) bytes)" -ForegroundColor Green
+Write-Host "Source PNG: $SourcePng" -ForegroundColor Green
