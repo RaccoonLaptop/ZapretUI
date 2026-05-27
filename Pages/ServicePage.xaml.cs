@@ -135,6 +135,32 @@ public partial class ServicePage : UserControl
         updCard.Child = updStack;
         root.Children.Add(updCard);
 
+        // Network reset
+        root.Children.Add(Section("Сброс сетевых настроек"));
+        var netCard = Card();
+        var netStack = new StackPanel();
+        netStack.Children.Add(new TextBlock
+        {
+            Text = "Обязательный шаг, если раньше использовались VPN или прописывался прокси. " +
+                   "Они оставляют следы в системе — из‑за этого, например, Epic Games может писать " +
+                   "«находится в автономном режиме», хотя интернет есть.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            Margin = new Thickness(0, 0, 0, 12)
+        });
+        netStack.Children.Add(new TextBlock
+        {
+            Text = "Выполняются: netsh int ip reset, winhttp reset proxy, winsock reset, " +
+                   "сброс IPv4/IPv6, диапазон TCP 10000–30000, ipconfig /flushdns.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            FontSize = 12,
+            Margin = new Thickness(0, 0, 0, 12)
+        });
+        netStack.Children.Add(ActionBtn("Сбросить сетевые настройки", async () => await ResetNetworkAsync()));
+        netCard.Child = netStack;
+        root.Children.Add(netCard);
+
         // Security
         root.Children.Add(Section("Безопасность Windows"));
         var secCard = Card();
@@ -295,6 +321,28 @@ public partial class ServicePage : UserControl
         if (UiHelpers.Confirm(
                 $"Доступна новая версия Flowseal: {r.RemoteVersion}\nУ вас: {r.LocalVersion}\n\nПереустановить компоненты zapret?"))
             await FlowsealReinstallService.ReinstallAsync(OwnerWindow, _paths);
+    }
+
+    private async Task ResetNetworkAsync()
+    {
+        if (!UiHelpers.Confirm(
+                "Сбросить сетевые настройки Windows?\n\n" +
+                "Будут выполнены команды netsh и очистка DNS. " +
+                "Это помогает убрать следы VPN и прокси.\n\n" +
+                "Нужны права администратора. После сброса рекомендуется перезагрузка ПК.\n\n" +
+                "Продолжить?"))
+            return;
+
+        try
+        {
+            var (ok, output) = await NetworkResetService.RunAllAsync();
+            UiHelpers.ShowResult(OwnerWindow, "Сброс сетевых настроек",
+                output + (ok ? "\n\nРекомендуется перезагрузить компьютер." : ""));
+        }
+        catch (Exception ex)
+        {
+            UiHelpers.ShowResult(OwnerWindow, "Сброс сетевых настроек", $"Ошибка: {ex.Message}");
+        }
     }
 
     private async Task UpdateIpsetWithDialog()
