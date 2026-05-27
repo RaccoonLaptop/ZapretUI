@@ -3,10 +3,77 @@ using System.Windows.Media;
 
 namespace ZapretUI.Controls.Backgrounds;
 
+public sealed class MeteorsBackground : AnimatedBackgroundBase
+{
+    private readonly List<Meteor> _meteors = new();
+    private double _spawnAccum;
+
+    private sealed class Meteor
+    {
+        public double X, Y, Angle, Speed, Length, Opacity, Phase;
+    }
+
+    protected override void OnDimensionsChanged()
+    {
+        _meteors.Clear();
+        var count = Math.Clamp((int)(AreaWidth * AreaHeight / 25000), 12, 28);
+        for (var i = 0; i < count; i++)
+            _meteors.Add(CreateMeteor(randomPhase: true));
+    }
+
+    protected override void AnimateFrame(double timeMs)
+    {
+        _spawnAccum += 16 * MotionSpeed;
+        if (_spawnAccum > 400 && _meteors.Count < 35)
+        {
+            _meteors.Add(CreateMeteor());
+            _spawnAccum = 0;
+        }
+
+        for (var i = _meteors.Count - 1; i >= 0; i--)
+        {
+            var m = _meteors[i];
+            m.Phase += m.Speed * MotionSpeed;
+            m.Opacity = Math.Max(0, 1 - m.Phase / 900);
+            if (m.Opacity <= 0 || m.X > AreaWidth + 200 || m.Y > AreaHeight + 200)
+                _meteors.RemoveAt(i);
+        }
+    }
+
+    protected override void RenderFrame(DrawingContext dc, double timeMs)
+    {
+        foreach (var m in _meteors)
+        {
+            var head = new Point(m.X + Math.Cos(m.Angle) * m.Phase, m.Y + Math.Sin(m.Angle) * m.Phase);
+            var tail = new Point(m.X + Math.Cos(m.Angle) * (m.Phase - m.Length), m.Y + Math.Sin(m.Angle) * (m.Phase - m.Length));
+            var pen = new Pen(new SolidColorBrush(Color.FromArgb((byte)(m.Opacity * 200), 255, 255, 255)), 1.5)
+            {
+                StartLineCap = PenLineCap.Round,
+                EndLineCap = PenLineCap.Round
+            };
+            pen.Freeze();
+            dc.DrawLine(pen, tail, head);
+        }
+    }
+
+    private Meteor CreateMeteor(bool randomPhase = false)
+    {
+        var angle = Math.PI / 4 + (Rng.NextDouble() - 0.5) * 0.15;
+        return new Meteor
+        {
+            X = Rng.NextDouble() * AreaWidth * 1.2 - AreaWidth * 0.1,
+            Y = Rng.NextDouble() * AreaHeight * 0.55,
+            Angle = angle,
+            Speed = 4 + Rng.NextDouble() * 6,
+            Length = 60 + Rng.NextDouble() * 80,
+            Opacity = 1,
+            Phase = randomPhase ? Rng.NextDouble() * 400 : 0
+        };
+    }
+}
+
 public sealed class SparklesBackground : AnimatedBackgroundBase
 {
-    private const double DriftPxPerSec = 18;
-
     private readonly List<Particle> _particles = new();
 
     private sealed class Particle
@@ -18,19 +85,18 @@ public sealed class SparklesBackground : AnimatedBackgroundBase
     {
         _particles.Clear();
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var count = Math.Clamp((int)(AreaWidth * AreaHeight / 1_000_000 * 450), 40, 700);
+        var count = Math.Clamp((int)(AreaWidth * AreaHeight / 8000), 60, 400);
         for (var i = 0; i < count; i++)
             _particles.Add(CreateParticle());
     }
 
-    protected override void AnimateFrame(double timeMs, double deltaMs)
+    protected override void AnimateFrame(double timeMs)
     {
-        var dt = DtSec(deltaMs);
         foreach (var p in _particles)
         {
-            p.X += p.SpeedX * dt;
-            p.Y += p.SpeedY * dt;
-            p.Opacity += p.OpacityDir * p.OpacitySpeed * dt;
+            p.X += p.SpeedX * MotionSpeed;
+            p.Y += p.SpeedY * MotionSpeed;
+            p.Opacity += p.OpacityDir * p.OpacitySpeed * MotionSpeed;
             if (p.Opacity <= 0) { p.Opacity = 0; p.OpacityDir = 1; }
             else if (p.Opacity >= 1) { p.Opacity = 1; p.OpacityDir = -1; }
             if (p.X < 0) p.X = AreaWidth;
@@ -43,7 +109,7 @@ public sealed class SparklesBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         foreach (var p in _particles)
-            DrawCircle(dc, Colors.White, p.Opacity, new Point(p.X, p.Y), p.Size);
+            DrawCircle(dc, Colors.White, p.Opacity * 0.85, new Point(p.X, p.Y), p.Size);
     }
 
     private Particle CreateParticle() => new()
@@ -51,11 +117,11 @@ public sealed class SparklesBackground : AnimatedBackgroundBase
         X = Rng.NextDouble() * AreaWidth,
         Y = Rng.NextDouble() * AreaHeight,
         Size = 0.4 + Rng.NextDouble() * 1.0,
-        SpeedX = (Rng.NextDouble() - 0.5) * DriftPxPerSec,
-        SpeedY = (Rng.NextDouble() - 0.5) * DriftPxPerSec,
+        SpeedX = (Rng.NextDouble() - 0.5) * 0.4,
+        SpeedY = (Rng.NextDouble() - 0.5) * 0.4,
         Opacity = Rng.NextDouble(),
         OpacityDir = Rng.NextDouble() > 0.5 ? 1 : -1,
-        OpacitySpeed = 0.35 + Rng.NextDouble() * 0.45
+        OpacitySpeed = 0.004 + Rng.NextDouble() * 0.01
     };
 }
 
@@ -64,17 +130,14 @@ public sealed class AuroraBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0;
+        var t = ScaledTimeSec(timeMs);
         var colors = new[] { ParseColor("#00d2ff"), ParseColor("#7928ca"), ParseColor("#ff0080") };
         for (var i = 0; i < 3; i++)
         {
             var cx = AreaWidth * (0.3 + 0.2 * i) + Math.Sin(t * 0.3 + i) * AreaWidth * 0.15;
             var cy = AreaHeight * 0.5 + Math.Cos(t * 0.25 + i * 1.7) * AreaHeight * 0.2;
             var r = Math.Min(AreaWidth, AreaHeight) * (0.35 + 0.05 * Math.Sin(t + i));
-            var brush = new RadialGradientBrush(colors[i], Color.FromArgb(0, 0, 0, 0))
-            {
-                Opacity = 0.22
-            };
+            var brush = new RadialGradientBrush(colors[i], Color.FromArgb(0, 0, 0, 0)) { Opacity = 0.22 };
             brush.Freeze();
             dc.DrawEllipse(brush, null, new Point(cx, cy), r, r * 0.6);
         }
@@ -87,30 +150,28 @@ public sealed class VortexBackground : AnimatedBackgroundBase
 
     private sealed class VParticle
     {
-        public double Angle, Radius, SpeedRadPerSec, Size;
+        public double Angle, Radius, Speed, Size;
     }
 
     protected override void OnDimensionsChanged()
     {
         _particles.Clear();
-        var count = Math.Clamp(180, 50, 500);
-        for (var i = 0; i < count; i++)
+        for (var i = 0; i < 280; i++)
         {
             _particles.Add(new VParticle
             {
                 Angle = Rng.NextDouble() * Math.PI * 2,
                 Radius = Rng.NextDouble() * Math.Min(AreaWidth, AreaHeight) * 0.45,
-                SpeedRadPerSec = 0.035 + Rng.NextDouble() * 0.055,
+                Speed = 0.002 + Rng.NextDouble() * 0.004,
                 Size = 0.6 + Rng.NextDouble() * 1.4
             });
         }
     }
 
-    protected override void AnimateFrame(double timeMs, double deltaMs)
+    protected override void AnimateFrame(double timeMs)
     {
-        var dt = DtSec(deltaMs);
         foreach (var p in _particles)
-            p.Angle += p.SpeedRadPerSec * dt;
+            p.Angle += p.Speed * MotionSpeed;
     }
 
     protected override void RenderFrame(DrawingContext dc, double timeMs)
@@ -146,7 +207,6 @@ public sealed class VortexBackground : AnimatedBackgroundBase
 public sealed class GridBackground : AnimatedBackgroundBase
 {
     private readonly bool _dots;
-
     public GridBackground(bool dots) => _dots = dots;
 
     protected override void RenderFrame(DrawingContext dc, double timeMs)
@@ -184,24 +244,23 @@ public sealed class RippleBackground : AnimatedBackgroundBase
 
     protected override void OnDimensionsChanged() => _ripples.Clear();
 
-    protected override void AnimateFrame(double timeMs, double deltaMs)
+    protected override void AnimateFrame(double timeMs)
     {
-        var dt = DtSec(deltaMs);
-        if (Rng.NextDouble() < 0.02 * (MotionSpeed / 1.0) && _ripples.Count < 6)
+        if (Rng.NextDouble() < 0.02 * MotionSpeed && _ripples.Count < 6)
         {
             _ripples.Add(new Ripple
             {
                 X = Rng.NextDouble() * AreaWidth,
                 Y = Rng.NextDouble() * AreaHeight,
                 Radius = 0,
-                Speed = 40 + Rng.NextDouble() * 60,
+                Speed = 1.2 + Rng.NextDouble(),
                 MaxRadius = 80 + Rng.NextDouble() * 160
             });
         }
 
         for (var i = _ripples.Count - 1; i >= 0; i--)
         {
-            _ripples[i].Radius += _ripples[i].Speed * dt;
+            _ripples[i].Radius += _ripples[i].Speed * MotionSpeed;
             if (_ripples[i].Radius > _ripples[i].MaxRadius)
                 _ripples.RemoveAt(i);
         }
@@ -224,7 +283,7 @@ public sealed class WavyBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0;
+        var t = ScaledTimeSec(timeMs);
         for (var wave = 0; wave < 4; wave++)
         {
             var geometry = new StreamGeometry();
@@ -252,7 +311,7 @@ public sealed class GradientAnimationBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 9000.0;
+        var t = timeMs / 5000.0 * MotionSpeed;
         var c1 = ParseColor("#1271FF");
         var c2 = ParseColor("#DD4AFF");
         var c3 = ParseColor("#64DCFF");
@@ -269,18 +328,16 @@ public sealed class LinesBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0;
+        var t = ScaledTimeSec(timeMs);
         var cx = AreaWidth / 2;
         var cy = AreaHeight / 2;
         for (var i = 0; i < 40; i++)
         {
-            var angle = t * 0.08 + i * (Math.PI * 2 / 40);
+            var angle = t * 0.15 + i * (Math.PI * 2 / 40);
             var len = Math.Max(AreaWidth, AreaHeight) * 0.6;
             var pen = new Pen(new SolidColorBrush(Color.FromArgb(22, 129, 140, 248)), 1);
             pen.Freeze();
-            dc.DrawLine(pen,
-                new Point(cx, cy),
-                new Point(cx + Math.Cos(angle) * len, cy + Math.Sin(angle) * len));
+            dc.DrawLine(pen, new Point(cx, cy), new Point(cx + Math.Cos(angle) * len, cy + Math.Sin(angle) * len));
         }
     }
 }
@@ -290,12 +347,10 @@ public sealed class SpotlightBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0;
+        var t = ScaledTimeSec(timeMs);
         var x = AreaWidth * 0.5 + Math.Sin(t * 0.4) * AreaWidth * 0.25;
         var y = AreaHeight * 0.45 + Math.Cos(t * 0.35) * AreaHeight * 0.2;
-        var brush = new RadialGradientBrush(
-            Color.FromArgb(55, 129, 140, 248),
-            Color.FromArgb(0, 0, 0, 0));
+        var brush = new RadialGradientBrush(Color.FromArgb(55, 129, 140, 248), Color.FromArgb(0, 0, 0, 0));
         brush.Freeze();
         dc.DrawEllipse(brush, null, new Point(x, y), 220, 220);
     }
@@ -306,14 +361,11 @@ public sealed class BeamsBackground : AnimatedBackgroundBase
     protected override void RenderFrame(DrawingContext dc, double timeMs)
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
-        var t = timeMs / 1000.0;
+        var t = ScaledTimeSec(timeMs);
         for (var i = 0; i < 6; i++)
         {
-            var offset = (t * 18 + i * 120) % (AreaWidth + 200) - 100;
-            var brush = new LinearGradientBrush(
-                Color.FromArgb(0, 107, 159, 255),
-                Color.FromArgb(35, 107, 159, 255),
-                90);
+            var offset = (t * 40 + i * 120) % (AreaWidth + 200) - 100;
+            var brush = new LinearGradientBrush(Color.FromArgb(0, 107, 159, 255), Color.FromArgb(35, 107, 159, 255), 90);
             brush.Freeze();
             var rect = new Rect(offset, -50, 60, AreaHeight + 100);
             dc.PushTransform(new RotateTransform(-18, offset + 30, AreaHeight / 2));
