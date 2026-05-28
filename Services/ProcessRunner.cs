@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using ZapretUI.Helpers;
 
 namespace ZapretUI.Services;
 
@@ -62,7 +63,7 @@ public sealed class ProcessRunner
         if (action == "RunTests")
         {
             RunInteractiveTest();
-            return "Открыто окно тестирования стратегий.";
+            return Loc.T("runner.test_window_open");
         }
 
         var scriptPath = ResolveBridgeScript();
@@ -77,7 +78,7 @@ public sealed class ProcessRunner
 
         if (needsAdmin)
         {
-            Emit("Требуются права администратора — подтвердите UAC...");
+            Emit(Loc.T("runner.uac_required"));
             var psi = new ProcessStartInfo
             {
                 FileName = "powershell.exe",
@@ -89,7 +90,7 @@ public sealed class ProcessRunner
             using var process = Process.Start(psi);
             if (process is not null)
                 await process.WaitForExitAsync(ct);
-            var msg = $"--- {action} завершено (окно администратора) ---";
+            var msg = Loc.F("runner.admin_action_done", action);
             Emit(msg);
             return msg;
         }
@@ -107,9 +108,9 @@ public sealed class ProcessRunner
             OutputReceived -= Capture;
         }
 
-        var result = captured.Length > 0 ? captured.ToString().TrimEnd() : "Операция завершена.";
+        var result = captured.Length > 0 ? captured.ToString().TrimEnd() : Loc.T("runner.operation_done");
         if (exitCode != 0)
-            throw new InvalidOperationException(string.IsNullOrWhiteSpace(result) ? $"Ошибка: {action}" : result);
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(result) ? $"{Loc.T("common.error_prefix")} {action}" : result);
 
         return result;
     }
@@ -125,11 +126,9 @@ public sealed class ProcessRunner
         var root = _zapretRoot ?? ZapretPaths.DetectRoot();
         var testScript = ResolveTestScript(root);
         if (testScript is null)
-            throw new FileNotFoundException(
-                "Скрипт test zapret.ps1 не найден в папке zapret\\utils.\n" +
-                "Обновите компоненты Flowseal через «Сервис → Обновления» или переустановите программу.");
+            throw new FileNotFoundException(Loc.T("runner.script_missing"));
 
-        Emit("Открывается окно тестирования стратегий...");
+        Emit(Loc.T("runner.test_opening"));
         Process.Start(new ProcessStartInfo
         {
             FileName = "powershell.exe",
@@ -139,7 +138,7 @@ public sealed class ProcessRunner
         });
     }
 
-    private static string? ResolveTestScript(string root)
+    public static string? ResolveTestScript(string root)
     {
         var utils = Path.Combine(root, "utils");
         if (!Directory.Exists(utils)) return null;

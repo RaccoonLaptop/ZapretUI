@@ -24,6 +24,8 @@ public sealed class AppSettings
     public string HomeBackground { get; set; } = "wavy";
     /// <summary>Язык интерфейса: ru или en.</summary>
     public string Language { get; set; } = "ru";
+    /// <summary>Запускать Zapret UI в трее при входе в Windows (вместе со службой).</summary>
+    public bool StartUiOnLogin { get; set; } = true;
 
     public static AppSettings Load()
     {

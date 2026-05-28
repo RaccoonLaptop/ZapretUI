@@ -18,7 +18,7 @@ public sealed class FindReplaceDialog : Window
     {
         _editor = editor;
         Owner = owner;
-        Title = "Найти и заменить";
+        Title = Loc.T("findreplace.title");
         Width = 520;
         SizeToContent = SizeToContent.Height;
         MinHeight = 300;
@@ -28,29 +28,29 @@ public sealed class FindReplaceDialog : Window
         AppIcon.ApplyTo(this);
 
         var root = new StackPanel { Margin = new Thickness(20, 20, 20, 28) };
-        root.Children.Add(Label("Найти:"));
+        root.Children.Add(Label(Loc.T("findreplace.find_label")));
         _findBox = new TextBox { Margin = new Thickness(0, 0, 0, 10) };
         root.Children.Add(_findBox);
 
-        root.Children.Add(Label("Заменить на:"));
+        root.Children.Add(Label(Loc.T("findreplace.replace_label")));
         _replaceBox = new TextBox { Margin = new Thickness(0, 0, 0, 10) };
         root.Children.Add(_replaceBox);
 
         _matchCase = new CheckBox
         {
-            Content = "Учитывать регистр",
+            Content = Loc.T("findreplace.match_case"),
             Margin = new Thickness(0, 0, 0, 12)
         };
         root.Children.Add(_matchCase);
 
         var findRow = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) };
-        findRow.Children.Add(MakeBtn("Найти далее", FindNext));
-        findRow.Children.Add(MakeBtn("Найти ранее", FindPrevious));
+        findRow.Children.Add(MakeBtn(Loc.T("findreplace.find_next"), FindNext));
+        findRow.Children.Add(MakeBtn(Loc.T("findreplace.find_prev"), FindPrevious));
         root.Children.Add(findRow);
 
         var replRow = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) };
-        replRow.Children.Add(MakeBtn("Заменить", ReplaceOne));
-        replRow.Children.Add(MakeBtn("Заменить все", ReplaceAll));
+        replRow.Children.Add(MakeBtn(Loc.T("findreplace.replace_one"), ReplaceOne));
+        replRow.Children.Add(MakeBtn(Loc.T("findreplace.replace_all"), ReplaceAll));
         root.Children.Add(replRow);
 
         var closeRow = new StackPanel
@@ -59,7 +59,7 @@ public sealed class FindReplaceDialog : Window
             HorizontalAlignment = HorizontalAlignment.Right,
             Margin = new Thickness(0, 12, 0, 4)
         };
-        var close = MakeBtn("Закрыть", (_, _) => Close());
+        var close = MakeBtn(Loc.T("common.close"), (_, _) => Close());
         close.IsCancel = true;
         closeRow.Children.Add(close);
         root.Children.Add(closeRow);
@@ -99,7 +99,7 @@ public sealed class FindReplaceDialog : Window
         var needle = _findBox.Text;
         if (string.IsNullOrEmpty(needle))
         {
-            UiHelpers.ShowInfo("Введите текст для поиска");
+            UiHelpers.ShowInfo(Loc.T("findreplace.enter_search"));
             return;
         }
 
@@ -130,7 +130,7 @@ public sealed class FindReplaceDialog : Window
 
         if (index < 0)
         {
-            UiHelpers.ShowInfo("Совпадений не найдено");
+            UiHelpers.ShowInfo(Loc.T("findreplace.not_found"));
             return;
         }
 
@@ -189,7 +189,7 @@ public sealed class FindReplaceDialog : Window
             count++;
         }
 
-        UiHelpers.ShowInfo(count > 0 ? $"Заменено вхождений: {count}" : "Совпадений не найдено");
+        UiHelpers.ShowInfo(count > 0 ? Loc.F("findreplace.replaced_count", count) : Loc.T("findreplace.not_found"));
     }
 
     private void SelectMatch(int index, int length)

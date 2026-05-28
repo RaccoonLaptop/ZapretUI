@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using Microsoft.Win32;
 using ZapretUI.Helpers;
 
 namespace ZapretUI.Services;
@@ -34,7 +35,20 @@ public sealed class StrategyService
             catch { /* ignore */ }
         }
 
-        return IsRunning() ? _lastStartedStrategy : null;
+        return IsRunning() ? (_lastStartedStrategy ?? TryGetServiceStrategyName()) : null;
+    }
+
+    private static string? TryGetServiceStrategyName()
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(@"System\CurrentControlSet\Services\zapret");
+            return key?.GetValue("zapret-discord-youtube") as string;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async Task StartStrategyAsync(string batFileName, CancellationToken ct = default)
@@ -108,11 +122,11 @@ public sealed class StrategyService
     public void DeleteStrategy(string batFileName)
     {
         if (!CanDeleteStrategy(batFileName))
-            throw new InvalidOperationException("Нельзя удалить служебный файл service.bat");
+            throw new InvalidOperationException(Loc.T("strategies.cannot_delete_service"));
 
         var path = Path.Combine(_paths.Root, batFileName);
         if (!File.Exists(path))
-            throw new FileNotFoundException("Файл не найден", batFileName);
+            throw new FileNotFoundException(Loc.T("common.file_not_found"), batFileName);
 
         File.Delete(path);
     }
@@ -126,14 +140,14 @@ public sealed class StrategyService
             return oldName;
 
         if (oldName.StartsWith("service", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Нельзя переименовать служебный файл service.bat");
+            throw new InvalidOperationException(Loc.T("strategies.cannot_rename_service"));
 
         var oldPath = Path.Combine(_paths.Root, oldName);
         var newPath = Path.Combine(_paths.Root, newName);
         if (!File.Exists(oldPath))
-            throw new FileNotFoundException("Файл не найден", oldName);
+            throw new FileNotFoundException(Loc.T("common.file_not_found"), oldName);
         if (File.Exists(newPath))
-            throw new InvalidOperationException("Файл с таким именем уже существует");
+            throw new InvalidOperationException(Loc.T("strategies.file_exists"));
 
         File.Move(oldPath, newPath);
         return newName;
