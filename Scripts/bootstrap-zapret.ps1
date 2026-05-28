@@ -38,6 +38,15 @@ try {
         throw 'Downloaded package is invalid (service.bat or bin missing).'
     }
 
+    $utilsDir = Join-Path $TargetDir 'utils'
+    $targetsFile = Join-Path $utilsDir 'targets.txt'
+    $bundledTargets = Join-Path $PSScriptRoot 'targets.txt'
+    if (-not (Test-Path $targetsFile) -and (Test-Path $bundledTargets)) {
+        New-Item -ItemType Directory -Path $utilsDir -Force | Out-Null
+        Copy-Item -Path $bundledTargets -Destination $targetsFile -Force
+        Write-Host "Installed default targets.txt for strategy tests."
+    }
+
     Write-Host "Zapret installed to $TargetDir (version $($release.tag_name))"
 }
 finally {
