@@ -24,7 +24,7 @@ public class SetupWindow : Window
 
     private void BuildUi()
     {
-        Title = "Установка Zapret UI — Niko";
+        Title = Loc.T("setup.title");
         Width = 560;
         Height = 520;
         MinHeight = 500;
@@ -43,7 +43,7 @@ public class SetupWindow : Window
 
         var skipBtn = new Button
         {
-            Content = "Пропустить",
+            Content = Loc.T("setup.skip"),
             Style = (Style)Application.Current.FindResource("SecondaryButton"),
             Margin = new Thickness(0, 0, 8, 0),
             IsCancel = true,
@@ -53,7 +53,7 @@ public class SetupWindow : Window
 
         var applyBtn = new Button
         {
-            Content = "Применить",
+            Content = Loc.T("setup.apply"),
             Style = (Style)Application.Current.FindResource("PrimaryButton"),
             IsDefault = true,
             MinWidth = 120
@@ -74,7 +74,7 @@ public class SetupWindow : Window
 
         content.Children.Add(new TextBlock
         {
-            Text = "Настройка безопасности",
+            Text = Loc.T("setup.heading"),
             FontSize = 22,
             FontWeight = FontWeights.Bold,
             Margin = new Thickness(0, 0, 0, 8)
@@ -82,7 +82,7 @@ public class SetupWindow : Window
 
         content.Children.Add(new TextBlock
         {
-            Text = "Zapret использует WinDivert и winws.exe — антивирус и брандмауэр могут их блокировать. Рекомендуем добавить исключения сейчас (нужны права администратора).",
+            Text = Loc.T("setup.desc"),
             TextWrapping = TextWrapping.Wrap,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 0, 0, 20)
@@ -91,7 +91,7 @@ public class SetupWindow : Window
         var plan = _service.BuildPlan();
         var pathsBlock = new TextBlock
         {
-            Text = "Будут добавлены:\n" + string.Join("\n", plan.ExclusionPaths.Concat(plan.ProgramPaths).Select(p => "• " + p)),
+            Text = Loc.F("setup.will_add", string.Join("\n", plan.ExclusionPaths.Concat(plan.ProgramPaths).Select(p => "• " + p))),
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
@@ -101,13 +101,13 @@ public class SetupWindow : Window
 
         _defenderCheck = new CheckBox
         {
-            Content = "Добавить папки в исключения Windows Defender",
+            Content = Loc.T("setup.defender"),
             IsChecked = true,
             Margin = new Thickness(0, 0, 0, 10)
         };
         _firewallCheck = new CheckBox
         {
-            Content = "Разрешить ZapretUI.exe и winws.exe в брандмауэре Windows",
+            Content = Loc.T("setup.firewall"),
             IsChecked = true,
             Margin = new Thickness(0, 0, 0, 16)
         };
@@ -129,7 +129,7 @@ public class SetupWindow : Window
     private async Task ApplyAsync(Button applyBtn)
     {
         applyBtn.IsEnabled = false;
-        _statusText.Text = "Применение... Подтвердите UAC.";
+        _statusText.Text = Loc.T("setup.applying");
 
         var result = await _service.ApplyAsync(
             _defenderCheck.IsChecked == true,

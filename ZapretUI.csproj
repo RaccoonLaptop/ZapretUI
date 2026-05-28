@@ -10,7 +10,7 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <AssemblyName>ZapretUI</AssemblyName>
     <RootNamespace>ZapretUI</RootNamespace>
-    <Version>1.6.9</Version>
+    <Version>1.7.0</Version>
     <Authors>Niko</Authors>
     <Company>Niko</Company>
     <Product>Zapret UI</Product>
@@ -68,6 +68,7 @@
 
   <ItemGroup>
     <PackageReference Include="AvalonEdit" Version="6.3.0.90" />
+    <PackageReference Include="Porta.Pty" Version="1.0.7" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.0" />
   </ItemGroup>
 

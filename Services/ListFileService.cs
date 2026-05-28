@@ -1,4 +1,5 @@
 using System.IO;
+using ZapretUI.Helpers;
 
 namespace ZapretUI.Services;
 
@@ -47,12 +48,11 @@ public sealed class ListFileService
     public void DeleteList(string fileName)
     {
         if (!CanDeleteList(fileName))
-            throw new InvalidOperationException(
-                $"Нельзя удалить встроенный список {fileName}. Можно удалять пользовательские и созданные вручную файлы.");
+            throw new InvalidOperationException(Loc.F("lists.cannot_delete_bundled", fileName));
 
         var path = Path.Combine(_paths.Lists, fileName);
         if (!File.Exists(path))
-            throw new FileNotFoundException("Файл не найден", fileName);
+            throw new FileNotFoundException(Loc.T("common.file_not_found"), fileName);
         File.Delete(path);
     }
 

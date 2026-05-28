@@ -21,12 +21,14 @@ public partial class MainWindow : Window
     private readonly ProcessRunner _runner;
     private readonly DispatcherTimer _statusTimer;
     private readonly TrayIconService _tray;
+    private readonly bool _startInTray;
     private Button? _activeNav;
     private HomePage? _homePage;
     private bool _isShuttingDown;
 
-    public MainWindow()
+    public MainWindow(bool startInTray = false)
     {
+        _startInTray = startInTray;
         _settings = AppSettings.Load();
         InitializeComponent();
         ApplyShellLocalization();
@@ -86,6 +88,9 @@ public partial class MainWindow : Window
 
             if (!_settings.SecuritySetupCompleted && !_settings.SecuritySetupSkipped)
                 ShowSecuritySetup();
+
+            if (_startInTray)
+                HideToTray();
         }
         catch (Exception ex)
         {
@@ -218,7 +223,7 @@ public partial class MainWindow : Window
         AddNav(Loc.T("nav.strategies"), () => Navigate(new StrategiesPage(_paths, _strategy, _settings)));
         AddNav(Loc.T("nav.service"), () => Navigate(new ServicePage(_paths, _strategy)));
         AddNav(Loc.T("nav.diagnostics"), () => Navigate(new DiagnosticsPage(_runner)));
-        AddNav(Loc.T("nav.test"), () => Navigate(new TestStrategiesPage(_runner)));
+        AddNav(Loc.T("nav.test"), () => Navigate(new TestStrategiesPage(_paths)));
     }
 
     private void NavigateHome()
