@@ -8,7 +8,7 @@ public sealed class ServiceSettingsService
 
     public ServiceSettingsService(ZapretPaths paths) => _paths = paths;
 
-    public string GetGameFilterStatus()
+    public string GetGameFilterMode()
     {
         var flag = Path.Combine(_paths.Utils, "game_filter.enabled");
         if (!File.Exists(flag)) return "disabled";
@@ -16,6 +16,17 @@ public sealed class ServiceSettingsService
         var mode = File.ReadAllText(flag).Trim().ToLowerInvariant();
         return mode switch
         {
+            "tcp" => "tcp",
+            "udp" => "udp",
+            _ => "all"
+        };
+    }
+
+    public string GetGameFilterStatus()
+    {
+        return GetGameFilterMode() switch
+        {
+            "disabled" => "disabled",
             "all" => "enabled (TCP and UDP)",
             "tcp" => "enabled (TCP)",
             "udp" => "enabled (UDP)",
@@ -48,30 +59,45 @@ public sealed class ServiceSettingsService
         return "loaded";
     }
 
-    public void CycleIpsetFilter()
+    public void SetIpsetFilter(string mode)
     {
         var listFile = Path.Combine(_paths.Lists, "ipset-all.txt");
         var backupFile = listFile + ".backup";
-        var status = GetIpsetStatus();
+        Directory.CreateDirectory(_paths.Lists);
 
-        switch (status)
+        var current = GetIpsetStatus();
+        if (current == mode.ToLowerInvariant())
+            return;
+
+        switch (mode.ToLowerInvariant())
         {
-            case "loaded":
-                if (File.Exists(backupFile)) File.Delete(backupFile);
-                if (File.Exists(listFile)) File.Move(listFile, backupFile);
+            case "none":
+                if (current == "loaded" && File.Exists(listFile))
+                {
+                    if (File.Exists(backupFile)) File.Delete(backupFile);
+                    File.Move(listFile, backupFile);
+                }
                 File.WriteAllText(listFile, "203.0.113.113/32" + Environment.NewLine);
                 break;
-            case "none":
+            case "any":
+                if (current == "loaded" && File.Exists(listFile))
+                {
+                    if (File.Exists(backupFile)) File.Delete(backupFile);
+                    File.Move(listFile, backupFile);
+                }
                 File.WriteAllText(listFile, "");
                 break;
-            case "any":
+            case "loaded":
                 if (File.Exists(backupFile))
                 {
                     if (File.Exists(listFile)) File.Delete(listFile);
                     File.Move(backupFile, listFile);
                 }
-                else throw new InvalidOperationException("No backup to restore. Update IPSet list first.");
+                else
+                    throw new InvalidOperationException("No backup to restore. Update IPSet list first.");
                 break;
+            default:
+                throw new ArgumentException($"Unknown IPSet mode: {mode}", nameof(mode));
         }
     }
 

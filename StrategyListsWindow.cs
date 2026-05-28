@@ -82,6 +82,14 @@ public sealed class StrategyListsWindow : Window
         leftStack.Children.Add(_list);
 
         var leftBtns = new StackPanel { Margin = new Thickness(0, 10, 0, 0) };
+        var openListsFolderBtn = new Button
+        {
+            Content = Loc.T("strategies.open_lists_folder"),
+            Style = (Style)Application.Current.FindResource("SecondaryButton"),
+            Margin = new Thickness(0, 0, 0, 6)
+        };
+        openListsFolderBtn.Click += (_, _) => UiHelpers.OpenFolder(_paths.Lists);
+        leftBtns.Children.Add(openListsFolderBtn);
         var refreshBtn = new Button
         {
             Content = "Обновить из конфига",

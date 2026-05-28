@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -43,4 +45,20 @@ public static class UiHelpers
         Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
         Margin = new Thickness(0, 16, 0, 8)
     };
+
+    public static void OpenFolder(string path)
+    {
+        var full = Path.GetFullPath(path);
+        if (!Directory.Exists(full))
+        {
+            ShowError(Loc.F("common.folder_missing", full));
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = full,
+            UseShellExecute = true
+        });
+    }
 }
