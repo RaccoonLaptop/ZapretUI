@@ -1,50 +1,56 @@
-using System.Diagnostics;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using ZapretUI.Helpers;
 using ZapretUI.Services;
 
-namespace ZapretUI;
+namespace ZapretUI.Pages;
 
-public sealed class ToolsWindow : Window
+public partial class DiagnosticsPage : UserControl
 {
     private readonly ProcessRunner _runner;
-    private readonly RichTextBox _output;
+    private RichTextBox _output = null!;
 
-    public ToolsWindow(ZapretPaths paths, ProcessRunner runner)
+    public DiagnosticsPage(ProcessRunner runner)
     {
         _runner = runner;
+        BuildUi();
+        ConsoleLog.Instance.LineAdded += OnLineAdded;
+        Unloaded += (_, _) => ConsoleLog.Instance.LineAdded -= OnLineAdded;
+    }
 
-        Title = LocalizationService.IsEnglish ? "Zapret UI — Console (Niko)" : "Zapret UI — Консоль (Niko)";
-        Width = 720;
-        Height = 520;
-        MinWidth = 500;
-        MinHeight = 360;
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Background = (Brush)Application.Current.FindResource("BgBrush");
-        AppIcon.ApplyTo(this);
+    private void BuildUi()
+    {
+        var root = new DockPanel();
 
-        var root = new DockPanel { Margin = new Thickness(16) };
-
-        var header = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+        var header = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
         DockPanel.SetDock(header, Dock.Top);
         header.Children.Add(new TextBlock
         {
-            Text = Loc.T("tools.title"),
-            FontSize = 22,
+            Text = Loc.T("tools.diagnostics"),
+            FontSize = 28,
             FontWeight = FontWeights.Bold
         });
         header.Children.Add(new TextBlock
         {
-            Text = Loc.T("tools.subtitle"),
+            Text = Loc.T("tools.diagnostics_subtitle"),
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-            Margin = new Thickness(0, 4, 0, 0)
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 6, 0, 0)
         });
         root.Children.Add(header);
+
+        var toolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
+        DockPanel.SetDock(toolbar, Dock.Top);
+        toolbar.Children.Add(MakeButton(Loc.T("tools.diagnostics"), async () => await RunDiagnosticsAsync()));
+        toolbar.Children.Add(MakeButton(Loc.T("tools.clear"), () =>
+        {
+            _output.Document.Blocks.Clear();
+            AppendLine(Loc.T("tools.cleared"));
+            return Task.CompletedTask;
+        }));
+        root.Children.Add(toolbar);
 
         _output = new RichTextBox
         {
@@ -58,18 +64,6 @@ public sealed class ToolsWindow : Window
             BorderThickness = new Thickness(0),
             Document = new FlowDocument { PagePadding = new Thickness(4) }
         };
-
-        var toolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
-        DockPanel.SetDock(toolbar, Dock.Top);
-        toolbar.Children.Add(MakeButton(Loc.T("tools.diagnostics"), async () => await RunDiagnosticsAsync()));
-        toolbar.Children.Add(MakeButton(Loc.T("tools.test"), async () => await RunTestsAsync()));
-        toolbar.Children.Add(MakeButton(Loc.T("tools.clear"), () =>
-        {
-            _output.Document.Blocks.Clear();
-            AppendLine(Loc.T("tools.cleared"));
-            return Task.CompletedTask;
-        }));
-        root.Children.Add(toolbar);
         AppendLine(Loc.T("tools.intro"));
 
         var border = new Border
@@ -84,12 +78,9 @@ public sealed class ToolsWindow : Window
         root.Children.Add(border);
 
         Content = root;
-
-        ConsoleLog.Instance.LineAdded += OnLineAdded;
-        Closed += (_, _) => ConsoleLog.Instance.LineAdded -= OnLineAdded;
     }
 
-    private Button MakeButton(string text, Func<Task> action)
+    private static Button MakeButton(string text, Func<Task> action)
     {
         var btn = new Button
         {
@@ -118,30 +109,17 @@ public sealed class ToolsWindow : Window
 
     private async Task RunDiagnosticsAsync()
     {
-        AppendLine("--- Диагностика ---");
+        AppendLine("--- " + Loc.T("tools.diagnostics") + " ---");
         try
         {
             var result = await _runner.RunBridgeAsync("RunDiagnostics");
             if (!string.IsNullOrWhiteSpace(result))
                 AppendLine(result);
-            AppendLine("--- Готово ---");
+            AppendLine("--- " + Loc.T("tools.done") + " ---");
         }
         catch (Exception ex)
         {
             AppendLine($"{Loc.T("common.error_prefix")} {ex.Message}");
-        }
-    }
-
-    private async Task RunTestsAsync()
-    {
-        try
-        {
-            await _runner.RunInteractiveTestAsync();
-        }
-        catch (Exception ex)
-        {
-            AppendLine($"{Loc.T("common.error_prefix")} {ex.Message}");
-            UiHelpers.ShowError(ex.Message);
         }
     }
 }

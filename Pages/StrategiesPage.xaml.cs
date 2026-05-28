@@ -51,6 +51,10 @@ public partial class StrategiesPage : UserControl
             FontSize = 12,
             Margin = new Thickness(0, 8, 0, 0)
         });
+        var headerBtns = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
+        headerBtns.Children.Add(MakeToolbarBtn(Loc.T("strategies.open_app_folder"), "SecondaryButton",
+            (_, _) => UiHelpers.OpenFolder(AppContext.BaseDirectory)));
+        header.Children.Add(headerBtns);
         Grid.SetRow(header, 0);
         grid.Children.Add(header);
 
@@ -66,7 +70,10 @@ public partial class StrategiesPage : UserControl
             Margin = new Thickness(0, 0, 12, 0)
         };
         var leftStack = new DockPanel();
-        _list = new ListBox { BorderThickness = new Thickness(0) };
+        var listsTopBtn = MakeToolbarBtn(Loc.T("strategies.lists"), "SecondaryButton", (_, _) => OpenListsWindow());
+        DockPanel.SetDock(listsTopBtn, Dock.Top);
+        leftStack.Children.Add(listsTopBtn);
+        _list = new ListBox { BorderThickness = new Thickness(0), Margin = new Thickness(0, 8, 0, 0) };
         _list.SelectionChanged += (_, _) => LoadSelected();
         DockPanel.SetDock(_list, Dock.Top);
         leftStack.Children.Add(_list);
@@ -111,7 +118,6 @@ public partial class StrategiesPage : UserControl
         var copyBtn = MakeToolbarBtn(Loc.T("strategies.copy"), "SecondaryButton", (_, _) => CreateCopy());
         var renameBtn = MakeToolbarBtn(Loc.T("strategies.rename"), "SecondaryButton", (_, _) => RenameCurrent());
         var deleteBtn = MakeToolbarBtn(Loc.T("strategies.delete"), "SecondaryButton", (_, _) => DeleteCurrent());
-        var listsBtn = MakeToolbarBtn(Loc.T("strategies.lists"), "SecondaryButton", (_, _) => OpenListsWindow());
         var findBtn = MakeToolbarBtn(Loc.T("strategies.find"), "SecondaryButton", (_, _) => OpenFindReplace());
 
         editorToolbar.Children.Add(saveBtn);
@@ -119,7 +125,6 @@ public partial class StrategiesPage : UserControl
         editorToolbar.Children.Add(copyBtn);
         editorToolbar.Children.Add(renameBtn);
         editorToolbar.Children.Add(deleteBtn);
-        editorToolbar.Children.Add(listsBtn);
         editorToolbar.Children.Add(findBtn);
         rightStack.Children.Add(editorToolbar);
 

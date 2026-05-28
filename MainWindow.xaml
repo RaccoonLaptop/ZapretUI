@@ -1,4 +1,4 @@
-﻿<Window x:Class="ZapretUI.MainWindow"
+<Window x:Class="ZapretUI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
@@ -67,10 +67,8 @@
                                 <TextBlock x:Name="VersionText" Text="v1.2.8" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
                             </StackPanel>
 
-                            <StackPanel x:Name="NavPanel" DockPanel.Dock="Top"/>
-
-                            <StackPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
-                                <Border Background="#7A181b26" CornerRadius="8" Padding="10" Margin="0,0,0,8">
+                            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                                <Border Background="#7A181b26" CornerRadius="8" Padding="10">
                                     <StackPanel>
                                         <TextBlock x:Name="StatusHeader" Text="Статус" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
                                         <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
@@ -80,26 +78,24 @@
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
+
+                            <StackPanel x:Name="NavPanel" DockPanel.Dock="Top"/>
+
+                            <Button x:Name="BgSwitchBtn"
+                                    DockPanel.Dock="Bottom"
+                                    Style="{StaticResource SecondaryButton}"
+                                    FontSize="11"
+                                    Padding="10,8"
+                                    HorizontalContentAlignment="Left"
+                                    Opacity="0.55"
+                                    Margin="0,12,0,0"
+                                    ToolTip="Сменить фоновую анимацию"
+                                    Click="BgSwitchBtn_Click"/>
                         </DockPanel>
                     </Border>
 
                     <Grid Grid.Column="1" Margin="24">
                         <ContentControl x:Name="PageHost" Background="Transparent"/>
-
-                        <StackPanel x:Name="BgControlsPanel"
-                                    Panel.ZIndex="20"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Bottom"
-                                    Margin="0,0,20,16"
-                                    Visibility="Collapsed">
-                            <Button x:Name="BgSwitchBtn"
-                                    Style="{StaticResource SecondaryButton}"
-                                    FontSize="11"
-                                    Padding="10,4"
-                                    Opacity="0.38"
-                                    ToolTip="Сменить фоновую анимацию"
-                                    Click="BgSwitchBtn_Click"/>
-                        </StackPanel>
                     </Grid>
                 </Grid>
             </Grid>
