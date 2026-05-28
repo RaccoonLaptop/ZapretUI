@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -23,7 +23,6 @@ public partial class MainWindow : Window
     private readonly TrayIconService _tray;
     private Button? _activeNav;
     private HomePage? _homePage;
-    private ToolsWindow? _toolsWindow;
     private bool _isShuttingDown;
 
     public MainWindow()
@@ -52,7 +51,12 @@ public partial class MainWindow : Window
         _runner.OutputReceived += line => ConsoleLog.Instance.Write(line);
         _strategy = new StrategyService(_paths, _runner);
 
-        _tray = new TrayIconService(this, ToggleBypassFromTrayAsync);
+        _tray = new TrayIconService(
+            this,
+            ToggleBypassFromTrayAsync,
+            () => _paths.GetStrategyFiles().ToList(),
+            () => _homePage?.GetSelectedStrategy() ?? _settings.LastStrategy,
+            SwitchStrategyFromTrayAsync);
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
 
         VersionText.Text = $"v{AppSelfUpdateService.GetLocalVersion()} · Flowseal {_paths.GetLocalVersion()}";
@@ -97,30 +101,6 @@ public partial class MainWindow : Window
 
     public void RunSecuritySetup() => ShowSecuritySetup();
 
-    public void OpenToolsWindow()
-    {
-        if (_toolsWindow is { IsLoaded: true })
-        {
-            _toolsWindow.Activate();
-            _toolsWindow.Focus();
-            return;
-        }
-
-        _toolsWindow = new ToolsWindow(_paths, _runner)
-        {
-            WindowStartupLocation = WindowStartupLocation.CenterScreen
-        };
-        _toolsWindow.Closed += (_, _) =>
-        {
-            _toolsWindow = null;
-            Show();
-            WindowState = WindowState.Normal;
-            Activate();
-            Focus();
-        };
-        _toolsWindow.Show();
-    }
-
     public void ShutdownApplication()
     {
         ExecuteShutdown();
@@ -157,7 +137,6 @@ public partial class MainWindow : Window
             }
         }
 
-        _toolsWindow?.Close();
         _statusTimer.Stop();
         _tray.Dispose();
         Application.Current.Shutdown();
@@ -238,7 +217,8 @@ public partial class MainWindow : Window
         AddNav(Loc.T("nav.home"), NavigateHome);
         AddNav(Loc.T("nav.strategies"), () => Navigate(new StrategiesPage(_paths, _strategy, _settings)));
         AddNav(Loc.T("nav.service"), () => Navigate(new ServicePage(_paths, _strategy)));
-        AddNav(Loc.T("nav.console"), OpenToolsWindow);
+        AddNav(Loc.T("nav.diagnostics"), () => Navigate(new DiagnosticsPage(_runner)));
+        AddNav(Loc.T("nav.test"), () => Navigate(new TestStrategiesPage(_runner)));
     }
 
     private void NavigateHome()
@@ -277,12 +257,7 @@ public partial class MainWindow : Window
         btn.Style = (Style)FindResource("NavButtonActive");
     }
 
-    private void Navigate(UserControl page)
-    {
-        PageHost.Content = page;
-        var onHome = page is HomePage;
-        BgControlsPanel.Visibility = onHome ? Visibility.Visible : Visibility.Collapsed;
-    }
+    private void Navigate(UserControl page) => PageHost.Content = page;
 
     private void RefreshStatus()
     {
@@ -302,6 +277,13 @@ public partial class MainWindow : Window
             running,
             _strategy.GetRunningStrategyTitle(),
             _homePage?.IsBypassBusy ?? false);
+    }
+
+    private async Task SwitchStrategyFromTrayAsync(string strategy)
+    {
+        if (_homePage is null)
+            NavigateHome();
+        await _homePage!.SwitchStrategyAsync(strategy);
     }
 
     private async Task ToggleBypassFromTrayAsync()

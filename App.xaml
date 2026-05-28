@@ -137,6 +137,13 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
 
+        <Style TargetType="Button" x:Key="SuccessButton" BasedOn="{StaticResource SecondaryButton}">
+            <Setter Property="Background" Value="#1a2614"/>
+            <Setter Property="BorderBrush" Value="{StaticResource SuccessBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
         <Style TargetType="Button" x:Key="TitleBarButton">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>

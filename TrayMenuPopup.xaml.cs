@@ -11,14 +11,27 @@ public partial class TrayMenuPopup : Window
     private readonly Func<Task> _toggleBypassAsync;
     private readonly Action _openWindow;
     private readonly Action _exitApp;
+    private readonly Func<IReadOnlyList<string>> _getStrategies;
+    private readonly Func<string?> _getSelectedStrategy;
+    private readonly Func<string, Task> _switchStrategyAsync;
     private bool _running;
     private bool _busy;
+    private bool _suppressStrategyChange;
 
-    public TrayMenuPopup(Func<Task> toggleBypassAsync, Action openWindow, Action exitApp)
+    public TrayMenuPopup(
+        Func<Task> toggleBypassAsync,
+        Action openWindow,
+        Action exitApp,
+        Func<IReadOnlyList<string>> getStrategies,
+        Func<string?> getSelectedStrategy,
+        Func<string, Task> switchStrategyAsync)
     {
         _toggleBypassAsync = toggleBypassAsync;
         _openWindow = openWindow;
         _exitApp = exitApp;
+        _getStrategies = getStrategies;
+        _getSelectedStrategy = getSelectedStrategy;
+        _switchStrategyAsync = switchStrategyAsync;
         InitializeComponent();
         ApplyLocalization();
         Deactivated += (_, _) => Hide();
@@ -61,6 +74,25 @@ public partial class TrayMenuPopup : Window
 
         OpenBtn.Content = Loc.T("tray.open");
         ExitBtn.Content = Loc.T("tray.exit");
+
+        PopulateStrategyCombo();
+    }
+
+    private void PopulateStrategyCombo()
+    {
+        _suppressStrategyChange = true;
+        var selected = _getSelectedStrategy();
+        StrategyCombo.Items.Clear();
+        foreach (var strategy in _getStrategies())
+            StrategyCombo.Items.Add(strategy);
+
+        if (!string.IsNullOrEmpty(selected) && StrategyCombo.Items.Contains(selected))
+            StrategyCombo.SelectedItem = selected;
+        else if (StrategyCombo.Items.Count > 0)
+            StrategyCombo.SelectedIndex = 0;
+
+        StrategyCombo.IsEnabled = !_busy;
+        _suppressStrategyChange = false;
     }
 
     public void ShowNearCursor()
@@ -109,8 +141,30 @@ public partial class TrayMenuPopup : Window
 
     private void ApplyLocalization()
     {
+        StrategyLabel.Text = Loc.T("tray.strategy_label");
         OpenBtn.Content = Loc.T("tray.open");
         ExitBtn.Content = Loc.T("tray.exit");
+    }
+
+    private async void StrategyCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_suppressStrategyChange) return;
+        if (StrategyCombo.SelectedItem is not string strategy) return;
+
+        StrategyCombo.IsEnabled = false;
+        try
+        {
+            Hide();
+            await _switchStrategyAsync(strategy);
+        }
+        catch (Exception ex)
+        {
+            UiHelpers.ShowError(ex.Message);
+        }
+        finally
+        {
+            StrategyCombo.IsEnabled = !_busy;
+        }
     }
 
     private async void ToggleBtn_Click(object sender, RoutedEventArgs e)

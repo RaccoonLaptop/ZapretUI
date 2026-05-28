@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 using ZapretUI.Helpers;
 using ZapretUI.Services;
@@ -15,11 +14,10 @@ public partial class HomePage : UserControl
     private readonly AppSettings _settings;
     private ComboBox _strategyCombo = null!;
     private Button _toggleBtn = null!;
-    private Ellipse _statusIndicator = null!;
-    private TextBlock _statusLabel = null!;
     private TextBlock _actionStatus = null!;
     private readonly DispatcherTimer _statusTimer;
     private bool _isStarting;
+    private bool _suppressComboChange;
     private CancellationTokenSource? _startCts;
 
     public bool IsBypassBusy => _isStarting;
@@ -34,6 +32,69 @@ public partial class HomePage : UserControl
         BuildUi();
         _statusTimer.Start();
         RefreshToggleUi();
+    }
+
+    public string? GetSelectedStrategy() =>
+        _strategyCombo.SelectedItem as string ?? _settings.LastStrategy;
+
+    public async Task SwitchStrategyAsync(string strategy)
+    {
+        if (!_strategyCombo.Items.Contains(strategy))
+            return;
+
+        _suppressComboChange = true;
+        _strategyCombo.SelectedItem = strategy;
+        _suppressComboChange = false;
+
+        _settings.LastStrategy = strategy;
+        _settings.Save();
+
+        if (!_strategy.IsRunning() && !_isStarting)
+            return;
+
+        if (_isStarting)
+        {
+            _startCts?.Cancel();
+            while (_isStarting)
+                await Task.Delay(50);
+        }
+
+        await _strategy.StopStrategyAsync();
+        _isStarting = false;
+        _actionStatus.Visibility = Visibility.Collapsed;
+
+        _startCts?.Dispose();
+        _startCts = new CancellationTokenSource();
+
+        try
+        {
+            _isStarting = true;
+            _actionStatus.Visibility = Visibility.Visible;
+            _actionStatus.Text = Loc.T("home.prep");
+            RefreshToggleUi();
+            ConsoleLog.Instance.Write(Loc.F("home.log_start", strategy));
+            _actionStatus.Text = Loc.T("home.wait_winws");
+            await _strategy.StartStrategyAsync(strategy, _startCts.Token);
+            ConsoleLog.Instance.Write(Loc.T("home.log_started"));
+            _actionStatus.Text = Loc.T("home.done");
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            ConsoleLog.Instance.Write($"{Loc.T("common.error_prefix")} {ex.Message}");
+            UiHelpers.ShowError(ex.Message);
+            _actionStatus.Text = Loc.T("home.start_error");
+        }
+        finally
+        {
+            _startCts?.Dispose();
+            _startCts = null;
+            _isStarting = false;
+            _actionStatus.Visibility = Visibility.Collapsed;
+            RefreshToggleUi();
+        }
     }
 
     private void BuildUi()
@@ -64,31 +125,6 @@ public partial class HomePage : UserControl
             Margin = new Thickness(0, 0, 0, 28)
         });
 
-        var statusRow = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 0, 0, 20)
-        };
-        _statusIndicator = new Ellipse
-        {
-            Width = 14,
-            Height = 14,
-            Fill = (Brush)Application.Current.FindResource("ErrorBrush"),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        _statusLabel = new TextBlock
-        {
-            Text = Loc.T("status.stopped"),
-            FontSize = 17,
-            FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(10, 0, 0, 0),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        statusRow.Children.Add(_statusIndicator);
-        statusRow.Children.Add(_statusLabel);
-        center.Children.Add(statusRow);
-
         _strategyCombo = new ComboBox
         {
             MinWidth = 400,
@@ -98,6 +134,7 @@ public partial class HomePage : UserControl
         foreach (var s in _paths.GetStrategyFiles())
             _strategyCombo.Items.Add(s);
         SelectDefaultStrategy();
+        _strategyCombo.SelectionChanged += async (_, _) => await OnStrategySelectionChangedAsync();
         center.Children.Add(_strategyCombo);
 
         _toggleBtn = new Button
@@ -138,12 +175,14 @@ public partial class HomePage : UserControl
 
     private void SelectDefaultStrategy()
     {
+        _suppressComboChange = true;
         var preferred = new[] { "general.bat", "general (SIMPLE FAKE).bat" };
         foreach (var name in preferred)
         {
             if (_strategyCombo.Items.Contains(name))
             {
                 _strategyCombo.SelectedItem = name;
+                _suppressComboChange = false;
                 return;
             }
         }
@@ -151,6 +190,22 @@ public partial class HomePage : UserControl
             _strategyCombo.SelectedItem = _settings.LastStrategy;
         else if (_strategyCombo.Items.Count > 0)
             _strategyCombo.SelectedIndex = 0;
+        _suppressComboChange = false;
+    }
+
+    private async Task OnStrategySelectionChangedAsync()
+    {
+        if (_suppressComboChange) return;
+        if (_strategyCombo.SelectedItem is not string strategy) return;
+        if (_isStarting) return;
+
+        if (_strategy.IsRunning())
+            await SwitchStrategyAsync(strategy);
+        else
+        {
+            _settings.LastStrategy = strategy;
+            _settings.Save();
+        }
     }
 
     private void CompleteStartingUi()
@@ -166,22 +221,11 @@ public partial class HomePage : UserControl
         if (_isStarting && running)
             CompleteStartingUi();
 
-        _statusIndicator.Fill = running
-            ? (Brush)Application.Current.FindResource("SuccessBrush")
-            : (Brush)Application.Current.FindResource("ErrorBrush");
-        _statusLabel.Text = running ? Loc.T("status.running") : Loc.T("status.stopped");
-        if (running)
-        {
-            var title = _strategy.GetRunningStrategyTitle();
-            if (!string.IsNullOrEmpty(title))
-                _statusLabel.Text = Loc.F("status.running_with", title);
-        }
-
         _toggleBtn.Content = _isStarting && !running
             ? Loc.T("home.starting")
             : (running || _isStarting ? Loc.T("home.stop") : Loc.T("home.start"));
         _toggleBtn.IsEnabled = true;
-        _strategyCombo.IsEnabled = !running && !_isStarting;
+        _strategyCombo.IsEnabled = !_isStarting;
     }
 
     public Task ToggleBypassAsync() => ToggleAsync();
@@ -228,7 +272,6 @@ public partial class HomePage : UserControl
         }
         catch (OperationCanceledException)
         {
-            // User stopped while start was still in progress — not an error.
         }
         catch (Exception ex)
         {

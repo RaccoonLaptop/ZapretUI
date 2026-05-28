@@ -10,6 +10,9 @@ public sealed class TrayIconService : IDisposable
 {
     private readonly Window _window;
     private readonly Func<Task> _toggleBypassAsync;
+    private readonly Func<IReadOnlyList<string>> _getStrategies;
+    private readonly Func<string?> _getSelectedStrategy;
+    private readonly Func<string, Task> _switchStrategyAsync;
     private readonly NotifyIcon _notifyIcon;
     private TrayMenuPopup? _popup;
     private Icon? _idleIcon;
@@ -19,10 +22,18 @@ public sealed class TrayIconService : IDisposable
     private bool _busy;
     private string? _strategyTitle;
 
-    public TrayIconService(Window window, Func<Task> toggleBypassAsync)
+    public TrayIconService(
+        Window window,
+        Func<Task> toggleBypassAsync,
+        Func<IReadOnlyList<string>> getStrategies,
+        Func<string?> getSelectedStrategy,
+        Func<string, Task> switchStrategyAsync)
     {
         _window = window;
         _toggleBypassAsync = toggleBypassAsync;
+        _getStrategies = getStrategies;
+        _getSelectedStrategy = getSelectedStrategy;
+        _switchStrategyAsync = switchStrategyAsync;
 
         _idleIcon = TrayIconGenerator.Create(active: false);
         _activeIcon = TrayIconGenerator.Create(active: true);
@@ -53,7 +64,10 @@ public sealed class TrayIconService : IDisposable
             _popup ??= new TrayMenuPopup(
                 async () => await _window.Dispatcher.InvokeAsync(async () => await _toggleBypassAsync()),
                 ShowWindow,
-                RequestExit);
+                RequestExit,
+                _getStrategies,
+                _getSelectedStrategy,
+                async strategy => await _window.Dispatcher.InvokeAsync(async () => await _switchStrategyAsync(strategy)));
 
             _popup.UpdateState(_running, _strategyTitle, _busy);
             _popup.ShowNearCursor();

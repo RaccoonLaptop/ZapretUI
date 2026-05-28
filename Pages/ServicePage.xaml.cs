@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -22,7 +22,13 @@ public partial class ServicePage : UserControl
     private readonly ProcessRunner _runner;
     private TextBlock _gameFilterStatus = null!;
     private TextBlock _ipsetStatus = null!;
-    private TextBlock _autoUpdateStatus = null!;
+    private Button _gameDisabledBtn = null!;
+    private Button _gameTcpUdpBtn = null!;
+    private Button _gameTcpBtn = null!;
+    private Button _gameUdpBtn = null!;
+    private Button _ipsetLoadedBtn = null!;
+    private Button _ipsetNoneBtn = null!;
+    private Button _ipsetAnyBtn = null!;
     private ComboBox _strategyCombo = null!;
 
     public ServicePage(ZapretPaths paths, StrategyService strategy)
@@ -46,80 +52,83 @@ public partial class ServicePage : UserControl
         var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         var root = new StackPanel();
 
-        root.Children.Add(new TextBlock { Text = Loc.T("service.title"), FontSize = 28, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 8) });
+        root.Children.Add(new TextBlock { Text = "Сервис", FontSize = 28, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 8) });
         root.Children.Add(new TextBlock
         {
-            Text = Loc.T("service.subtitle"),
+            Text = "Управление службой, настройки фильтров, обновления и безопасность",
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 0, 0, 20)
         });
 
         // Service
-        root.Children.Add(Section(Loc.T("service.section_service")));
+        root.Children.Add(Section("Управление службой"));
         var svcCard = Card();
         var svcStack = new StackPanel();
-        svcStack.Children.Add(Label(Loc.T("service.strategy_autostart")));
+        svcStack.Children.Add(Label("Стратегия для автозапуска:"));
         _strategyCombo = new ComboBox { MinWidth = 350, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) };
         foreach (var s in _paths.GetStrategyFiles()) _strategyCombo.Items.Add(s);
         if (_strategyCombo.Items.Count > 0) _strategyCombo.SelectedIndex = 0;
         svcStack.Children.Add(_strategyCombo);
 
         var svcBtns = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
-        svcBtns.Children.Add(ActionBtn(Loc.T("service.install_service"), async () => await RunBridgeWithDialog(Loc.T("dialog.install_service"), "InstallService", GetSelectedStrategy())));
-        svcBtns.Children.Add(ActionBtn(Loc.T("service.remove_services"), async () => await RunBridgeWithDialog(Loc.T("dialog.remove_services"), "RemoveServices")));
-        svcBtns.Children.Add(ActionBtn(Loc.T("service.check_status"), async () => await RunBridgeWithDialog(Loc.T("dialog.service_status"), "CheckStatus")));
+        svcBtns.Children.Add(ActionBtn("Установить службу", async () => await RunBridgeWithDialog("Установка службы", "InstallService", GetSelectedStrategy())));
+        svcBtns.Children.Add(ActionBtn("Удалить службы", async () => await RunBridgeWithDialog("Удаление служб", "RemoveServices")));
+        svcBtns.Children.Add(ActionBtn("Проверить статус", async () => await RunBridgeWithDialog("Статус службы", "CheckStatus")));
         svcStack.Children.Add(svcBtns);
         svcCard.Child = svcStack;
         root.Children.Add(svcCard);
 
         // Settings
-        root.Children.Add(Section(Loc.T("service.section_settings")));
+        root.Children.Add(Section("Настройки"));
         var setCard = Card();
         var setStack = new StackPanel();
 
-        _gameFilterStatus = StatusLine(Loc.T("service.game_filter"));
+        _gameFilterStatus = StatusLine("Game Filter");
         setStack.Children.Add(_gameFilterStatus);
         var gameBtns = new WrapPanel { Margin = new Thickness(0, 4, 0, 12) };
-        gameBtns.Children.Add(ActionBtn(Loc.T("service.disable"), () => { _settingsSvc.SetGameFilter("disabled"); RefreshStatuses(); }));
-        gameBtns.Children.Add(ActionBtn("TCP+UDP", () => { _settingsSvc.SetGameFilter("all"); RefreshStatuses(); }));
-        gameBtns.Children.Add(ActionBtn(Loc.T("service.tcp_only"), () => { _settingsSvc.SetGameFilter("tcp"); RefreshStatuses(); }));
-        gameBtns.Children.Add(ActionBtn(Loc.T("service.udp_only"), () => { _settingsSvc.SetGameFilter("udp"); RefreshStatuses(); }));
+        _gameDisabledBtn = SettingsBtn(Loc.T("service.disable"), () => _settingsSvc.SetGameFilter("disabled"));
+        _gameTcpUdpBtn = SettingsBtn(Loc.T("service.tcp_udp"), () => _settingsSvc.SetGameFilter("all"));
+        _gameTcpBtn = SettingsBtn(Loc.T("service.tcp_only"), () => _settingsSvc.SetGameFilter("tcp"));
+        _gameUdpBtn = SettingsBtn(Loc.T("service.udp_only"), () => _settingsSvc.SetGameFilter("udp"));
+        gameBtns.Children.Add(_gameDisabledBtn);
+        gameBtns.Children.Add(_gameTcpUdpBtn);
+        gameBtns.Children.Add(_gameTcpBtn);
+        gameBtns.Children.Add(_gameUdpBtn);
         setStack.Children.Add(gameBtns);
 
-        _ipsetStatus = StatusLine(Loc.T("service.ipset_filter"));
+        _ipsetStatus = StatusLine("IPSet Filter");
         setStack.Children.Add(_ipsetStatus);
-        setStack.Children.Add(ActionBtn(Loc.T("service.toggle_ipset"), () =>
-        {
-            try { _settingsSvc.CycleIpsetFilter(); RefreshStatuses(); ConsoleLog.Instance.Write(Loc.T("service.ipset_toggled")); }
-            catch (Exception ex) { UiHelpers.ShowError(ex.Message); }
-        }));
+        var ipsetBtns = new WrapPanel { Margin = new Thickness(0, 4, 0, 12) };
+        _ipsetLoadedBtn = SettingsBtn(Loc.T("service.ipset_loaded"), () => SetIpsetMode("loaded"));
+        _ipsetNoneBtn = SettingsBtn(Loc.T("service.ipset_none"), () => SetIpsetMode("none"));
+        _ipsetAnyBtn = SettingsBtn(Loc.T("service.ipset_any"), () => SetIpsetMode("any"));
+        ipsetBtns.Children.Add(_ipsetLoadedBtn);
+        ipsetBtns.Children.Add(_ipsetNoneBtn);
+        ipsetBtns.Children.Add(_ipsetAnyBtn);
+        setStack.Children.Add(ipsetBtns);
 
-        _autoUpdateStatus = StatusLine(Loc.T("service.auto_update"));
-        setStack.Children.Add(_autoUpdateStatus);
-        setStack.Children.Add(ActionBtn(Loc.T("service.toggle_autoupdate"), () => { _settingsSvc.ToggleAutoUpdate(); RefreshStatuses(); }));
-
-        var dataBtns = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
-        dataBtns.Children.Add(ActionBtn(Loc.T("service.update_ipset"), async () => await UpdateIpsetWithDialog()));
-        dataBtns.Children.Add(ActionBtn(Loc.T("service.update_hosts"), async () => await RunBridgeWithDialog(Loc.T("dialog.update_hosts"), "UpdateHosts")));
+        var dataBtns = new WrapPanel { Margin = new Thickness(0, 0, 0, 0) };
+        dataBtns.Children.Add(ActionBtn("Обновить IPSet List", async () => await UpdateIpsetWithDialog()));
+        dataBtns.Children.Add(ActionBtn("Обновить Hosts File", async () => await RunBridgeWithDialog("Обновление Hosts", "UpdateHosts")));
         setStack.Children.Add(dataBtns);
 
         setCard.Child = setStack;
         root.Children.Add(setCard);
 
         // Updates
-        root.Children.Add(Section(Loc.T("service.section_updates")));
+        root.Children.Add(Section("Обновления"));
         var updCard = Card();
         var updStack = new StackPanel();
         updStack.Children.Add(new TextBlock
         {
-            Text = Loc.T("service.updates_hint"),
+            Text = "При запуске проверяются версии Zapret UI и Flowseal. Установка — только после вашего подтверждения.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 0, 0, 12)
         });
         var startupCheck = new CheckBox
         {
-            Content = Loc.T("service.check_on_startup"),
+            Content = "Проверять обновления при запуске программы",
             IsChecked = _settings.CheckUpdatesOnStartup,
             Margin = new Thickness(0, 0, 0, 12)
         };
@@ -127,88 +136,57 @@ public partial class ServicePage : UserControl
         startupCheck.Unchecked += (_, _) => { _settings.CheckUpdatesOnStartup = false; _settings.Save(); };
         updStack.Children.Add(startupCheck);
         var updBtns = new WrapPanel();
-        updBtns.Children.Add(ActionBtn(Loc.T("service.check_app_update"), async () => await CheckAppUpdateAsync()));
-        updBtns.Children.Add(ActionBtn(Loc.T("service.check_flowseal_update"), async () => await CheckFlowsealUpdateAsync()));
-        updBtns.Children.Add(ActionBtn(Loc.T("service.reinstall_flowseal"), async () => await ReinstallFlowsealAsync()));
-        updBtns.Children.Add(ActionBtn(Loc.T("service.open_flowseal_release"), () => OpenUrl(_updates.GetReleaseUrl())));
+        updBtns.Children.Add(ActionBtn("Проверить обновление Zapret UI", async () => await CheckAppUpdateAsync()));
+        updBtns.Children.Add(ActionBtn("Проверить обновление Flowseal", async () => await CheckFlowsealUpdateAsync()));
+        updBtns.Children.Add(ActionBtn("Переустановить Flowseal", async () => await ReinstallFlowsealAsync()));
+        updBtns.Children.Add(ActionBtn("Открыть релиз Flowseal", () => OpenUrl(_updates.GetReleaseUrl())));
         updStack.Children.Add(updBtns);
         updCard.Child = updStack;
         root.Children.Add(updCard);
 
         // Network reset
-        root.Children.Add(Section(Loc.T("service.section_network")));
+        root.Children.Add(Section("Сброс сетевых настроек"));
         var netCard = Card();
         var netStack = new StackPanel();
         netStack.Children.Add(new TextBlock
         {
-            Text = Loc.T("service.network_desc"),
+            Text = "Обязательный шаг, если раньше использовались VPN или прописывался прокси. " +
+                   "Они оставляют следы в системе — из‑за этого, например, Epic Games может писать " +
+                   "«находится в автономном режиме», хотя интернет есть.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 0, 0, 12)
         });
         netStack.Children.Add(new TextBlock
         {
-            Text = Loc.T("service.network_cmds"),
+            Text = "Выполняются: netsh int ip reset, winhttp reset proxy, winsock reset, " +
+                   "сброс IPv4/IPv6, диапазон TCP 10000–30000, ipconfig /flushdns.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             FontSize = 12,
             Margin = new Thickness(0, 0, 0, 12)
         });
-        netStack.Children.Add(ActionBtn(Loc.T("service.reset_network"), async () => await ResetNetworkAsync()));
+        netStack.Children.Add(ActionBtn("Сбросить сетевые настройки", async () => await ResetNetworkAsync()));
         netCard.Child = netStack;
         root.Children.Add(netCard);
 
         // Security
-        root.Children.Add(Section(Loc.T("service.section_security")));
+        root.Children.Add(Section("Безопасность Windows"));
         var secCard = Card();
         var secStack = new StackPanel();
         secStack.Children.Add(new TextBlock
         {
-            Text = Loc.T("service.security_desc"),
+            Text = "Исключения антивируса (Defender) и правила брандмауэра для Zapret UI и winws.exe.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 0, 0, 12)
         });
-        secStack.Children.Add(ActionBtn(Loc.T("service.setup_security"), async () => await HandleSecurityAsync()));
+        secStack.Children.Add(ActionBtn("Настроить антивирус и брандмауэр", async () => await HandleSecurityAsync()));
         secCard.Child = secStack;
         root.Children.Add(secCard);
 
-
-        // Language
-        root.Children.Add(Section(Loc.T("service.section_language")));
-        var langCard = Card();
-        var langStack = new StackPanel();
-        langStack.Children.Add(new TextBlock
-        {
-            Text = Loc.T("service.language_desc"),
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-            Margin = new Thickness(0, 0, 0, 12)
-        });
-        var langCombo = new ComboBox
-        {
-            MinWidth = 240,
-            HorizontalAlignment = HorizontalAlignment.Left
-        };
-        langCombo.Items.Add(Loc.T("service.lang_ru"));
-        langCombo.Items.Add(Loc.T("service.lang_en"));
-        langCombo.SelectedIndex = string.Equals(_settings.Language, "en", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-        langCombo.SelectionChanged += (_, _) =>
-        {
-            var newLang = langCombo.SelectedIndex == 1 ? "en" : "ru";
-            if (string.Equals(_settings.Language, newLang, StringComparison.OrdinalIgnoreCase)) return;
-            _settings.Language = newLang;
-            _settings.Save();
-            LocalizationService.Initialize(newLang);
-            if (UiHelpers.Confirm(Loc.T("lang.restart_confirm"), OwnerWindow))
-                LocalizationService.RestartApplication();
-        };
-        langStack.Children.Add(langCombo);
-        langCard.Child = langStack;
-        root.Children.Add(langCard);
-
         // Links
-        root.Children.Add(Section(Loc.T("service.section_links")));
+        root.Children.Add(Section("Ссылки"));
         var linksCard = Card();
         var linksRow = new WrapPanel();
         linksRow.Children.Add(LinkButton("Flowseal/zapret-discord-youtube", FlowsealUrl));
@@ -265,23 +243,26 @@ public partial class ServicePage : UserControl
             var result = await updater.CheckForUpdateAsync();
             if (result.Error is not null)
             {
-                UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.update_app"), $"{Loc.T("common.error_prefix")} {result.Error}");
+                UiHelpers.ShowResult(OwnerWindow, "Обновление Zapret UI", $"Ошибка: {result.Error}");
                 return;
             }
 
             if (!result.HasUpdate)
             {
-                UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.update_app"), Loc.F("update.app_up_to_date", result.LocalVersion));
+                UiHelpers.ShowResult(OwnerWindow, "Обновление Zapret UI",
+                    $"Zapret UI актуален.\nВерсия: {result.LocalVersion}");
                 return;
             }
 
-            if (UiHelpers.Confirm(Loc.F("update.app_available", result.RemoteVersion, result.LocalVersion), OwnerWindow))
+            if (UiHelpers.Confirm(
+                    $"Доступна новая версия Zapret UI: {result.RemoteVersion}\nУ вас: {result.LocalVersion}\n\nСкачать обновление?",
+                    OwnerWindow))
             {
                 if (result.Manifest is not null)
                 {
                     PreparedAppUpdate? prepared = null;
                     var keepPrepared = false;
-                    UpdateDownloadWindow? progressWin = new UpdateDownloadWindow(Loc.T("update.download_title"), Loc.T("update.download_status"));
+                    UpdateDownloadWindow? progressWin = new UpdateDownloadWindow("Обновление Zapret UI", "Загрузка пакета обновления...");
                     if (OwnerWindow is not null) progressWin.Owner = OwnerWindow;
                     progressWin.Show();
                     try
@@ -298,7 +279,8 @@ public partial class ServicePage : UserControl
                         prepared = preparedResult.Payload;
                         progressWin.SetStatus("Загрузка завершена. Пакет готов к установке.");
 
-                        if (UiHelpers.Confirm(Loc.F("update.app_ready", result.RemoteVersion), OwnerWindow))
+                        if (UiHelpers.Confirm(
+                                $"Пакет обновления Zapret UI {result.RemoteVersion} загружен.\n\nУстановить сейчас?"))
                         {
                             progressWin.SetStatus("Запуск установки…");
                             progressWin.ReportProgress(new DownloadProgress
@@ -327,13 +309,16 @@ public partial class ServicePage : UserControl
         }
         catch (Exception ex)
         {
-            UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.update_app"), $"{Loc.T("common.error_prefix")} {ex.Message}");
+            UiHelpers.ShowResult(OwnerWindow, "Обновление Zapret UI", $"Ошибка: {ex.Message}");
         }
     }
 
     private async Task ReinstallFlowsealAsync()
     {
-        if (!UiHelpers.Confirm(Loc.T("update.flowseal_reinstall"), OwnerWindow))
+        if (!UiHelpers.Confirm(
+                "Переустановить компоненты Flowseal из GitHub?\n\n" +
+                "Папка zapret будет загружена заново (включая utils\\test zapret.ps1).\n" +
+                "Ваши правки в .bat и lists могут быть перезаписаны."))
             return;
 
         await FlowsealReinstallService.ReinstallAsync(OwnerWindow, _paths);
@@ -344,33 +329,40 @@ public partial class ServicePage : UserControl
         var r = await _updates.CheckForUpdatesAsync();
         if (r.Error is not null)
         {
-            UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.update_flowseal"), $"{Loc.T("common.error_prefix")} {r.Error}");
+            UiHelpers.ShowResult(OwnerWindow, "Обновление Flowseal", $"Ошибка: {r.Error}");
             return;
         }
 
         if (r.IsUpToDate)
         {
-            UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.update_flowseal"), Loc.F("update.flowseal_up_to_date", r.LocalVersion));
+            UiHelpers.ShowResult(OwnerWindow, "Обновление Flowseal", $"Flowseal актуален.\nВерсия: {r.LocalVersion}");
             return;
         }
 
-        if (UiHelpers.Confirm(Loc.F("update.flowseal_available", r.RemoteVersion, r.LocalVersion), OwnerWindow))
+        if (UiHelpers.Confirm(
+                $"Доступна новая версия Flowseal: {r.RemoteVersion}\nУ вас: {r.LocalVersion}\n\nПереустановить компоненты zapret?"))
             await FlowsealReinstallService.ReinstallAsync(OwnerWindow, _paths);
     }
 
     private async Task ResetNetworkAsync()
     {
-        if (!UiHelpers.Confirm(Loc.T("network.reset_confirm"), OwnerWindow))
+        if (!UiHelpers.Confirm(
+                "Сбросить сетевые настройки Windows?\n\n" +
+                "Будут выполнены команды netsh и очистка DNS. " +
+                "Это помогает убрать следы VPN и прокси.\n\n" +
+                "Нужны права администратора. После сброса рекомендуется перезагрузка ПК.\n\n" +
+                "Продолжить?"))
             return;
 
         try
         {
             var (ok, output) = await NetworkResetService.RunAllAsync();
-            UiHelpers.ShowResult(OwnerWindow, Loc.T("network.reset_title"), output + (ok ? Loc.T("network.reset_reboot") : ""));
+            UiHelpers.ShowResult(OwnerWindow, "Сброс сетевых настроек",
+                output + (ok ? "\n\nРекомендуется перезагрузить компьютер." : ""));
         }
         catch (Exception ex)
         {
-            UiHelpers.ShowResult(OwnerWindow, Loc.T("network.reset_title"), $"{Loc.T("common.error_prefix")} {ex.Message}");
+            UiHelpers.ShowResult(OwnerWindow, "Сброс сетевых настроек", $"Ошибка: {ex.Message}");
         }
     }
 
@@ -380,11 +372,11 @@ public partial class ServicePage : UserControl
         {
             await _updates.UpdateIpsetListAsync();
             RefreshStatuses();
-            UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.ipset_list"), Loc.T("dialog.ipset_ok"));
+            UiHelpers.ShowResult(OwnerWindow, "IPSet List", "Список ipset-all.txt успешно обновлён из репозитория Flowseal.");
         }
         catch (Exception ex)
         {
-            UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.ipset_list"), $"{Loc.T("common.error_prefix")} {ex.Message}");
+            UiHelpers.ShowResult(OwnerWindow, "IPSet List", $"Ошибка: {ex.Message}");
         }
     }
 
@@ -397,7 +389,7 @@ public partial class ServicePage : UserControl
         }
         catch (Exception ex)
         {
-            UiHelpers.ShowResult(OwnerWindow, title, $"{Loc.T("common.error_prefix")} {ex.Message}");
+            UiHelpers.ShowResult(OwnerWindow, title, $"Ошибка: {ex.Message}");
         }
     }
 
@@ -418,12 +410,35 @@ public partial class ServicePage : UserControl
         return btn;
     }
 
+    private void SetIpsetMode(string mode)
+    {
+        try
+        {
+            _settingsSvc.SetIpsetFilter(mode);
+            RefreshStatuses();
+            ConsoleLog.Instance.Write(Loc.F("service.ipset_set", mode));
+        }
+        catch (Exception ex)
+        {
+            UiHelpers.ShowError(ex.Message);
+        }
+    }
+
     private void RefreshStatuses()
     {
         SetStatusText(_gameFilterStatus, "Game Filter", _settingsSvc.GetGameFilterStatus());
         SetStatusText(_ipsetStatus, "IPSet Filter", _settingsSvc.GetIpsetStatus());
-        SetStatusText(_autoUpdateStatus, "Auto-Update Check",
-            _settingsSvc.IsAutoUpdateEnabled() ? Loc.T("status.enabled") : Loc.T("status.disabled"));
+
+        var gameMode = _settingsSvc.GetGameFilterMode();
+        ApplyActiveStyle(_gameDisabledBtn, gameMode == "disabled");
+        ApplyActiveStyle(_gameTcpUdpBtn, gameMode == "all");
+        ApplyActiveStyle(_gameTcpBtn, gameMode == "tcp");
+        ApplyActiveStyle(_gameUdpBtn, gameMode == "udp");
+
+        var ipsetMode = _settingsSvc.GetIpsetStatus();
+        ApplyActiveStyle(_ipsetLoadedBtn, ipsetMode == "loaded");
+        ApplyActiveStyle(_ipsetNoneBtn, ipsetMode == "none");
+        ApplyActiveStyle(_ipsetAnyBtn, ipsetMode == "any");
     }
 
     private string GetSelectedStrategy() =>
@@ -476,8 +491,31 @@ public partial class ServicePage : UserControl
             return (Brush)Application.Current.FindResource("SuccessBrush");
         if (normalized is "disabled" or "off" or "no" or "false")
             return (Brush)Application.Current.FindResource("WarningBrush");
+        if (normalized is "loaded" or "any")
+            return (Brush)Application.Current.FindResource("SuccessBrush");
+        if (normalized is "none")
+            return (Brush)Application.Current.FindResource("WarningBrush");
         return (Brush)Application.Current.FindResource("AccentBrush");
     }
+
+    private Button SettingsBtn(string text, Action action)
+    {
+        var btn = new Button
+        {
+            Content = text,
+            Style = (Style)Application.Current.FindResource("SecondaryButton"),
+            Margin = new Thickness(0, 0, 8, 8)
+        };
+        btn.Click += (_, _) =>
+        {
+            action();
+            RefreshStatuses();
+        };
+        return btn;
+    }
+
+    private static void ApplyActiveStyle(Button btn, bool active) =>
+        btn.Style = (Style)Application.Current.FindResource(active ? "SuccessButton" : "SecondaryButton");
 
     private Button ActionBtn(string text, Action action) => ActionBtn(text, () => { action(); return Task.CompletedTask; });
 
