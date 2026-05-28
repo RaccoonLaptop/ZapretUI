@@ -168,6 +168,8 @@ public partial class TestStrategiesPage : UserControl
                 return;
             }
 
+            TestTargetsService.EnsureTargetsFile(_paths);
+
             _ansi.Clear(_output);
             AppendLocal($"{Loc.T("tools.test_starting")}{Environment.NewLine}");
 
