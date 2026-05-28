@@ -146,11 +146,11 @@ internal sealed class TerminalTableBuffer
 internal static class TestTableLineFormatter
 {
     private static readonly Regex UrlTestRow = new(
-        @"^\s*(?<name>\w+)\s*:?\s*(?<http>HTTP:\S+)\s+(?<tls12>TLS1\.2:\S+)\s+(?<tls13>TLS1\.3:\S+)\s*\|\s*Ping:\s*(?<ping>.+)$",
+        @"^\s*(?<name>.+?)\s+(?<http>HTTP:\S+)\s+(?<tls12>TLS1\.2:\S+)\s+(?<tls13>TLS1\.3:\S+)\s*\|\s*Ping:\s*(?<ping>.+)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex PingOnlyRow = new(
-        @"^\s*(?<name>\w+)\s*:?\s*Ping:\s*(?<ping>.+)$",
+        @"^\s*(?<name>.+?)\s+Ping:\s*(?<ping>.+)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex StandardAnalyticsRow = new(
@@ -178,7 +178,7 @@ internal static class TestTableLineFormatter
         {
             row = new TestTableRow
             {
-                Name = m.Groups["name"].Value,
+                Name = m.Groups["name"].Value.Trim(),
                 Http = NormalizeToken(m.Groups["http"].Value),
                 Tls12 = NormalizeToken(m.Groups["tls12"].Value),
                 Tls13 = NormalizeToken(m.Groups["tls13"].Value),
@@ -187,15 +187,19 @@ internal static class TestTableLineFormatter
             return true;
         }
 
-        m = PingOnlyRow.Match(plainLine);
-        if (m.Success)
+        if (!plainLine.Contains("HTTP:", StringComparison.Ordinal)
+            && !plainLine.Contains("TLS1.2:", StringComparison.Ordinal))
         {
-            row = new TestTableRow
+            m = PingOnlyRow.Match(plainLine);
+            if (m.Success)
             {
-                Name = m.Groups["name"].Value,
-                Ping = m.Groups["ping"].Value.Trim()
-            };
-            return true;
+                row = new TestTableRow
+                {
+                    Name = m.Groups["name"].Value.Trim(),
+                    Ping = m.Groups["ping"].Value.Trim()
+                };
+                return true;
+            }
         }
 
         return false;

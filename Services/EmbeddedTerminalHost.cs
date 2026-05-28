@@ -20,10 +20,7 @@ public sealed class EmbeddedTerminalHost : IAsyncDisposable
     {
         await StopAsync();
 
-        var ps = Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
-        if (!File.Exists(ps))
-            ps = "powershell.exe";
-
+        var ps = ResolvePowerShellExecutable();
         _connection = await SpawnWithFallbackAsync(ps, scriptPath, workingDirectory, ct);
         _connection.ProcessExited += (_, e) =>
         {
@@ -136,6 +133,33 @@ public sealed class EmbeddedTerminalHost : IAsyncDisposable
         throw last ?? new InvalidOperationException("Failed to start terminal");
     }
 
+    private static string ResolvePowerShellExecutable()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PowerShell", "7", "pwsh.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "PowerShell", "7", "pwsh.exe"),
+            Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe")
+        };
+
+        foreach (var path in candidates)
+        {
+            if (File.Exists(path))
+                return path;
+        }
+
+        return "powershell.exe";
+    }
+
+    private static string BuildColorInitCommand(string scriptPath)
+    {
+        var escapedScript = scriptPath.Replace("'", "''");
+        return
+            "$OutputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); " +
+            "if ($PSVersionTable.PSVersion.Major -ge 7) { $PSStyle.OutputRendering = 'Ansi' }; " +
+            $"& '{escapedScript}'";
+    }
+
     private static PtyOptions CreateOptions(string ps, string scriptPath, string workingDirectory, int cols) =>
         new()
         {
@@ -149,7 +173,7 @@ public sealed class EmbeddedTerminalHost : IAsyncDisposable
                 "-NoLogo",
                 "-NoProfile",
                 "-ExecutionPolicy", "Bypass",
-                "-File", scriptPath
+                "-Command", BuildColorInitCommand(scriptPath)
             ]
         };
 
