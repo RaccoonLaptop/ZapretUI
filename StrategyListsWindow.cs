@@ -28,7 +28,7 @@ public sealed class StrategyListsWindow : Window
         _lists = new ListFileService(paths);
         _lists.EnsureUserLists();
 
-        Title = $"Списки — {strategyFile}";
+        Title = Loc.F("lists.window_title", strategyFile);
         Width = 900;
         Height = 560;
         MinWidth = 700;
@@ -49,14 +49,13 @@ public sealed class StrategyListsWindow : Window
         var header = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
         header.Children.Add(new TextBlock
         {
-            Text = $"Списки конфига: {_strategyFile}",
+            Text = Loc.F("lists.config_title", _strategyFile),
             FontSize = 20,
             FontWeight = FontWeights.Bold
         });
         header.Children.Add(new TextBlock
         {
-            Text = "Показаны только .txt из папки lists/, которые указаны в выбранном .bat. " +
-                   "После добавления нового списка в конфиг нажмите «Обновить».",
+            Text = Loc.T("lists.hint"),
             TextWrapping = TextWrapping.Wrap,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 6, 0, 0)
@@ -92,7 +91,7 @@ public sealed class StrategyListsWindow : Window
         leftBtns.Children.Add(openListsFolderBtn);
         var refreshBtn = new Button
         {
-            Content = "Обновить из конфига",
+            Content = Loc.T("lists.refresh"),
             Style = (Style)Application.Current.FindResource("SecondaryButton"),
             Margin = new Thickness(0, 0, 0, 6)
         };
@@ -118,21 +117,21 @@ public sealed class StrategyListsWindow : Window
         DockPanel.SetDock(toolbar, Dock.Top);
         var saveBtn = new Button
         {
-            Content = "Сохранить",
+            Content = Loc.T("lists.save"),
             Style = (Style)Application.Current.FindResource("PrimaryButton"),
             Margin = new Thickness(0, 0, 8, 0)
         };
         saveBtn.Click += (_, _) => SaveCurrent();
         _createBtn = new Button
         {
-            Content = "Создать файл списка",
+            Content = Loc.T("lists.create"),
             Style = (Style)Application.Current.FindResource("SecondaryButton"),
             Visibility = Visibility.Collapsed
         };
         _createBtn.Click += (_, _) => CreateMissingList();
         _deleteBtn = new Button
         {
-            Content = "Удалить файл",
+            Content = Loc.T("lists.delete"),
             Style = (Style)Application.Current.FindResource("SecondaryButton"),
             Visibility = Visibility.Collapsed
         };
@@ -171,13 +170,13 @@ public sealed class StrategyListsWindow : Window
         {
             var label = item.ExistsOnDisk
                 ? item.FileName
-                : $"{item.FileName}  (в конфиге, файл ещё не создан)";
+                : Loc.F("lists.in_config_not_created", item.FileName);
             _list.Items.Add(new ListEntry(item.FileName, item.ExistsOnDisk, label));
         }
 
         if (_list.Items.Count == 0)
         {
-            _info.Text = "В конфиге не найдено ссылок на lists/*.txt";
+            _info.Text = Loc.T("lists.no_refs");
             _editor.Text = "";
             _currentFile = null;
             _createBtn.Visibility = Visibility.Collapsed;
@@ -197,7 +196,7 @@ public sealed class StrategyListsWindow : Window
         {
             _editor.Text = "";
             _editor.IsReadOnly = true;
-            _info.Text = $"{entry.FileName} — указан в конфиге, но файла нет в lists/";
+            _info.Text = Loc.F("lists.missing_on_disk", entry.FileName);
             _createBtn.Visibility = Visibility.Visible;
             _deleteBtn.Visibility = Visibility.Collapsed;
             return;
@@ -213,9 +212,9 @@ public sealed class StrategyListsWindow : Window
             _editor.Text = _lists.ReadList(entry.FileName);
             var lines = _lists.CountLines(entry.FileName);
             var kind = entry.FileName.EndsWith("-user.txt", StringComparison.OrdinalIgnoreCase)
-                ? "пользовательский"
-                : "основной";
-            _info.Text = $"{entry.FileName} ({kind}) — {lines} записей";
+                ? Loc.T("lists.type_user")
+                : Loc.T("lists.type_core");
+            _info.Text = Loc.F("lists.info_lines", entry.FileName, kind, lines);
         }
         catch (Exception ex)
         {
@@ -228,15 +227,15 @@ public sealed class StrategyListsWindow : Window
         if (_currentFile is null) return;
         if (_list.SelectedItem is ListEntry entry && !entry.ExistsOnDisk)
         {
-            UiHelpers.ShowError("Сначала создайте файл списка");
+            UiHelpers.ShowError(Loc.T("lists.create_first"));
             return;
         }
 
         try
         {
             _lists.SaveList(_currentFile, _editor.Text);
-            _info.Text = $"{_currentFile} — {_lists.CountLines(_currentFile)} записей (сохранено)";
-            ConsoleLog.Instance.Write($"Список сохранён: {_currentFile}");
+            _info.Text = Loc.F("lists.info_saved", _currentFile, _lists.CountLines(_currentFile));
+            ConsoleLog.Instance.Write(Loc.F("lists.log_saved", _currentFile));
             RefreshList();
         }
         catch (Exception ex)
@@ -250,8 +249,8 @@ public sealed class StrategyListsWindow : Window
         if (_currentFile is null) return;
         try
         {
-            _lists.CreateList(_currentFile, "# Добавьте домены или IP (по одному на строку)" + Environment.NewLine);
-            ConsoleLog.Instance.Write($"Создан список: {_currentFile}");
+            _lists.CreateList(_currentFile, Loc.T("lists.new_file_comment") + Environment.NewLine);
+            ConsoleLog.Instance.Write(Loc.F("lists.log_created", _currentFile));
             RefreshList();
             SelectFile(_currentFile);
         }
@@ -266,22 +265,20 @@ public sealed class StrategyListsWindow : Window
         if (_currentFile is null) return;
         if (!_lists.CanDeleteList(_currentFile))
         {
-            UiHelpers.ShowError(
-                "Нельзя удалить встроенные списки (list-general.txt, list-google.txt и т.п.). " +
-                "Можно удалять пользовательские (*-user.txt) и созданные вручную файлы.");
+            UiHelpers.ShowError(Loc.T("lists.cannot_delete_builtin"));
             return;
         }
 
-        if (!UiHelpers.Confirm($"Удалить файл списка {_currentFile} из папки lists/?"))
+        if (!UiHelpers.Confirm(Loc.F("lists.delete_confirm", _currentFile)))
             return;
 
         try
         {
             _lists.DeleteList(_currentFile);
-            ConsoleLog.Instance.Write($"Удалён список: {_currentFile}");
+            ConsoleLog.Instance.Write(Loc.F("lists.log_deleted", _currentFile));
             _currentFile = null;
             RefreshList();
-            UiHelpers.ShowInfo("Файл списка удалён");
+            UiHelpers.ShowInfo(Loc.T("lists.deleted"));
         }
         catch (Exception ex)
         {

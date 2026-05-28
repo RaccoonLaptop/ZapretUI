@@ -81,16 +81,20 @@
 
                             <StackPanel x:Name="NavPanel" DockPanel.Dock="Top"/>
 
-                            <Button x:Name="BgSwitchBtn"
-                                    DockPanel.Dock="Bottom"
-                                    Style="{StaticResource SecondaryButton}"
-                                    FontSize="11"
-                                    Padding="10,8"
-                                    HorizontalContentAlignment="Left"
-                                    Opacity="0.55"
-                                    Margin="0,12,0,0"
-                                    ToolTip="Сменить фоновую анимацию"
-                                    Click="BgSwitchBtn_Click"/>
+                            <StackPanel DockPanel.Dock="Bottom"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Bottom"
+                                        Margin="0,12,0,0">
+                                <Button x:Name="BgSwitchBtn"
+                                        Style="{StaticResource SecondaryButton}"
+                                        FontSize="11"
+                                        Padding="10,4"
+                                        HorizontalAlignment="Center"
+                                        HorizontalContentAlignment="Center"
+                                        Opacity="0.38"
+                                        ToolTip="Сменить фоновую анимацию"
+                                        Click="BgSwitchBtn_Click"/>
+                            </StackPanel>
                         </DockPanel>
                     </Border>
 

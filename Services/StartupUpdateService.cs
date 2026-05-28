@@ -62,15 +62,15 @@ public sealed class StartupUpdateService
                     else
                     {
                         prepared = preparedResult.Payload;
-                        progressWin.SetStatus("Загрузка завершена. Пакет готов к установке.");
+                        progressWin.SetStatus(Loc.T("update.download_complete"));
                         if (UiHelpers.Confirm(
                                 Loc.F("update.app_ready", appCheck.RemoteVersion),
                                 owner))
                         {
-                            progressWin.SetStatus("Запуск установки…");
+                            progressWin.SetStatus(Loc.T("update.starting_install"));
                             progressWin.ReportProgress(new DownloadProgress
                             {
-                                Phase = "Сейчас откроется окно обновления"
+                                Phase = Loc.T("update.install_phase")
                             });
                             var install = await appUpdater.InstallPreparedUpdateAsync(prepared);
                             progressWin.Close();
@@ -119,17 +119,16 @@ public static class FlowsealReinstallService
             var bootstrap = new BootstrapWindow(target) { Owner = owner };
             if (bootstrap.ShowDialog() != true)
             {
-                UiHelpers.ShowResult(owner, "Flowseal", "Установка отменена или не удалась.");
+                UiHelpers.ShowResult(owner, "Flowseal", Loc.T("update.flowseal_cancel"));
                 return Task.FromResult(false);
             }
 
-            UiHelpers.ShowResult(owner, "Flowseal",
-                "Компоненты Flowseal переустановлены.\nПерезапустите Zapret UI для применения изменений.");
+            UiHelpers.ShowResult(owner, "Flowseal", Loc.T("update.flowseal_done_restart"));
             return Task.FromResult(true);
         }
         catch (Exception ex)
         {
-            UiHelpers.ShowResult(owner, "Flowseal", $"Ошибка: {ex.Message}");
+            UiHelpers.ShowResult(owner, "Flowseal", $"{Loc.T("common.error_prefix")} {ex.Message}");
             return Task.FromResult(false);
         }
     }

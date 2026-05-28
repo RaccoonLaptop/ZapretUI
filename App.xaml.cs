@@ -13,6 +13,8 @@ public partial class App : Application
         var settings = AppSettings.Load();
         LocalizationService.Initialize(settings.Language);
 
+        StartupArgs.Parse(e.Args);
+
         if (UpdateProgressLauncher.TryParseArgs(e.Args, out var progressLog, out var progressVersion))
         {
             var progressWin = new UpdateInstallProgressWindow(progressLog, progressVersion);
@@ -53,7 +55,7 @@ public partial class App : Application
         var zapretRoot = ZapretPaths.DetectRoot(settings.ZapretRoot);
         BundledStrategiesService.DeployTo(zapretRoot);
 
-        var main = new MainWindow();
+        var main = new MainWindow(StartupArgs.StartInTray);
         MainWindow = main;
         main.Show();
         ScheduleFreshInstallDefaults(zapretRoot);

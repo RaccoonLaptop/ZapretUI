@@ -275,7 +275,7 @@ public partial class HomePage : UserControl
         }
         catch (Exception ex)
         {
-            ConsoleLog.Instance.Write($"Ошибка: {ex.Message}");
+            ConsoleLog.Instance.Write($"{Loc.T("common.error_prefix")} {ex.Message}");
             UiHelpers.ShowError(ex.Message);
             _actionStatus.Text = Loc.T("home.start_error");
         }

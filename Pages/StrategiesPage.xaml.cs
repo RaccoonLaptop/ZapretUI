@@ -52,8 +52,8 @@ public partial class StrategiesPage : UserControl
             Margin = new Thickness(0, 8, 0, 0)
         });
         var headerBtns = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
-        headerBtns.Children.Add(MakeToolbarBtn(Loc.T("strategies.open_app_folder"), "SecondaryButton",
-            (_, _) => UiHelpers.OpenFolder(AppContext.BaseDirectory)));
+        headerBtns.Children.Add(MakeToolbarBtn(Loc.T("strategies.open_zapret_folder"), "SecondaryButton",
+            (_, _) => UiHelpers.OpenFolder(_paths.Root)));
         header.Children.Add(headerBtns);
         Grid.SetRow(header, 0);
         grid.Children.Add(header);
@@ -213,7 +213,7 @@ public partial class StrategiesPage : UserControl
         try
         {
             _strategy.SaveStrategyContent(_currentFile, _editor.Text);
-            ConsoleLog.Instance.Write($"Сохранено: {_currentFile}");
+            ConsoleLog.Instance.Write(Loc.F("strategies.log_saved", _currentFile));
             UiHelpers.ShowInfo(Loc.T("strategies.saved"));
         }
         catch (Exception ex)
@@ -264,8 +264,8 @@ public partial class StrategiesPage : UserControl
     {
         if (_list.SelectedItem is not string baseFile) return;
         var name = Prompt(
-            "Создать копию",
-            "Введите имя для копии (будет создан новый .bat на основе выбранного файла):",
+            Loc.T("strategies.dialog.copy_title"),
+            Loc.T("strategies.dialog.copy_prompt"),
             baseFile.Replace(".bat", "-copy.bat"));
         if (string.IsNullOrWhiteSpace(name)) return;
 
@@ -274,8 +274,8 @@ public partial class StrategiesPage : UserControl
             var created = _strategy.CreateCustomStrategy(baseFile, name);
             RefreshList();
             _list.SelectedItem = created;
-            ConsoleLog.Instance.Write($"Создан конфиг: {created}");
-            UiHelpers.ShowInfo($"Создана копия: {created}");
+            ConsoleLog.Instance.Write(Loc.F("strategies.log_created", created));
+            UiHelpers.ShowInfo(Loc.F("strategies.copy_created", created));
         }
         catch (Exception ex)
         {
@@ -291,13 +291,13 @@ public partial class StrategiesPage : UserControl
             !_currentFile.Contains("custom", StringComparison.OrdinalIgnoreCase) &&
             !_currentFile.Contains("copy", StringComparison.OrdinalIgnoreCase))
         {
-            if (!UiHelpers.Confirm($"Переименовать базовый конфиг {_currentFile}?\nЛучше создать копию, чтобы не потерять оригинал."))
+            if (!UiHelpers.Confirm(Loc.F("strategies.rename_builtin_confirm", _currentFile)))
                 return;
         }
 
         var name = Prompt(
-            "Переименовать",
-            "Новое имя файла:",
+            Loc.T("strategies.dialog.rename_title"),
+            Loc.T("strategies.dialog.rename_prompt"),
             _currentFile);
         if (string.IsNullOrWhiteSpace(name)) return;
 
@@ -311,8 +311,8 @@ public partial class StrategiesPage : UserControl
             }
             RefreshList();
             _list.SelectedItem = renamed;
-            ConsoleLog.Instance.Write($"Переименовано: {_currentFile} → {renamed}");
-            UiHelpers.ShowInfo($"Файл переименован в {renamed}");
+            ConsoleLog.Instance.Write(Loc.F("strategies.log_renamed", _currentFile, renamed));
+            UiHelpers.ShowInfo(Loc.F("strategies.renamed_to", renamed));
         }
         catch (Exception ex)
         {
@@ -330,8 +330,8 @@ public partial class StrategiesPage : UserControl
         if (!_strategy.CanDeleteStrategy(_currentFile))
         {
             var msg = BundledStrategiesService.IsProtected(_currentFile)
-                ? $"Нельзя удалить встроенный конфиг {_currentFile}."
-                : "Нельзя удалить служебный файл service.bat";
+                ? Loc.F("strategies.cannot_delete_builtin", _currentFile)
+                : Loc.T("strategies.cannot_delete_service");
             UiHelpers.ShowError(msg);
             return;
         }
@@ -340,11 +340,10 @@ public partial class StrategiesPage : UserControl
             !_currentFile.Contains("custom", StringComparison.OrdinalIgnoreCase) &&
             !_currentFile.Contains("copy", StringComparison.OrdinalIgnoreCase))
         {
-            if (!UiHelpers.Confirm(
-                    $"Удалить базовый конфиг {_currentFile}?\nРекомендуется удалять только копии и свои файлы."))
+            if (!UiHelpers.Confirm(Loc.F("strategies.delete_builtin_confirm", _currentFile)))
                 return;
         }
-        else if (!UiHelpers.Confirm($"Удалить конфиг {_currentFile}? Файл будет удалён с диска."))
+        else if (!UiHelpers.Confirm(Loc.F("strategies.delete_confirm", _currentFile)))
         {
             return;
         }
@@ -360,8 +359,8 @@ public partial class StrategiesPage : UserControl
             }
             _currentFile = null;
             RefreshList();
-            ConsoleLog.Instance.Write($"Удалён конфиг: {deleted}");
-            UiHelpers.ShowInfo($"Удалён: {deleted}");
+            ConsoleLog.Instance.Write(Loc.F("strategies.log_deleted", deleted));
+            UiHelpers.ShowInfo(Loc.F("strategies.deleted", deleted));
         }
         catch (Exception ex)
         {
@@ -372,8 +371,8 @@ public partial class StrategiesPage : UserControl
     private void CreateNew()
     {
         var name = Prompt(
-            "Новый конфиг",
-            "Введите имя нового .bat (на основе general.bat):",
+            Loc.T("strategies.dialog.new_title"),
+            Loc.T("strategies.dialog.new_prompt"),
             "my-strategy.bat");
         if (string.IsNullOrWhiteSpace(name)) return;
         if (!name.EndsWith(".bat", StringComparison.OrdinalIgnoreCase))
@@ -387,7 +386,7 @@ public partial class StrategiesPage : UserControl
             var created = _strategy.CreateCustomStrategy(template, name);
             RefreshList();
             _list.SelectedItem = created;
-            UiHelpers.ShowInfo($"Создан файл: {created}");
+            UiHelpers.ShowInfo(Loc.F("strategies.file_created", created));
         }
         catch (Exception ex)
         {
@@ -421,7 +420,7 @@ public partial class StrategiesPage : UserControl
         string? result = null;
         var ok = new Button { Content = "OK", Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
         ok.Click += (_, _) => { result = input.Text.Trim(); dlg.Close(); };
-        var cancel = new Button { Content = "Отмена", Style = (Style)Application.Current.FindResource("SecondaryButton"), IsCancel = true };
+        var cancel = new Button { Content = Loc.T("common.cancel"), Style = (Style)Application.Current.FindResource("SecondaryButton"), IsCancel = true };
         cancel.Click += (_, _) => dlg.Close();
         btns.Children.Add(ok);
         btns.Children.Add(cancel);
