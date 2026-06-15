@@ -169,18 +169,20 @@ public partial class HomePage : UserControl
 
     private UIElement CreateAutostartRow()
     {
-        var row = new Grid { Margin = new Thickness(0, 0, 0, 24) };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 24)
+        };
 
-        var label = new TextBlock
+        row.Children.Add(new TextBlock
         {
             Text = Loc.T("home.autostart"),
             FontSize = 15,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        Grid.SetColumn(label, 0);
-        row.Children.Add(label);
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 12, 0)
+        });
 
         _autostartToggle = new ToggleButton
         {
@@ -190,7 +192,6 @@ public partial class HomePage : UserControl
         };
         _autostartToggle.Checked += (_, _) => SetAutostartEnabled(true);
         _autostartToggle.Unchecked += (_, _) => SetAutostartEnabled(false);
-        Grid.SetColumn(_autostartToggle, 1);
         row.Children.Add(_autostartToggle);
 
         return row;

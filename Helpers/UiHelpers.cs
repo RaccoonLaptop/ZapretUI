@@ -20,6 +20,30 @@ public static class UiHelpers
     public static bool Confirm(string message, Window? owner = null) =>
         ConfirmWindow.Show(message, owner ?? GetActiveWindow());
 
+    public static async Task RunWithLoadingAsync(Window? owner, string message, Func<Task> action)
+    {
+        await RunWithLoadingAsync<object?>(owner, message, async () =>
+        {
+            await action().ConfigureAwait(false);
+            return null;
+        }).ConfigureAwait(true);
+    }
+
+    public static async Task<T> RunWithLoadingAsync<T>(Window? owner, string message, Func<Task<T>> action)
+    {
+        var loading = new LoadingWindow(message, owner ?? GetActiveWindow());
+        loading.Show();
+        try
+        {
+            await Task.Yield();
+            return await action().ConfigureAwait(true);
+        }
+        finally
+        {
+            loading.Close();
+        }
+    }
+
     private static Window? GetActiveWindow() =>
         Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
         ?? Application.Current?.MainWindow;
