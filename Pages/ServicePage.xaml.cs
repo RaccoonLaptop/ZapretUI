@@ -29,7 +29,6 @@ public partial class ServicePage : UserControl
     private Button _ipsetLoadedBtn = null!;
     private Button _ipsetNoneBtn = null!;
     private Button _ipsetAnyBtn = null!;
-    private ComboBox _strategyCombo = null!;
     private CheckBox _minimizeTrayCheck = null!;
 
     public ServicePage(ZapretPaths paths, StrategyService strategy)
@@ -61,21 +60,16 @@ public partial class ServicePage : UserControl
             Margin = new Thickness(0, 0, 0, 20)
         });
 
-        // Service
-        root.Children.Add(Section(Loc.T("service.section_service")));
-        var svcCard = Card();
-        var svcStack = new StackPanel();
-        svcStack.Children.Add(Label(Loc.T("service.strategy_autostart")));
-        _strategyCombo = new ComboBox { MinWidth = 350, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) };
-        foreach (var s in _paths.GetStrategyFiles()) _strategyCombo.Items.Add(s);
-        if (_strategyCombo.Items.Count > 0) _strategyCombo.SelectedIndex = 0;
-        svcStack.Children.Add(_strategyCombo);
+        // Settings
+        root.Children.Add(Section(Loc.T("service.section_settings")));
+        var setCard = Card();
+        var setStack = new StackPanel();
 
         _minimizeTrayCheck = new CheckBox
         {
             Content = Loc.T("service.minimize_to_tray"),
             IsChecked = _settings.MinimizeToTray,
-            Margin = new Thickness(0, 0, 0, 12)
+            Margin = new Thickness(0, 0, 0, 16)
         };
         _minimizeTrayCheck.Checked += (_, _) =>
         {
@@ -90,20 +84,7 @@ public partial class ServicePage : UserControl
                 _settings.Save();
             }
         };
-        svcStack.Children.Add(_minimizeTrayCheck);
-
-        var svcBtns = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
-        svcBtns.Children.Add(ActionBtn(Loc.T("service.install_service"), async () => await InstallServiceAsync()));
-        svcBtns.Children.Add(ActionBtn(Loc.T("service.remove_services"), async () => await RemoveServicesAsync()));
-        svcBtns.Children.Add(ActionBtn(Loc.T("service.check_status"), async () => await RunBridgeWithDialog(Loc.T("dialog.service_status"), "CheckStatus")));
-        svcStack.Children.Add(svcBtns);
-        svcCard.Child = svcStack;
-        root.Children.Add(svcCard);
-
-        // Settings
-        root.Children.Add(Section(Loc.T("service.section_settings")));
-        var setCard = Card();
-        var setStack = new StackPanel();
+        setStack.Children.Add(_minimizeTrayCheck);
 
         _gameFilterStatus = StatusLine(Loc.T("service.game_filter"));
         setStack.Children.Add(_gameFilterStatus);
@@ -418,33 +399,6 @@ public partial class ServicePage : UserControl
         }
     }
 
-    private async Task InstallServiceAsync()
-    {
-        try
-        {
-            var strategy = GetSelectedStrategy();
-            var result = await _runner.RunBridgeAsync("InstallService", strategy);
-            UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.install_service"), result);
-        }
-        catch (Exception ex)
-        {
-            UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.install_service"), $"{Loc.T("common.error_prefix")} {ex.Message}");
-        }
-    }
-
-    private async Task RemoveServicesAsync()
-    {
-        try
-        {
-            var result = await _runner.RunBridgeAsync("RemoveServices");
-            UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.remove_services"), result);
-        }
-        catch (Exception ex)
-        {
-            UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.remove_services"), $"{Loc.T("common.error_prefix")} {ex.Message}");
-        }
-    }
-
     private async Task RunBridgeWithDialog(string title, string action, string? extra = null)
     {
         try
@@ -505,9 +459,6 @@ public partial class ServicePage : UserControl
         ApplyActiveStyle(_ipsetNoneBtn, ipsetMode == "none");
         ApplyActiveStyle(_ipsetAnyBtn, ipsetMode == "any");
     }
-
-    private string GetSelectedStrategy() =>
-        _strategyCombo.SelectedItem as string ?? "general.bat";
 
     private static TextBlock Section(string text) => new()
     {

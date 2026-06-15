@@ -52,7 +52,7 @@
   "home.log_started": "Started",
   "home.log_stopped": "Stopped",
   "home.autostart": "Autostart",
-  "home.autostart_hint": "On Windows login, Zapret UI starts and runs the last selected preset",
+  "home.autostart_hint": "On Windows login, Zapret UI starts in the tray and runs the last selected preset",
   "strategy.winws_not_started": "winws.exe did not start. Run Zapret UI as administrator.",
   "strategies.title": "Strategies",
   "strategies.subtitle": "Zapret launch configs (.bat). Select a file on the left, edit and save.",
