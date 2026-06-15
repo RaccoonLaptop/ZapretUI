@@ -142,7 +142,6 @@ public partial class ServicePage : UserControl
         updBtns.Children.Add(ActionBtn(Loc.T("service.check_app_update"), async () => await CheckAppUpdateAsync()));
         updBtns.Children.Add(ActionBtn(Loc.T("service.check_flowseal_update"), async () => await CheckFlowsealUpdateAsync()));
         updBtns.Children.Add(ActionBtn(Loc.T("service.reinstall_flowseal"), async () => await ReinstallFlowsealAsync()));
-        updBtns.Children.Add(ActionBtn(Loc.T("service.open_flowseal_release"), () => OpenUrl(_updates.GetReleaseUrl())));
         updStack.Children.Add(updBtns);
         updCard.Child = updStack;
         root.Children.Add(updCard);
@@ -234,7 +233,10 @@ public partial class ServicePage : UserControl
     private async Task HandleSecurityAsync()
     {
         var security = new SecuritySetupService(_paths);
-        var status = await security.CheckStatusAsync();
+        var status = await UiHelpers.RunWithLoadingAsync(
+            OwnerWindow,
+            Loc.T("common.loading"),
+            () => security.CheckStatusAsync());
 
         if (status.IsFullyConfigured)
         {
@@ -273,7 +275,10 @@ public partial class ServicePage : UserControl
         try
         {
             var updater = new AppSelfUpdateService(_settings, _paths.Root);
-            var result = await updater.CheckForUpdateAsync();
+            var result = await UiHelpers.RunWithLoadingAsync(
+                OwnerWindow,
+                Loc.T("update.checking_app"),
+                () => updater.CheckForUpdateAsync());
             if (result.Error is not null)
             {
                 UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.update_app"), $"{Loc.T("common.error_prefix")} {result.Error}");
@@ -352,7 +357,10 @@ public partial class ServicePage : UserControl
 
     private async Task CheckFlowsealUpdateAsync()
     {
-        var r = await _updates.CheckForUpdatesAsync();
+        var r = await UiHelpers.RunWithLoadingAsync(
+            OwnerWindow,
+            Loc.T("update.checking_flowseal"),
+            () => _updates.CheckForUpdatesAsync());
         if (r.Error is not null)
         {
             UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.update_flowseal"), $"{Loc.T("common.error_prefix")} {r.Error}");
@@ -376,7 +384,10 @@ public partial class ServicePage : UserControl
 
         try
         {
-            var (ok, output) = await NetworkResetService.RunAllAsync();
+            var (ok, output) = await UiHelpers.RunWithLoadingAsync(
+                OwnerWindow,
+                Loc.T("common.loading"),
+                () => NetworkResetService.RunAllAsync());
             UiHelpers.ShowResult(OwnerWindow, Loc.T("network.reset_title"), output + (ok ? Loc.T("network.reset_reboot") : ""));
         }
         catch (Exception ex)
@@ -389,7 +400,10 @@ public partial class ServicePage : UserControl
     {
         try
         {
-            await _updates.UpdateIpsetListAsync();
+            await UiHelpers.RunWithLoadingAsync(
+                OwnerWindow,
+                Loc.T("common.loading"),
+                () => _updates.UpdateIpsetListAsync());
             RefreshStatuses();
             UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.ipset_list"), Loc.T("dialog.ipset_ok"));
         }
@@ -403,7 +417,10 @@ public partial class ServicePage : UserControl
     {
         try
         {
-            var result = await _runner.RunBridgeAsync(action, extra);
+            var result = await UiHelpers.RunWithLoadingAsync(
+                OwnerWindow,
+                Loc.T("common.loading"),
+                () => _runner.RunBridgeAsync(action, extra));
             UiHelpers.ShowResult(OwnerWindow, title, result);
         }
         catch (Exception ex)
