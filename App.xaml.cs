@@ -6,13 +6,14 @@ namespace ZapretUI;
 
 public partial class App : Application
 {
+    private SingleInstanceService? _singleInstance;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
         var settings = AppSettings.Load();
         LocalizationService.Initialize(settings.Language);
-        AppStartupService.SyncWithSettings(settings.StartUiOnLogin);
 
         StartupArgs.Parse(e.Args);
 
@@ -23,6 +24,16 @@ public partial class App : Application
             progressWin.Show();
             return;
         }
+
+        _singleInstance = SingleInstanceService.Acquire();
+        if (!_singleInstance.IsFirstInstance)
+        {
+            SingleInstanceService.TryActivateExisting();
+            Shutdown();
+            return;
+        }
+
+        AppStartupService.SyncWithSettings(settings.StartUiOnLogin);
 
         DispatcherUnhandledException += (_, args) =>
         {
@@ -60,6 +71,12 @@ public partial class App : Application
         MainWindow = main;
         main.Show();
         ScheduleFreshInstallDefaults(zapretRoot);
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _singleInstance?.Dispose();
+        base.OnExit(e);
     }
 
     private static void ScheduleFreshInstallDefaults(string root)

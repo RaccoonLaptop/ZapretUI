@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     private readonly ProcessRunner _runner;
     private readonly DispatcherTimer _statusTimer;
     private readonly TrayIconService _tray;
+    private readonly PowerResumeService _powerResume;
     private readonly bool _startInTray;
     private Button? _activeNav;
     private HomePage? _homePage;
@@ -59,6 +60,9 @@ public partial class MainWindow : Window
             () => _paths.GetStrategyFiles().ToList(),
             () => _homePage?.GetSelectedStrategy() ?? _settings.LastStrategy,
             SwitchStrategyFromTrayAsync);
+        _powerResume = new PowerResumeService(
+            () => _strategy.IsRunning(),
+            RestartBypassAfterResumeAsync);
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
 
         VersionText.Text = $"v{AppSelfUpdateService.GetLocalVersion()} · Flowseal {_paths.GetLocalVersion()}";
@@ -86,11 +90,14 @@ public partial class MainWindow : Window
                 return;
             }
 
-            if (!_settings.SecuritySetupCompleted && !_settings.SecuritySetupSkipped)
+            if (!_settings.SecuritySetupCompleted && !_settings.SecuritySetupSkipped && !_startInTray)
                 ShowSecuritySetup();
 
             if (_startInTray)
                 HideToTray();
+
+            if (_startInTray)
+                await TryAutoStartBypassOnLoginAsync();
         }
         catch (Exception ex)
         {
@@ -143,6 +150,7 @@ public partial class MainWindow : Window
         }
 
         _statusTimer.Stop();
+        _powerResume.Dispose();
         _tray.Dispose();
         Application.Current.Shutdown();
     }
@@ -150,8 +158,59 @@ public partial class MainWindow : Window
     private void OnStateChanged(object? sender, EventArgs e)
     {
         if (_isShuttingDown) return;
-        if (WindowState == WindowState.Minimized && _strategy.IsRunning())
+        if (WindowState == WindowState.Minimized &&
+            (_strategy.IsRunning() || _settings.MinimizeToTray))
             HideToTray();
+    }
+
+    public void ShowAndActivate()
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+        Focus();
+    }
+
+    private async Task TryAutoStartBypassOnLoginAsync()
+    {
+        if (!_settings.StartBypassOnLogin || _strategy.IsRunning())
+            return;
+
+        var strategy = _settings.LastStrategy;
+        if (string.IsNullOrWhiteSpace(strategy))
+            return;
+
+        var batPath = Path.Combine(_paths.Root, strategy);
+        if (!File.Exists(batPath))
+            return;
+
+        try
+        {
+            ConsoleLog.Instance.Write(Loc.F("startup.autostart_bypass", strategy));
+            await _strategy.StartStrategyAsync(strategy);
+        }
+        catch (Exception ex)
+        {
+            ConsoleLog.Instance.Write(Loc.F("startup.autostart_bypass_failed", ex.Message));
+        }
+    }
+
+    private async Task RestartBypassAfterResumeAsync()
+    {
+        if (_strategy.IsRunning())
+            return;
+
+        var strategy = _homePage?.GetSelectedStrategy() ?? _settings.LastStrategy;
+        if (string.IsNullOrWhiteSpace(strategy))
+            return;
+
+        var batPath = Path.Combine(_paths.Root, strategy);
+        if (!File.Exists(batPath))
+            return;
+
+        ConsoleLog.Instance.Write(Loc.T("power.resume_restarting"));
+        await _strategy.StartStrategyAsync(strategy);
+        ConsoleLog.Instance.Write(Loc.T("power.resume_restarted"));
     }
 
     private void HideToTray()
