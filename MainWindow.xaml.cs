@@ -173,7 +173,7 @@ public partial class MainWindow : Window
 
     private async Task TryAutoStartBypassOnLoginAsync()
     {
-        if (!_settings.StartBypassOnLogin || _strategy.IsRunning())
+        if (!_settings.StartUiOnLogin || _strategy.IsRunning())
             return;
 
         var strategy = _settings.LastStrategy;
