@@ -108,28 +108,175 @@ public sealed class StartupUpdateService
 
 public static class FlowsealReinstallService
 {
-    public static Task<bool> ReinstallAsync(Window? owner, ZapretPaths paths)
+    public static async Task<bool> ReinstallAsync(Window? owner, ZapretPaths paths)
     {
         var target = paths.Root;
+        string? installedStrategy = null;
+        FlowsealUserDataBackup? backup = null;
+
         try
         {
+            try
+            {
+                var strategySvc = new StrategyService(paths, new ProcessRunner());
+                installedStrategy = await strategySvc.GetServiceStrategyAsync().ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(installedStrategy))
+                    installedStrategy = null;
+            }
+            catch { /* ignore */ }
+
+            backup = FlowsealUserDataBackup.Create(target);
+            ZapretShutdownService.StopAll();
+            await Task.Delay(800).ConfigureAwait(false);
+
             if (Directory.Exists(target))
                 Directory.Delete(target, true);
 
             var bootstrap = new BootstrapWindow(target) { Owner = owner };
             if (bootstrap.ShowDialog() != true)
             {
+                backup.TryRestore(target);
                 UiHelpers.ShowResult(owner, "Flowseal", Loc.T("update.flowseal_cancel"));
-                return Task.FromResult(false);
+                return false;
+            }
+
+            backup.TryRestore(target);
+            BundledStrategiesService.DeployTo(target);
+
+            if (installedStrategy is not null)
+            {
+                var batName = installedStrategy.EndsWith(".bat", StringComparison.OrdinalIgnoreCase)
+                    ? installedStrategy
+                    : installedStrategy + ".bat";
+                var batPath = Path.Combine(target, batName);
+                if (File.Exists(batPath) &&
+                    UiHelpers.Confirm(Loc.F("update.flowseal_restore_service", installedStrategy), owner))
+                {
+                    var runner = new ProcessRunner();
+                    runner.SetZapretRoot(target);
+                    await runner.RunBridgeAsync("InstallService", batName).ConfigureAwait(false);
+                }
             }
 
             UiHelpers.ShowResult(owner, "Flowseal", Loc.T("update.flowseal_done_restart"));
-            return Task.FromResult(true);
+            return true;
         }
         catch (Exception ex)
         {
+            backup?.TryRestore(target);
             UiHelpers.ShowResult(owner, "Flowseal", $"{Loc.T("common.error_prefix")} {ex.Message}");
-            return Task.FromResult(false);
+            return false;
         }
+        finally
+        {
+            backup?.Dispose();
+        }
+    }
+}
+
+internal sealed class FlowsealUserDataBackup : IDisposable
+{
+    private readonly string _tempDir;
+
+    private FlowsealUserDataBackup(string tempDir) => _tempDir = tempDir;
+
+    public static FlowsealUserDataBackup? Create(string zapretRoot)
+    {
+        if (!Directory.Exists(zapretRoot))
+            return null;
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "zapretui-backup-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        CopyListsDirIfExists(Path.Combine(zapretRoot, "lists"), tempDir, "lists");
+        CopyUtilsFileIfExists(Path.Combine(zapretRoot, "utils", "game_filter.enabled"),
+            Path.Combine(tempDir, "utils"), "game_filter.enabled");
+        CopyUtilsFileIfExists(Path.Combine(zapretRoot, "utils", "check_updates.enabled"),
+            Path.Combine(tempDir, "utils"), "check_updates.enabled");
+
+        return new FlowsealUserDataBackup(tempDir);
+    }
+
+    public void TryRestore(string zapretRoot)
+    {
+        if (!Directory.Exists(_tempDir) || !Directory.Exists(zapretRoot))
+            return;
+
+        var listsBackup = Path.Combine(_tempDir, "lists");
+        if (Directory.Exists(listsBackup))
+        {
+            var listsTarget = Path.Combine(zapretRoot, "lists");
+            Directory.CreateDirectory(listsTarget);
+            foreach (var file in Directory.GetFiles(listsBackup, "*", SearchOption.AllDirectories))
+            {
+                var rel = Path.GetRelativePath(listsBackup, file);
+                if (!ShouldRestoreListFile(rel))
+                    continue;
+
+                var dest = Path.Combine(listsTarget, rel);
+                Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                try { File.Copy(file, dest, true); } catch { /* ignore */ }
+            }
+        }
+
+        RestoreUtilsFile(zapretRoot, "game_filter.enabled");
+        RestoreUtilsFile(zapretRoot, "check_updates.enabled");
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            if (Directory.Exists(_tempDir))
+                Directory.Delete(_tempDir, true);
+        }
+        catch { /* ignore */ }
+    }
+
+    private static bool ShouldRestoreListFile(string relativePath)
+    {
+        var name = Path.GetFileName(relativePath);
+        if (name.EndsWith("-user.txt", StringComparison.OrdinalIgnoreCase))
+            return true;
+        return name.Equals("ipset-all.txt.backup", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void CopyUtilsFileIfExists(string sourceFile, string destDir, string destName)
+    {
+        if (!File.Exists(sourceFile))
+            return;
+
+        Directory.CreateDirectory(destDir);
+        File.Copy(sourceFile, Path.Combine(destDir, destName), true);
+    }
+
+    private static void CopyListsDirIfExists(string sourceDir, string destRoot, string destSubDir)
+    {
+        if (!Directory.Exists(sourceDir))
+            return;
+
+        var destDir = Path.Combine(destRoot, destSubDir);
+        Directory.CreateDirectory(destDir);
+        foreach (var file in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
+        {
+            var rel = Path.GetRelativePath(sourceDir, file);
+            if (!ShouldRestoreListFile(rel))
+                continue;
+
+            var dest = Path.Combine(destDir, rel);
+            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+            try { File.Copy(file, dest, true); } catch { /* ignore */ }
+        }
+    }
+
+    private void RestoreUtilsFile(string zapretRoot, string fileName)
+    {
+        var source = Path.Combine(_tempDir, "utils", fileName);
+        if (!File.Exists(source))
+            return;
+
+        var utilsDir = Path.Combine(zapretRoot, "utils");
+        Directory.CreateDirectory(utilsDir);
+        try { File.Copy(source, Path.Combine(utilsDir, fileName), true); } catch { /* ignore */ }
     }
 }

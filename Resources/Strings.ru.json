@@ -188,6 +188,7 @@
   "update.install_phase": "Сейчас откроется окно обновления",
   "update.flowseal_cancel": "Установка отменена или не удалась.",
   "update.flowseal_done_restart": "Компоненты Flowseal переустановлены.\nПерезапустите Zapret UI для применения изменений.",
+  "update.flowseal_restore_service": "Восстановить службу автозапуска со стратегией «{0}»?",
   "update.install_title": "Обновление Zapret UI",
   "update.install_version": "Установка версии {0}",
   "update.install_prep": "Подготовка к обновлению…",
