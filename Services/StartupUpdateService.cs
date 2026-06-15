@@ -119,7 +119,7 @@ public static class FlowsealReinstallService
             try
             {
                 var strategySvc = new StrategyService(paths, new ProcessRunner());
-                installedStrategy = await strategySvc.GetServiceStrategyAsync().ConfigureAwait(false);
+                installedStrategy = await strategySvc.GetServiceStrategyAsync();
                 if (string.IsNullOrWhiteSpace(installedStrategy))
                     installedStrategy = null;
             }
@@ -127,7 +127,7 @@ public static class FlowsealReinstallService
 
             backup = FlowsealUserDataBackup.Create(target);
             ZapretShutdownService.StopAll();
-            await Task.Delay(800).ConfigureAwait(false);
+            await Task.Delay(800);
 
             if (Directory.Exists(target))
                 Directory.Delete(target, true);
@@ -154,7 +154,7 @@ public static class FlowsealReinstallService
                 {
                     var runner = new ProcessRunner();
                     runner.SetZapretRoot(target);
-                    await runner.RunBridgeAsync("InstallService", batName).ConfigureAwait(false);
+                    await runner.RunBridgeAsync("InstallService", batName);
                 }
             }
 
