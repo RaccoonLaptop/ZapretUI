@@ -31,6 +31,8 @@ public partial class ServicePage : UserControl
     private Button _ipsetAnyBtn = null!;
     private ComboBox _strategyCombo = null!;
     private CheckBox _uiStartupCheck = null!;
+    private CheckBox _bypassStartupCheck = null!;
+    private CheckBox _minimizeTrayCheck = null!;
 
     public ServicePage(ZapretPaths paths, StrategyService strategy)
     {
@@ -101,6 +103,48 @@ public partial class ServicePage : UserControl
             }
         };
         svcStack.Children.Add(_uiStartupCheck);
+
+        _bypassStartupCheck = new CheckBox
+        {
+            Content = Loc.T("service.start_bypass_on_login"),
+            IsChecked = _settings.StartBypassOnLogin,
+            Margin = new Thickness(0, 0, 0, 12)
+        };
+        _bypassStartupCheck.Checked += (_, _) =>
+        {
+            _settings.StartBypassOnLogin = _bypassStartupCheck.IsChecked == true;
+            _settings.Save();
+        };
+        _bypassStartupCheck.Unchecked += (_, _) =>
+        {
+            if (_bypassStartupCheck.IsChecked != true)
+            {
+                _settings.StartBypassOnLogin = false;
+                _settings.Save();
+            }
+        };
+        svcStack.Children.Add(_bypassStartupCheck);
+
+        _minimizeTrayCheck = new CheckBox
+        {
+            Content = Loc.T("service.minimize_to_tray"),
+            IsChecked = _settings.MinimizeToTray,
+            Margin = new Thickness(0, 0, 0, 12)
+        };
+        _minimizeTrayCheck.Checked += (_, _) =>
+        {
+            _settings.MinimizeToTray = _minimizeTrayCheck.IsChecked == true;
+            _settings.Save();
+        };
+        _minimizeTrayCheck.Unchecked += (_, _) =>
+        {
+            if (_minimizeTrayCheck.IsChecked != true)
+            {
+                _settings.MinimizeToTray = false;
+                _settings.Save();
+            }
+        };
+        svcStack.Children.Add(_minimizeTrayCheck);
 
         var svcBtns = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
         svcBtns.Children.Add(ActionBtn(Loc.T("service.install_service"), async () => await InstallServiceAsync()));
@@ -454,11 +498,6 @@ public partial class ServicePage : UserControl
         try
         {
             var result = await _runner.RunBridgeAsync("RemoveServices");
-            AppStartupService.Disable();
-            _settings.StartUiOnLogin = false;
-            _settings.Save();
-            _uiStartupCheck.IsChecked = false;
-            result += "\n\n" + Loc.T("service.ui_tray_disabled");
             UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.remove_services"), result);
         }
         catch (Exception ex)

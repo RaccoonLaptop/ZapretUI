@@ -26,6 +26,8 @@ public sealed class AppSettings
     public string Language { get; set; } = "ru";
     /// <summary>Запускать Zapret UI в трее при входе в Windows (вместе со службой).</summary>
     public bool StartUiOnLogin { get; set; } = true;
+    /// <summary>Запускать обход (winws) при входе, если служба zapret не активна.</summary>
+    public bool StartBypassOnLogin { get; set; }
 
     public static AppSettings Load()
     {
