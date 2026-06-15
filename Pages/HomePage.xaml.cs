@@ -169,9 +169,7 @@ public partial class HomePage : UserControl
 
     private UIElement CreateAutostartRow()
     {
-        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
-
-        var row = new Grid();
+        var row = new Grid { Margin = new Thickness(0, 0, 0, 24) };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
@@ -195,17 +193,7 @@ public partial class HomePage : UserControl
         Grid.SetColumn(_autostartToggle, 1);
         row.Children.Add(_autostartToggle);
 
-        panel.Children.Add(row);
-        panel.Children.Add(new TextBlock
-        {
-            Text = Loc.T("home.autostart_hint"),
-            FontSize = 12,
-            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 6, 0, 0)
-        });
-
-        return panel;
+        return row;
     }
 
     private void SetAutostartEnabled(bool enabled)
