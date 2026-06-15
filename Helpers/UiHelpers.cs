@@ -9,16 +9,16 @@ namespace ZapretUI.Helpers;
 public static class UiHelpers
 {
     public static void ShowError(string message, Window? owner = null) =>
-        MessageWindow.Show(message, Loc.T("app.title"), owner ?? GetActiveWindow());
+        RunOnUiThread(() => MessageWindow.Show(message, Loc.T("app.title"), owner ?? GetActiveWindow()));
 
     public static void ShowInfo(string message, Window? owner = null) =>
-        MessageWindow.Show(message, Loc.T("app.title"), owner ?? GetActiveWindow());
+        RunOnUiThread(() => MessageWindow.Show(message, Loc.T("app.title"), owner ?? GetActiveWindow()));
 
     public static void ShowResult(Window? owner, string title, string text) =>
-        ResultWindow.Show(owner, title, text);
+        RunOnUiThread(() => ResultWindow.Show(owner, title, text));
 
     public static bool Confirm(string message, Window? owner = null) =>
-        ConfirmWindow.Show(message, owner ?? GetActiveWindow());
+        RunOnUiThread(() => ConfirmWindow.Show(message, owner ?? GetActiveWindow()));
 
     public static Task RunWithLoadingAsync(Window? owner, string message, Func<Task> action) =>
         RunWithLoadingAsync<object?>(owner, message, async () =>
@@ -48,6 +48,21 @@ public static class UiHelpers
         {
             loading.Close();
         }
+    }
+
+    private static void RunOnUiThread(Action action)
+    {
+        var dispatcher = Application.Current.Dispatcher;
+        if (dispatcher.CheckAccess())
+            action();
+        else
+            dispatcher.Invoke(action);
+    }
+
+    private static T RunOnUiThread<T>(Func<T> func)
+    {
+        var dispatcher = Application.Current.Dispatcher;
+        return dispatcher.CheckAccess() ? func() : dispatcher.Invoke(func);
     }
 
     private static Window? GetActiveWindow() =>
