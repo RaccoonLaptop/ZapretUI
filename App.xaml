@@ -144,6 +144,35 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
 
+        <Style TargetType="ToggleButton" x:Key="SwitchToggle">
+            <Setter Property="Width" Value="48"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid>
+                            <Border x:Name="Track" CornerRadius="13"
+                                    Background="{StaticResource SurfaceElevatedBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"/>
+                            <Border x:Name="Thumb" Width="20" Height="20" CornerRadius="10"
+                                    Background="{StaticResource TextMutedBrush}"
+                                    Margin="3,0,0,0" HorizontalAlignment="Left"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="{StaticResource SuccessBrush}"/>
+                                <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource SuccessBrush}"/>
+                                <Setter TargetName="Thumb" Property="Background" Value="#08090d"/>
+                                <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="Thumb" Property="Margin" Value="0,0,3,0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style TargetType="Button" x:Key="TitleBarButton">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>

@@ -30,8 +30,6 @@ public partial class ServicePage : UserControl
     private Button _ipsetNoneBtn = null!;
     private Button _ipsetAnyBtn = null!;
     private ComboBox _strategyCombo = null!;
-    private CheckBox _uiStartupCheck = null!;
-    private CheckBox _bypassStartupCheck = null!;
     private CheckBox _minimizeTrayCheck = null!;
 
     public ServicePage(ZapretPaths paths, StrategyService strategy)
@@ -72,58 +70,6 @@ public partial class ServicePage : UserControl
         foreach (var s in _paths.GetStrategyFiles()) _strategyCombo.Items.Add(s);
         if (_strategyCombo.Items.Count > 0) _strategyCombo.SelectedIndex = 0;
         svcStack.Children.Add(_strategyCombo);
-
-        _uiStartupCheck = new CheckBox
-        {
-            Content = Loc.T("service.start_ui_tray"),
-            IsChecked = AppStartupService.IsEnabled(),
-            Margin = new Thickness(0, 0, 0, 12)
-        };
-        _uiStartupCheck.Checked += (_, _) =>
-        {
-            if (_uiStartupCheck.IsChecked == true)
-            {
-                AppStartupService.Enable();
-                _settings.StartUiOnLogin = true;
-            }
-            else
-            {
-                AppStartupService.Disable();
-                _settings.StartUiOnLogin = false;
-            }
-            _settings.Save();
-        };
-        _uiStartupCheck.Unchecked += (_, _) =>
-        {
-            if (_uiStartupCheck.IsChecked != true)
-            {
-                AppStartupService.Disable();
-                _settings.StartUiOnLogin = false;
-                _settings.Save();
-            }
-        };
-        svcStack.Children.Add(_uiStartupCheck);
-
-        _bypassStartupCheck = new CheckBox
-        {
-            Content = Loc.T("service.start_bypass_on_login"),
-            IsChecked = _settings.StartBypassOnLogin,
-            Margin = new Thickness(0, 0, 0, 12)
-        };
-        _bypassStartupCheck.Checked += (_, _) =>
-        {
-            _settings.StartBypassOnLogin = _bypassStartupCheck.IsChecked == true;
-            _settings.Save();
-        };
-        _bypassStartupCheck.Unchecked += (_, _) =>
-        {
-            if (_bypassStartupCheck.IsChecked != true)
-            {
-                _settings.StartBypassOnLogin = false;
-                _settings.Save();
-            }
-        };
-        svcStack.Children.Add(_bypassStartupCheck);
 
         _minimizeTrayCheck = new CheckBox
         {
@@ -478,13 +424,6 @@ public partial class ServicePage : UserControl
         {
             var strategy = GetSelectedStrategy();
             var result = await _runner.RunBridgeAsync("InstallService", strategy);
-            if (_uiStartupCheck.IsChecked == true)
-            {
-                AppStartupService.Enable();
-                _settings.StartUiOnLogin = true;
-                _settings.Save();
-                result += "\n\n" + Loc.T("service.ui_tray_enabled");
-            }
             UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.install_service"), result);
         }
         catch (Exception ex)

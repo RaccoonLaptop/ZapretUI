@@ -24,9 +24,9 @@ public sealed class AppSettings
     public string HomeBackground { get; set; } = "wavy";
     /// <summary>Язык интерфейса: ru или en.</summary>
     public string Language { get; set; } = "ru";
-    /// <summary>Запускать Zapret UI в трее при входе в Windows (вместе со службой).</summary>
-    public bool StartUiOnLogin { get; set; } = true;
-    /// <summary>Запускать обход (winws) при входе, если служба zapret не активна.</summary>
+    /// <summary>Автозапуск: Zapret UI в трее и последний выбранный пресет при входе в Windows.</summary>
+    public bool StartUiOnLogin { get; set; }
+    /// <summary>Устарело: объединено с StartUiOnLogin.</summary>
     public bool StartBypassOnLogin { get; set; }
 
     public static AppSettings Load()
@@ -41,6 +41,11 @@ public sealed class AppSettings
                 if (settings.AutoUpdateApp && !settings.CheckUpdatesOnStartup)
                     settings.CheckUpdatesOnStartup = true;
                 settings.AutoUpdateApp = false;
+                if (settings.StartBypassOnLogin)
+                {
+                    settings.StartUiOnLogin = true;
+                    settings.StartBypassOnLogin = false;
+                }
                 return settings;
             }
         }

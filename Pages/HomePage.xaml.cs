@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Threading;
 using ZapretUI.Helpers;
@@ -13,6 +14,7 @@ public partial class HomePage : UserControl
     private readonly StrategyService _strategy;
     private readonly AppSettings _settings;
     private ComboBox _strategyCombo = null!;
+    private ToggleButton _autostartToggle = null!;
     private Button _toggleBtn = null!;
     private TextBlock _actionStatus = null!;
     private readonly DispatcherTimer _statusTimer;
@@ -137,6 +139,8 @@ public partial class HomePage : UserControl
         _strategyCombo.SelectionChanged += async (_, _) => await OnStrategySelectionChangedAsync();
         center.Children.Add(_strategyCombo);
 
+        center.Children.Add(CreateAutostartRow());
+
         _toggleBtn = new Button
         {
             Content = Loc.T("home.start"),
@@ -161,6 +165,66 @@ public partial class HomePage : UserControl
         center.Children.Add(_actionStatus);
 
         Content = center;
+    }
+
+    private UIElement CreateAutostartRow()
+    {
+        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
+
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var label = new TextBlock
+        {
+            Text = Loc.T("home.autostart"),
+            FontSize = 15,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(label, 0);
+        row.Children.Add(label);
+
+        _autostartToggle = new ToggleButton
+        {
+            Style = (Style)Application.Current.FindResource("SwitchToggle"),
+            IsChecked = _settings.StartUiOnLogin && AppStartupService.IsEnabled(),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        _autostartToggle.Checked += (_, _) => SetAutostartEnabled(true);
+        _autostartToggle.Unchecked += (_, _) => SetAutostartEnabled(false);
+        Grid.SetColumn(_autostartToggle, 1);
+        row.Children.Add(_autostartToggle);
+
+        panel.Children.Add(row);
+        panel.Children.Add(new TextBlock
+        {
+            Text = Loc.T("home.autostart_hint"),
+            FontSize = 12,
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 6, 0, 0)
+        });
+
+        return panel;
+    }
+
+    private void SetAutostartEnabled(bool enabled)
+    {
+        if (enabled)
+        {
+            if (_strategyCombo.SelectedItem is string strategy)
+            {
+                _settings.LastStrategy = strategy;
+            }
+            AppStartupService.Enable();
+            _settings.StartUiOnLogin = true;
+        }
+        else
+        {
+            AppStartupService.Disable();
+            _settings.StartUiOnLogin = false;
+        }
+        _settings.Save();
     }
 
     private static UIElement CreateHeader() => new TextBlock
