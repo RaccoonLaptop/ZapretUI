@@ -142,9 +142,6 @@ switch ($Action) {
         $parsed = Parse-StrategyArgs -BatFile $bat
         if (-not $parsed) { Write-Color "Could not parse winws arguments from $Extra" Red; exit 1 }
 
-        Write-Color "Installing service with strategy: $Extra" Cyan
-        Write-Color "Args: $parsed" DarkGray
-
         netsh interface tcp set global timestamps=enabled | Out-Null
         sc.exe stop zapret 2>$null | Out-Null
         sc.exe delete zapret 2>$null | Out-Null
@@ -166,7 +163,7 @@ switch ($Action) {
 
         $name = [System.IO.Path]::GetFileNameWithoutExtension($Extra)
         Set-ItemProperty "HKLM:\System\CurrentControlSet\Services\zapret" -Name "zapret-discord-youtube" -Value $name -Type String -Force
-        Write-Color "Service installed successfully" Green
+        Write-Color "Service installed: $Extra" Green
     }
 
     "RemoveServices" {

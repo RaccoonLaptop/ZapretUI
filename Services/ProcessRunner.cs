@@ -80,15 +80,18 @@ public sealed class ProcessRunner
         {
             Emit(Loc.T("runner.uac_required"));
             var logFile = Path.Combine(Path.GetTempPath(), $"zapretui-bridge-{Guid.NewGuid():N}.log");
-            args += $" -LogFile \"{logFile}\"";
+            args = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{scriptPath}\" -Action \"{action}\" -Root \"{root}\" -LogFile \"{logFile}\"";
+            if (!string.IsNullOrEmpty(extra))
+                args += $" -Extra \"{extra.Replace("\"", "`\"")}\"";
 
             var psi = new ProcessStartInfo
             {
-                FileName = "powershell.exe",
+                FileName = ResolvePowerShellHost(),
                 Arguments = args,
                 UseShellExecute = true,
                 Verb = "runas",
-                CreateNoWindow = false
+                WindowStyle = ProcessWindowStyle.Hidden,
+                CreateNoWindow = true
             };
             using var process = Process.Start(psi);
             if (process is not null)
@@ -106,7 +109,7 @@ public sealed class ProcessRunner
             }
 
             var adminResult = adminCaptured.Length > 0
-                ? adminCaptured.ToString().TrimEnd()
+                ? BridgeOutputFormatter.ForDialog(action, adminCaptured.ToString().TrimEnd())
                 : Loc.F("runner.admin_action_done", action);
             if (process is not null && process.ExitCode != 0)
                 throw new InvalidOperationException(string.IsNullOrWhiteSpace(adminResult) ? $"{Loc.T("common.error_prefix")} {action}" : adminResult);
@@ -126,7 +129,9 @@ public sealed class ProcessRunner
             OutputReceived -= Capture;
         }
 
-        var result = captured.Length > 0 ? captured.ToString().TrimEnd() : Loc.T("runner.operation_done");
+        var result = captured.Length > 0
+            ? BridgeOutputFormatter.ForDialog(action, captured.ToString().TrimEnd())
+            : Loc.T("runner.operation_done");
         if (exitCode != 0)
             throw new InvalidOperationException(string.IsNullOrWhiteSpace(result) ? $"{Loc.T("common.error_prefix")} {action}" : result);
 
@@ -191,6 +196,13 @@ public sealed class ProcessRunner
         }
 
         throw new FileNotFoundException("ui-bridge.ps1 not found");
+    }
+
+    private static string ResolvePowerShellHost()
+    {
+        var windir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        var pwsh = Path.Combine(windir, "System32", "WindowsPowerShell", "v1.0", "powershellw.exe");
+        return File.Exists(pwsh) ? pwsh : "powershell.exe";
     }
 
     private void Emit(string line) => OutputReceived?.Invoke(line);
