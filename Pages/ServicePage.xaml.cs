@@ -432,7 +432,8 @@ public partial class ServicePage : UserControl
     {
         try
         {
-            var result = await _runner.RunBridgeAsync("InstallService", GetSelectedStrategy());
+            var strategy = GetSelectedStrategy();
+            var result = await _runner.RunBridgeAsync("InstallService", strategy);
             if (_uiStartupCheck.IsChecked == true)
             {
                 AppStartupService.Enable();
