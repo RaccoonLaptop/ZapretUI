@@ -12,6 +12,7 @@ public partial class App : Application
 
         var settings = AppSettings.Load();
         LocalizationService.Initialize(settings.Language);
+        AppStartupService.SyncWithSettings(settings.StartUiOnLogin);
 
         StartupArgs.Parse(e.Args);
 

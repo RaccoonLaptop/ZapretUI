@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory)][string]$Action,
     [string]$Extra = "",
-    [string]$Root = ""
+    [string]$Root = "",
+    [string]$LogFile = ""
 )
 
 $ErrorActionPreference = "Continue"
@@ -21,6 +22,9 @@ $ListsPath = Join-Path $Root "lists\"
 
 function Write-Color($Text, $Color = "White") {
     Write-Output "{COLOR:$Color}$Text"
+    if ($LogFile) {
+        try { Add-Content -LiteralPath $LogFile -Value $Text -Encoding UTF8 } catch { }
+    }
 }
 
 function Get-GameFilterVars {
@@ -128,7 +132,16 @@ switch ($Action) {
         $bat = Join-Path $Root $Extra
         if (-not (Test-Path $bat)) { Write-Color "File not found: $bat" Red; exit 1 }
 
+        Push-Location $Root
+        foreach ($prep in @("status_zapret", "load_user_lists", "load_game_filter")) {
+            Start-Process -FilePath "cmd.exe" -ArgumentList "/c call service.bat $prep" `
+                -WorkingDirectory $Root -WindowStyle Hidden -Wait | Out-Null
+        }
+        Pop-Location
+
         $parsed = Parse-StrategyArgs -BatFile $bat
+        if (-not $parsed) { Write-Color "Could not parse winws arguments from $Extra" Red; exit 1 }
+
         Write-Color "Installing service with strategy: $Extra" Cyan
         Write-Color "Args: $parsed" DarkGray
 
@@ -137,9 +150,19 @@ switch ($Action) {
         sc.exe delete zapret 2>$null | Out-Null
 
         $binPath = Join-Path $BinPath "winws.exe"
-        sc.exe create zapret binPath= "`"$binPath`" $parsed" DisplayName= "zapret" start= auto
-        sc.exe description zapret "Zapret DPI bypass software"
-        sc.exe start zapret
+        if (-not (Test-Path $binPath)) { Write-Color "winws.exe not found: $binPath" Red; exit 1 }
+
+        $create = sc.exe create zapret binPath= "`"$binPath`" $parsed" DisplayName= "zapret" start= auto 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Color "sc create failed: $create" Red
+            exit 1
+        }
+        sc.exe description zapret "Zapret DPI bypass software" | Out-Null
+        $start = sc.exe start zapret 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Color "sc start failed: $start" Red
+            exit 1
+        }
 
         $name = [System.IO.Path]::GetFileNameWithoutExtension($Extra)
         Set-ItemProperty "HKLM:\System\CurrentControlSet\Services\zapret" -Name "zapret-discord-youtube" -Value $name -Type String -Force

@@ -39,9 +39,11 @@ public sealed class ZapretBootstrapService
             progress?.Report("Получение информации о последней версии...");
             var release = await GetLatestReleaseAsync(ct);
             var asset = release.Assets.FirstOrDefault(a =>
-                a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
+                a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                ?? release.Assets.FirstOrDefault(a =>
+                    a.Name.EndsWith(".rar", StringComparison.OrdinalIgnoreCase));
             if (asset is null || string.IsNullOrWhiteSpace(asset.DownloadUrl))
-                return BootstrapResult.Fail("Не найден zip-архив в последнем релизе Flowseal.");
+                return BootstrapResult.Fail("Не найден архив (.zip/.rar) в последнем релизе Flowseal.");
 
             var tempRoot = Path.Combine(Path.GetTempPath(), "zapret-bootstrap-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempRoot);
@@ -53,12 +55,24 @@ public sealed class ZapretBootstrapService
 
                 var extractDir = Path.Combine(tempRoot, "extract");
                 progress?.Report("Распаковка...");
-                ZipFile.ExtractToDirectory(zipPath, extractDir, overwriteFiles: true);
+                if (asset.Name.EndsWith(".rar", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!ExtractRarArchive(zipPath, extractDir, progress))
+                        return BootstrapResult.Fail("Не удалось распаковать .rar. Установите 7-Zip.");
+                }
+                else
+                {
+                    ZipFile.ExtractToDirectory(zipPath, extractDir, overwriteFiles: true);
+                }
 
-                foreach (var file in Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories))
+                var packageRoot = ZapretPaths.ResolvePackageRoot(extractDir);
+                if (packageRoot is null)
+                    return BootstrapResult.Fail("Скачанный пакет повреждён или неполный (service.bat / bin не найдены).");
+
+                foreach (var file in Directory.GetFiles(packageRoot, "*", SearchOption.AllDirectories))
                 {
                     ct.ThrowIfCancellationRequested();
-                    var rel = Path.GetRelativePath(extractDir, file);
+                    var rel = Path.GetRelativePath(packageRoot, file);
                     var dest = Path.Combine(targetDir, rel);
                     Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
                     File.Copy(file, dest, true);
@@ -90,6 +104,32 @@ public sealed class ZapretBootstrapService
         {
             return BootstrapResult.Fail(ex.Message);
         }
+    }
+
+    private static bool ExtractRarArchive(string rarPath, string destDir, IProgress<string>? progress)
+    {
+        Directory.CreateDirectory(destDir);
+        var sevenZipCandidates = new[]
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip", "7z.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "7-Zip", "7z.exe")
+        };
+        var sevenZip = sevenZipCandidates.FirstOrDefault(File.Exists);
+        if (sevenZip is null)
+            return false;
+
+        progress?.Report("Распаковка RAR через 7-Zip...");
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = sevenZip,
+            Arguments = $"x \"{rarPath}\" -o\"{destDir}\" -y",
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var proc = System.Diagnostics.Process.Start(psi);
+        if (proc is null) return false;
+        proc.WaitForExit();
+        return proc.ExitCode == 0;
     }
 
     private async Task DownloadFileAsync(

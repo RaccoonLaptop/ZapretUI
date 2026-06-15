@@ -24,7 +24,7 @@ public sealed class UpdateService
             request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true };
             var response = await _http.SendAsync(request, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            var remote = (await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false)).Trim();
+            var remote = ZapretPaths.NormalizeVersionText(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
             var local = LocalVersion;
             return new UpdateCheckResult
             {

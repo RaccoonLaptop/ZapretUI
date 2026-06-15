@@ -79,6 +79,9 @@ public sealed class ProcessRunner
         if (needsAdmin)
         {
             Emit(Loc.T("runner.uac_required"));
+            var logFile = Path.Combine(Path.GetTempPath(), $"zapretui-bridge-{Guid.NewGuid():N}.log");
+            args += $" -LogFile \"{logFile}\"";
+
             var psi = new ProcessStartInfo
             {
                 FileName = "powershell.exe",
@@ -90,9 +93,24 @@ public sealed class ProcessRunner
             using var process = Process.Start(psi);
             if (process is not null)
                 await process.WaitForExitAsync(ct);
-            var msg = Loc.F("runner.admin_action_done", action);
-            Emit(msg);
-            return msg;
+
+            var adminCaptured = new StringBuilder();
+            if (File.Exists(logFile))
+            {
+                foreach (var line in await File.ReadAllLinesAsync(logFile, ct))
+                {
+                    Emit(line);
+                    adminCaptured.AppendLine(line);
+                }
+                try { File.Delete(logFile); } catch { /* ignore */ }
+            }
+
+            var adminResult = adminCaptured.Length > 0
+                ? adminCaptured.ToString().TrimEnd()
+                : Loc.F("runner.admin_action_done", action);
+            if (process is not null && process.ExitCode != 0)
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(adminResult) ? $"{Loc.T("common.error_prefix")} {action}" : adminResult);
+            return adminResult;
         }
 
         void Capture(string line) => captured.AppendLine(line);

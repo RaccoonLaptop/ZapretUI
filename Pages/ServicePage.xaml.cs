@@ -74,7 +74,7 @@ public partial class ServicePage : UserControl
         _uiStartupCheck = new CheckBox
         {
             Content = Loc.T("service.start_ui_tray"),
-            IsChecked = AppStartupService.IsEnabled() || _settings.StartUiOnLogin,
+            IsChecked = AppStartupService.IsEnabled(),
             Margin = new Thickness(0, 0, 0, 12)
         };
         _uiStartupCheck.Checked += (_, _) =>

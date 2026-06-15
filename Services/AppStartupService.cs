@@ -29,6 +29,15 @@ public static class AppStartupService
         key?.SetValue(ValueName, $"\"{exe}\" --tray");
     }
 
+    /// <summary>Синхронизирует автозапуск UI с настройкой StartUiOnLogin.</summary>
+    public static void SyncWithSettings(bool startOnLogin)
+    {
+        if (startOnLogin)
+            Enable();
+        else
+            Disable();
+    }
+
     public static void Disable()
     {
         try

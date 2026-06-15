@@ -33,6 +33,24 @@ public sealed class ZapretPaths
         }
     }
 
+    /// <summary>Находит корень пакета Flowseal после распаковки (часто вложен в подпапку релиза).</summary>
+    public static string? ResolvePackageRoot(string extractDir)
+    {
+        if (IsValidZapretRoot(extractDir))
+            return Path.GetFullPath(extractDir);
+
+        if (!Directory.Exists(extractDir))
+            return null;
+
+        foreach (var sub in Directory.GetDirectories(extractDir))
+        {
+            if (IsValidZapretRoot(sub))
+                return Path.GetFullPath(sub);
+        }
+
+        return null;
+    }
+
     public static string GetBundledZapretPath()
     {
         var baseDir = AppContext.BaseDirectory.TrimEnd('\\', '/');
@@ -69,11 +87,22 @@ public sealed class ZapretPaths
 
     public string GetLocalVersion()
     {
+        var serviceVersionFile = Path.Combine(Root, ".service", "version.txt");
+        if (File.Exists(serviceVersionFile))
+        {
+            var fromFile = NormalizeVersionText(File.ReadAllText(serviceVersionFile));
+            if (!string.IsNullOrEmpty(fromFile))
+                return fromFile;
+        }
+
         if (!File.Exists(ServiceBat)) return "unknown";
         var text = File.ReadAllText(ServiceBat);
         var match = Regex.Match(text, @"set\s+""LOCAL_VERSION=([^""]+)""");
-        return match.Success ? match.Groups[1].Value : "unknown";
+        return match.Success ? NormalizeVersionText(match.Groups[1].Value) : "unknown";
     }
+
+    internal static string NormalizeVersionText(string? value) =>
+        value?.Trim().Trim('\uFEFF', '\u200B') ?? "";
 
     public IEnumerable<string> GetStrategyFiles()
     {
