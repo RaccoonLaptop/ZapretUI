@@ -32,6 +32,7 @@ public partial class MainWindow : Window
         _startInTray = startInTray;
         _settings = AppSettings.Load();
         InitializeComponent();
+        RestoreWindowBounds();
         ApplyShellLocalization();
         AppIcon.ApplyTo(this);
 
@@ -57,7 +58,7 @@ public partial class MainWindow : Window
         _tray = new TrayIconService(
             this,
             ToggleBypassFromTrayAsync,
-            () => _paths.GetStrategyFiles().ToList(),
+            () => StrategyDisplayHelper.LoadItems(_paths.Root, _paths.GetStrategyFiles()),
             () => _homePage?.GetSelectedStrategy() ?? _settings.LastStrategy,
             SwitchStrategyFromTrayAsync);
         _powerResume = new PowerResumeService(
@@ -120,6 +121,9 @@ public partial class MainWindow : Window
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
+        if (!_isShuttingDown && WindowState != WindowState.Minimized)
+            SaveWindowBounds();
+
         if (_isShuttingDown) return;
 
         if (_strategy.IsRunning())
@@ -134,6 +138,7 @@ public partial class MainWindow : Window
 
     private void ExecuteShutdown()
     {
+        SaveWindowBounds();
         _isShuttingDown = true;
 
         // Если обход был запущен, сначала останавливаем winws, затем закрываем UI.
@@ -242,6 +247,68 @@ public partial class MainWindow : Window
             : WindowState.Maximized;
     }
 
+    private void RestoreWindowBounds()
+    {
+        if (_settings.WindowWidth is not > 0 || _settings.WindowHeight is not > 0)
+            return;
+
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Width = Math.Max(_settings.WindowWidth.Value, MinWidth);
+        Height = Math.Max(_settings.WindowHeight.Value, MinHeight);
+
+        if (_settings.WindowLeft is double left && _settings.WindowTop is double top)
+        {
+            Left = left;
+            Top = top;
+            EnsureWindowOnScreen();
+        }
+
+        if (_settings.WindowMaximized)
+            WindowState = WindowState.Maximized;
+    }
+
+    private void SaveWindowBounds()
+    {
+        Rect bounds;
+        if (WindowState == WindowState.Maximized)
+        {
+            _settings.WindowMaximized = true;
+            bounds = RestoreBounds;
+        }
+        else if (WindowState == WindowState.Normal)
+        {
+            _settings.WindowMaximized = false;
+            bounds = new Rect(Left, Top, Width, Height);
+        }
+        else
+        {
+            return;
+        }
+
+        _settings.WindowWidth = bounds.Width;
+        _settings.WindowHeight = bounds.Height;
+        _settings.WindowLeft = bounds.Left;
+        _settings.WindowTop = bounds.Top;
+        _settings.Save();
+    }
+
+    private void EnsureWindowOnScreen()
+    {
+        var work = SystemParameters.WorkArea;
+        if (Width > work.Width)
+            Width = work.Width;
+        if (Height > work.Height)
+            Height = work.Height;
+        if (Left + Width > work.Right)
+            Left = work.Right - Width;
+        if (Top + Height > work.Bottom)
+            Top = work.Bottom - Height;
+        if (Left < work.Left)
+            Left = work.Left;
+        if (Top < work.Top)
+            Top = work.Top;
+    }
+
     private void InitAppBackground()
     {
         AnimatedBackgroundBase.GlobalSpeed = BackgroundMotion.DefaultSpeed;
@@ -255,7 +322,6 @@ public partial class MainWindow : Window
     private void ApplyShellLocalization()
     {
         TitleBarAuthor.Text = Loc.T("app.author_short");
-        SidebarAuthor.Text = Loc.T("app.author");
         StatusHeader.Text = Loc.T("status.label");
         BgSwitchBtn.ToolTip = Loc.T("bg.switch_tooltip");
     }
@@ -329,13 +395,23 @@ public partial class MainWindow : Window
         StatusDot.Fill = running
             ? (Brush)FindResource("SuccessBrush")
             : (Brush)FindResource("ErrorBrush");
-        StatusText.Text = running ? Loc.T("status.running") : Loc.T("status.stopped");
-        if (running)
+
+        var title = running ? _strategy.GetRunningStrategyTitle() : null;
+        if (running && !string.IsNullOrEmpty(title))
         {
-            var title = _strategy.GetRunningStrategyTitle();
-            if (!string.IsNullOrEmpty(title))
-                StatusText.Text = Loc.F("status.running_with", title);
+            StatusText.Text = Loc.T("status.running");
+            StatusPresetText.Text = title;
+            StatusPresetText.Visibility = Visibility.Visible;
+            StatusBorder.ToolTip = Loc.F("status.running_with", title);
         }
+        else
+        {
+            StatusText.Text = running ? Loc.T("status.running") : Loc.T("status.stopped");
+            StatusPresetText.Visibility = Visibility.Collapsed;
+            StatusPresetText.Text = "";
+            StatusBorder.ToolTip = null;
+        }
+
         _homePage?.RefreshToggleUi();
         _tray.UpdateState(
             running,

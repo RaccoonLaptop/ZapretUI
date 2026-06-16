@@ -11,7 +11,7 @@ public partial class TrayMenuPopup : Window
     private readonly Func<Task> _toggleBypassAsync;
     private readonly Action _openWindow;
     private readonly Action _exitApp;
-    private readonly Func<IReadOnlyList<string>> _getStrategies;
+    private readonly Func<IReadOnlyList<StrategyItem>> _getStrategies;
     private readonly Func<string?> _getSelectedStrategy;
     private readonly Func<string, Task> _switchStrategyAsync;
     private bool _running;
@@ -22,7 +22,7 @@ public partial class TrayMenuPopup : Window
         Func<Task> toggleBypassAsync,
         Action openWindow,
         Action exitApp,
-        Func<IReadOnlyList<string>> getStrategies,
+        Func<IReadOnlyList<StrategyItem>> getStrategies,
         Func<string?> getSelectedStrategy,
         Func<string, Task> switchStrategyAsync)
     {
@@ -33,6 +33,8 @@ public partial class TrayMenuPopup : Window
         _getSelectedStrategy = getSelectedStrategy;
         _switchStrategyAsync = switchStrategyAsync;
         InitializeComponent();
+        StrategyCombo.DisplayMemberPath = nameof(StrategyItem.DisplayName);
+        StrategyCombo.SelectedValuePath = nameof(StrategyItem.FileName);
         ApplyLocalization();
         Deactivated += (_, _) => Hide();
         PreviewKeyDown += (_, e) =>
@@ -62,7 +64,7 @@ public partial class TrayMenuPopup : Window
 
         var hasStrategy = running && !string.IsNullOrWhiteSpace(strategyTitle);
         StrategyText.Visibility = hasStrategy ? Visibility.Visible : Visibility.Collapsed;
-        StrategyText.Text = hasStrategy ? strategyTitle! : "";
+        StrategyText.Text = hasStrategy ? StrategyDisplayHelper.ToDisplayName(strategyTitle!) : "";
 
         ToggleBtn.Content = busy
             ? Loc.T("home.starting")
@@ -86,9 +88,19 @@ public partial class TrayMenuPopup : Window
         foreach (var strategy in _getStrategies())
             StrategyCombo.Items.Add(strategy);
 
-        if (!string.IsNullOrEmpty(selected) && StrategyCombo.Items.Contains(selected))
-            StrategyCombo.SelectedItem = selected;
-        else if (StrategyCombo.Items.Count > 0)
+        if (!string.IsNullOrEmpty(selected))
+        {
+            foreach (StrategyItem item in StrategyCombo.Items)
+            {
+                if (item.FileName.Equals(selected, StringComparison.OrdinalIgnoreCase))
+                {
+                    StrategyCombo.SelectedItem = item;
+                    break;
+                }
+            }
+        }
+
+        if (StrategyCombo.SelectedItem is null && StrategyCombo.Items.Count > 0)
             StrategyCombo.SelectedIndex = 0;
 
         StrategyCombo.IsEnabled = !_busy;
@@ -149,13 +161,13 @@ public partial class TrayMenuPopup : Window
     private async void StrategyCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (_suppressStrategyChange) return;
-        if (StrategyCombo.SelectedItem is not string strategy) return;
+        if (StrategyCombo.SelectedItem is not StrategyItem strategy) return;
 
         StrategyCombo.IsEnabled = false;
         try
         {
             Hide();
-            await _switchStrategyAsync(strategy);
+            await _switchStrategyAsync(strategy.FileName);
         }
         catch (Exception ex)
         {

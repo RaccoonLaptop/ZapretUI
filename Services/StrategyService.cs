@@ -17,10 +17,7 @@ public sealed class StrategyService
         _runner = runner;
     }
 
-    public bool IsRunning()
-    {
-        return Process.GetProcessesByName("winws").Length > 0;
-    }
+    public bool IsRunning() => Process.GetProcessesByName("winws").Length > 0;
 
     public string? GetRunningStrategyTitle()
     {
@@ -51,7 +48,7 @@ public sealed class StrategyService
         }
     }
 
-    public async Task StartStrategyAsync(string batFileName, CancellationToken ct = default)
+    public async Task StartStrategyAsync(string batFileName, CancellationToken ct = default, bool quickSwitch = false)
     {
         var batPath = Path.Combine(_paths.Root, batFileName);
         if (!File.Exists(batPath))
@@ -60,31 +57,65 @@ public sealed class StrategyService
         if (IsRunning())
             await StopStrategyAsync(ct);
 
-        _runner.SetZapretRoot(_paths.Root);
-        await _runner.RunBridgeAsync("StartStrategy", batFileName, ct);
-        _lastStartedStrategy = Path.GetFileNameWithoutExtension(batFileName);
+        if (quickSwitch)
+            await Task.Delay(300, ct);
 
-        for (var i = 0; i < 10 && !IsRunning(); i++)
-        {
-            ct.ThrowIfCancellationRequested();
-            await Task.Delay(200, ct);
-        }
-
-        if (!IsRunning())
-        {
-            ct.ThrowIfCancellationRequested();
-            throw new InvalidOperationException(Loc.T("strategy.winws_not_started"));
-        }
+        await LaunchWinwsAsync(batFileName, ct);
     }
 
-    public Task StopStrategyAsync(CancellationToken ct = default)
+    public async Task StopStrategyAsync(CancellationToken ct = default)
     {
         foreach (var p in Process.GetProcessesByName("winws"))
         {
             try { p.Kill(true); } catch { /* ignore */ }
         }
+
+        for (var i = 0; i < 20; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (Process.GetProcessesByName("winws").Length == 0)
+                break;
+            await Task.Delay(100, ct);
+        }
+
         _lastStartedStrategy = null;
-        return Task.CompletedTask;
+    }
+
+    private async Task LaunchWinwsAsync(string batFileName, CancellationToken ct)
+    {
+        var args = StrategyBatParser.Parse(_paths, batFileName);
+        if (string.IsNullOrWhiteSpace(args))
+            throw new InvalidOperationException(Loc.T("strategy.winws_not_started"));
+
+        var winwsPath = Path.Combine(_paths.Bin, "winws.exe");
+        if (!File.Exists(winwsPath))
+            throw new FileNotFoundException(Loc.T("strategy.winws_not_started"), winwsPath);
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = winwsPath,
+            Arguments = args,
+            WorkingDirectory = _paths.Bin,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden
+        };
+
+        if (Process.Start(psi) is null)
+            throw new InvalidOperationException(Loc.T("strategy.winws_not_started"));
+
+        _lastStartedStrategy = Path.GetFileNameWithoutExtension(batFileName);
+
+        for (var i = 0; i < 10; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (IsRunning())
+                return;
+            await Task.Delay(100, ct);
+        }
+
+        if (!IsRunning())
+            throw new InvalidOperationException(Loc.T("strategy.winws_not_started"));
     }
 
     public string ReadStrategyContent(string batFileName) =>

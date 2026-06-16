@@ -54,6 +54,8 @@
   "home.log_started": "Started",
   "home.log_stopped": "Stopped",
   "home.autostart": "Autostart",
+  "home.preset_label": "Preset",
+  "home.preset_hint": "Selected: {0}",
   "strategy.winws_not_started": "winws.exe did not start. Run Zapret UI as administrator.",
   "strategies.title": "Strategies",
   "strategies.subtitle": "Zapret launch configs (.bat). Select a file on the left, edit and save.",
