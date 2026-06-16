@@ -78,6 +78,8 @@ public sealed class StrategyService
             await Task.Delay(100, ct);
         }
 
+        ZapretShutdownService.StopWinDivertServices();
+
         _lastStartedStrategy = null;
     }
 

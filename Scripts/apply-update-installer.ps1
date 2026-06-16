@@ -14,6 +14,15 @@ function Write-Log($Message) {
     if ($LogFile) { Add-Content -LiteralPath $LogFile -Value $line -Encoding UTF8 }
 }
 
+function Get-InstallerErrorMessage([int]$ExitCode) {
+    switch ($ExitCode) {
+        5 { return "UPDATE_ACCESS_DENIED" }
+        default { return "Installer exited with code $ExitCode" }
+    }
+}
+
+. (Join-Path $PSScriptRoot 'stop-bypass.ps1')
+
 try {
     Write-Log "Installer update started"
     Write-Log "Installer: $InstallerPath"
@@ -24,7 +33,7 @@ try {
     }
 
     if ($ProcessId -gt 0) {
-        Write-Log "Ожидание закрытия программы (PID $ProcessId)..."
+        Write-Log "Waiting for application to close (PID $ProcessId)..."
         $waited = 0
         while ($waited -lt 120) {
             if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) { break }
@@ -34,6 +43,8 @@ try {
         Start-Sleep -Seconds 2
     }
 
+    Stop-BypassForUpdate -LogAction { param($Message) Write-Log $Message }
+
     $args = @(
         "/VERYSILENT",
         "/SUPPRESSMSGBOXES",
@@ -41,11 +52,11 @@ try {
         "/CLOSEAPPLICATIONS",
         "/DIR=`"$TargetDir`""
     )
-    Write-Log "Установка обновления..."
+    Write-Log "Installing update..."
     Write-Log "Running: $InstallerPath $($args -join ' ')"
     $proc = Start-Process -FilePath $InstallerPath -ArgumentList $args -Wait -PassThru
     if ($proc.ExitCode -ne 0) {
-        throw "Installer exited with code $($proc.ExitCode)"
+        throw (Get-InstallerErrorMessage $proc.ExitCode)
     }
 
     if ($StagingDir -and (Test-Path -LiteralPath $StagingDir)) {
@@ -58,7 +69,7 @@ try {
     }
 
     if (Test-Path -LiteralPath $launch) {
-        Write-Log "Запуск Zapret UI..."
+        Write-Log "Starting Zapret UI..."
         Write-Log "Starting: $launch"
         Start-Process -FilePath $launch -WorkingDirectory $TargetDir -Verb RunAs
     }
@@ -68,14 +79,5 @@ try {
 }
 catch {
     Write-Log "ERROR: $($_.Exception.Message)"
-    try {
-        Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
-        [System.Windows.Forms.MessageBox]::Show(
-            "Не удалось обновить Zapret UI.`n$($_.Exception.Message)",
-            "Zapret UI",
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            [System.Windows.Forms.MessageBoxIcon]::Error
-        ) | Out-Null
-    } catch { }
     exit 1
 }

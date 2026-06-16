@@ -43,13 +43,15 @@ function Copy-Tree {
     }
 }
 
+. (Join-Path $PSScriptRoot 'stop-bypass.ps1')
+
 try {
     Write-Log "Updater started (full replace)"
     Write-Log "Source: $SourceDir"
     Write-Log "Target: $TargetDir"
 
     if ($ProcessId -gt 0) {
-        Write-Log "Ожидание закрытия программы (PID $ProcessId)..."
+        Write-Log "Waiting for application to close (PID $ProcessId)..."
         $waited = 0
         while ($waited -lt 120) {
             if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) { break }
@@ -58,6 +60,8 @@ try {
         }
         Start-Sleep -Seconds 2
     }
+
+    Stop-BypassForUpdate -LogAction { param($Message) Write-Log $Message }
 
     if (-not (Test-Path -LiteralPath $SourceDir)) {
         throw "Source folder not found: $SourceDir"
@@ -140,14 +144,5 @@ try {
 }
 catch {
     Write-Log "ERROR: $($_.Exception.Message)"
-    try {
-        Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
-        [System.Windows.Forms.MessageBox]::Show(
-            "Не удалось обновить Zapret UI.`n$($_.Exception.Message)",
-            "Zapret UI",
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            [System.Windows.Forms.MessageBoxIcon]::Error
-        ) | Out-Null
-    } catch { }
     exit 1
 }
