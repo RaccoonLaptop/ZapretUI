@@ -229,21 +229,50 @@ public partial class HomePage : UserControl
     private void SelectDefaultStrategy()
     {
         _suppressComboChange = true;
-        var preferred = new[] { "general.bat", "general (SIMPLE FAKE).bat" };
-        foreach (var name in preferred)
+        try
         {
-            if (_strategyCombo.Items.Contains(name))
-            {
-                _strategyCombo.SelectedItem = name;
-                _suppressComboChange = false;
+            if (TrySelectStrategy(_settings.LastStrategy))
                 return;
+
+            var running = _strategy.GetRunningStrategyTitle();
+            if (!string.IsNullOrEmpty(running))
+            {
+                var runningBat = running.EndsWith(".bat", StringComparison.OrdinalIgnoreCase)
+                    ? running
+                    : running + ".bat";
+                if (TrySelectStrategy(runningBat))
+                    return;
+            }
+
+            foreach (var name in new[] { "general.bat", "general (SIMPLE FAKE).bat" })
+            {
+                if (TrySelectStrategy(name))
+                    return;
+            }
+
+            if (_strategyCombo.Items.Count > 0)
+                _strategyCombo.SelectedIndex = 0;
+        }
+        finally
+        {
+            _suppressComboChange = false;
+        }
+    }
+
+    private bool TrySelectStrategy(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return false;
+
+        foreach (var item in _strategyCombo.Items)
+        {
+            if (item is string s && s.Equals(name, StringComparison.OrdinalIgnoreCase))
+            {
+                _strategyCombo.SelectedItem = s;
+                return true;
             }
         }
-        if (!string.IsNullOrEmpty(_settings.LastStrategy) && _strategyCombo.Items.Contains(_settings.LastStrategy))
-            _strategyCombo.SelectedItem = _settings.LastStrategy;
-        else if (_strategyCombo.Items.Count > 0)
-            _strategyCombo.SelectedIndex = 0;
-        _suppressComboChange = false;
+
+        return false;
     }
 
     private async Task OnStrategySelectionChangedAsync()
