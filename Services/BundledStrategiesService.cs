@@ -36,12 +36,9 @@ public static class BundledStrategiesService
                 continue;
 
             var dest = Path.Combine(zapretRoot, name);
-            if (File.Exists(dest))
-                continue;
-
             try
             {
-                File.Copy(sourceFile, dest);
+                File.Copy(sourceFile, dest, overwrite: true);
             }
             catch
             {
