@@ -16,11 +16,13 @@ public partial class HomePage : UserControl
     private ComboBox _strategyCombo = null!;
     private ToggleButton _autostartToggle = null!;
     private Button _toggleBtn = null!;
+    private TextBlock _presetHint = null!;
     private TextBlock _actionStatus = null!;
     private readonly DispatcherTimer _statusTimer;
     private bool _isStarting;
     private bool _suppressComboChange;
     private CancellationTokenSource? _startCts;
+    private readonly SemaphoreSlim _operationGate = new(1, 1);
 
     public bool IsBypassBusy => _isStarting;
 
@@ -31,71 +33,71 @@ public partial class HomePage : UserControl
         _settings = settings;
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statusTimer.Tick += (_, _) => RefreshToggleUi();
+        Unloaded += (_, _) => _statusTimer.Stop();
         BuildUi();
         _statusTimer.Start();
         RefreshToggleUi();
     }
 
-    public string? GetSelectedStrategy() =>
-        _strategyCombo.SelectedItem as string ?? _settings.LastStrategy;
+    public string? GetSelectedStrategy() => GetSelectedFileName();
 
     public async Task SwitchStrategyAsync(string strategy)
     {
-        if (!_strategyCombo.Items.Contains(strategy))
-            return;
-
+        await _operationGate.WaitAsync();
         _suppressComboChange = true;
-        _strategyCombo.SelectedItem = strategy;
-        _suppressComboChange = false;
-
-        _settings.LastStrategy = strategy;
-        _settings.Save();
-
-        if (!_strategy.IsRunning() && !_isStarting)
-            return;
-
-        if (_isStarting)
-        {
-            _startCts?.Cancel();
-            while (_isStarting)
-                await Task.Delay(50);
-        }
-
-        await _strategy.StopStrategyAsync();
-        _isStarting = false;
-        _actionStatus.Visibility = Visibility.Collapsed;
-
-        _startCts?.Dispose();
-        _startCts = new CancellationTokenSource();
-
         try
         {
-            _isStarting = true;
-            _actionStatus.Visibility = Visibility.Visible;
-            _actionStatus.Text = Loc.T("home.prep");
-            RefreshToggleUi();
-            ConsoleLog.Instance.Write(Loc.F("home.log_start", strategy));
-            _actionStatus.Text = Loc.T("home.wait_winws");
-            await _strategy.StartStrategyAsync(strategy, _startCts.Token);
-            ConsoleLog.Instance.Write(Loc.T("home.log_started"));
-            _actionStatus.Text = Loc.T("home.done");
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception ex)
-        {
-            ConsoleLog.Instance.Write($"{Loc.T("common.error_prefix")} {ex.Message}");
-            UiHelpers.ShowError(ex.Message);
-            _actionStatus.Text = Loc.T("home.start_error");
+            if (!TrySelectStrategy(strategy))
+                return;
+
+            _settings.LastStrategy = strategy;
+            _settings.Save();
+            UpdatePresetHint();
+
+            if (!_strategy.IsRunning() && !_isStarting)
+                return;
+
+            _startCts?.Cancel();
+            _startCts?.Dispose();
+            _startCts = new CancellationTokenSource();
+            var ct = _startCts.Token;
+
+            try
+            {
+                _isStarting = true;
+                _actionStatus.Visibility = Visibility.Visible;
+                _actionStatus.Text = Loc.T("home.prep");
+                RefreshToggleUi();
+
+                await _strategy.StopStrategyAsync(ct);
+                _actionStatus.Text = Loc.T("home.wait_winws");
+                ConsoleLog.Instance.Write(Loc.F("home.log_start", strategy));
+                await _strategy.StartStrategyAsync(strategy, ct, quickSwitch: true);
+                ConsoleLog.Instance.Write(Loc.T("home.log_started"));
+                _actionStatus.Text = Loc.T("home.done");
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                ConsoleLog.Instance.Write($"{Loc.T("common.error_prefix")} {ex.Message}");
+                UiHelpers.ShowError(ex.Message);
+                _actionStatus.Text = Loc.T("home.start_error");
+            }
+            finally
+            {
+                _startCts?.Dispose();
+                _startCts = null;
+                _isStarting = false;
+                _actionStatus.Visibility = Visibility.Collapsed;
+                RefreshToggleUi();
+            }
         }
         finally
         {
-            _startCts?.Dispose();
-            _startCts = null;
-            _isStarting = false;
-            _actionStatus.Visibility = Visibility.Collapsed;
-            RefreshToggleUi();
+            _suppressComboChange = false;
+            _operationGate.Release();
         }
     }
 
@@ -105,7 +107,7 @@ public partial class HomePage : UserControl
         {
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Center,
-            MaxWidth = 460
+            MaxWidth = 480
         };
 
         center.Children.Add(CreateHeader());
@@ -124,20 +126,33 @@ public partial class HomePage : UserControl
             FontSize = 15,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 0, 0, 28)
+            Margin = new Thickness(0, 0, 0, 24)
         });
 
         _strategyCombo = new ComboBox
         {
             MinWidth = 400,
             FontSize = 15,
-            Margin = new Thickness(0, 0, 0, 24)
+            Margin = new Thickness(0, 0, 0, 0),
+            DisplayMemberPath = nameof(StrategyItem.DisplayName),
+            SelectedValuePath = nameof(StrategyItem.FileName)
         };
-        foreach (var s in _paths.GetStrategyFiles())
-            _strategyCombo.Items.Add(s);
-        SelectDefaultStrategy();
+        foreach (var item in StrategyDisplayHelper.LoadItems(_paths.Root, _paths.GetStrategyFiles()))
+            _strategyCombo.Items.Add(item);
         _strategyCombo.SelectionChanged += async (_, _) => await OnStrategySelectionChangedAsync();
         center.Children.Add(_strategyCombo);
+
+        _presetHint = new TextBlock
+        {
+            FontSize = 13,
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            TextWrapping = TextWrapping.Wrap,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            TextAlignment = TextAlignment.Center,
+            Margin = new Thickness(0, 10, 0, 20)
+        };
+        SelectDefaultStrategy();
+        center.Children.Add(_presetHint);
 
         center.Children.Add(CreateAutostartRow());
 
@@ -201,10 +216,9 @@ public partial class HomePage : UserControl
     {
         if (enabled)
         {
-            if (_strategyCombo.SelectedItem is string strategy)
-            {
+            var strategy = GetSelectedFileName();
+            if (!string.IsNullOrEmpty(strategy))
                 _settings.LastStrategy = strategy;
-            }
             AppStartupService.Enable();
             _settings.StartUiOnLogin = true;
         }
@@ -256,6 +270,7 @@ public partial class HomePage : UserControl
         finally
         {
             _suppressComboChange = false;
+            UpdatePresetHint();
         }
     }
 
@@ -263,111 +278,158 @@ public partial class HomePage : UserControl
     {
         if (string.IsNullOrEmpty(name)) return false;
 
-        foreach (var item in _strategyCombo.Items)
+        foreach (StrategyItem item in _strategyCombo.Items)
         {
-            if (item is string s && s.Equals(name, StringComparison.OrdinalIgnoreCase))
+            if (!item.FileName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (ReferenceEquals(_strategyCombo.SelectedItem, item))
+                return true;
+
+            if (_suppressComboChange)
             {
-                _strategyCombo.SelectedItem = s;
+                _strategyCombo.SelectedItem = item;
                 return true;
             }
+
+            _suppressComboChange = true;
+            try
+            {
+                _strategyCombo.SelectedItem = item;
+            }
+            finally
+            {
+                _suppressComboChange = false;
+            }
+
+            return true;
         }
 
         return false;
     }
 
+    private StrategyItem? GetSelectedStrategyItem() =>
+        _strategyCombo.SelectedItem as StrategyItem;
+
+    private string? GetSelectedFileName() =>
+        GetSelectedStrategyItem()?.FileName ?? _settings.LastStrategy;
+
+    private void UpdatePresetHint()
+    {
+        if (_presetHint is null) return;
+        _presetHint.Text = StrategyDisplayHelper.GetHintText(GetSelectedStrategyItem());
+    }
+
     private async Task OnStrategySelectionChangedAsync()
     {
         if (_suppressComboChange) return;
-        if (_strategyCombo.SelectedItem is not string strategy) return;
-        if (_isStarting) return;
 
-        if (_strategy.IsRunning())
-            await SwitchStrategyAsync(strategy);
-        else
+        try
         {
-            _settings.LastStrategy = strategy;
-            _settings.Save();
-        }
-    }
+            if (GetSelectedFileName() is not { } strategy) return;
+            if (_isStarting) return;
 
-    private void CompleteStartingUi()
-    {
-        if (!_isStarting) return;
-        _isStarting = false;
-        _actionStatus.Visibility = Visibility.Collapsed;
+            UpdatePresetHint();
+
+            if (_strategy.IsRunning())
+                await SwitchStrategyAsync(strategy);
+            else
+            {
+                _settings.LastStrategy = strategy;
+                _settings.Save();
+            }
+        }
+        catch (Exception ex)
+        {
+            ConsoleLog.Instance.Write($"{Loc.T("common.error_prefix")} {ex.Message}");
+            UiHelpers.ShowError(ex.Message);
+        }
     }
 
     public void RefreshToggleUi()
     {
+        if (_toggleBtn is null || _strategyCombo is null)
+            return;
+
         var running = _strategy.IsRunning();
-        if (_isStarting && running)
-            CompleteStartingUi();
 
         _toggleBtn.Content = _isStarting && !running
             ? Loc.T("home.starting")
             : (running || _isStarting ? Loc.T("home.stop") : Loc.T("home.start"));
-        _toggleBtn.IsEnabled = true;
+        _toggleBtn.IsEnabled = !_isStarting;
         _strategyCombo.IsEnabled = !_isStarting;
+
+        _toggleBtn.Style = (Style)Application.Current.FindResource(
+            running && !_isStarting ? "SuccessButton" : "PrimaryButton");
     }
 
     public Task ToggleBypassAsync() => ToggleAsync();
 
     private async Task ToggleAsync()
     {
-        if (_strategy.IsRunning() || _isStarting)
-        {
-            _startCts?.Cancel();
-            await _strategy.StopStrategyAsync();
-            _isStarting = false;
-            _actionStatus.Visibility = Visibility.Collapsed;
-            ConsoleLog.Instance.Write(Loc.T("home.log_stopped"));
-            RefreshToggleUi();
-            return;
-        }
-
-        if (_strategyCombo.SelectedItem is not string strategy)
-        {
-            UiHelpers.ShowError(Loc.T("home.select_strategy"));
-            return;
-        }
-
-        _startCts?.Cancel();
-        _startCts?.Dispose();
-        _startCts = new CancellationTokenSource();
-
+        await _operationGate.WaitAsync();
         try
         {
-            _isStarting = true;
-            _actionStatus.Visibility = Visibility.Visible;
-            _actionStatus.Text = Loc.T("home.prep");
-            RefreshToggleUi();
+            if (_strategy.IsRunning() || _isStarting)
+            {
+                _startCts?.Cancel();
+                await _strategy.StopStrategyAsync();
+                _isStarting = false;
+                _actionStatus.Visibility = Visibility.Collapsed;
+                ConsoleLog.Instance.Write(Loc.T("home.log_stopped"));
+                RefreshToggleUi();
+                return;
+            }
 
-            _settings.LastStrategy = strategy;
-            _settings.Save();
-            ConsoleLog.Instance.Write(Loc.F("home.log_start", strategy));
+            if (GetSelectedFileName() is not { } strategy)
+            {
+                UiHelpers.ShowError(Loc.T("home.select_strategy"));
+                return;
+            }
 
-            _actionStatus.Text = Loc.T("home.wait_winws");
-            await _strategy.StartStrategyAsync(strategy, _startCts.Token);
+            _startCts?.Cancel();
+            _startCts?.Dispose();
+            _startCts = new CancellationTokenSource();
+            var ct = _startCts.Token;
 
-            ConsoleLog.Instance.Write(Loc.T("home.log_started"));
-            _actionStatus.Text = Loc.T("home.done");
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception ex)
-        {
-            ConsoleLog.Instance.Write($"{Loc.T("common.error_prefix")} {ex.Message}");
-            UiHelpers.ShowError(ex.Message);
-            _actionStatus.Text = Loc.T("home.start_error");
+            try
+            {
+                _isStarting = true;
+                _actionStatus.Visibility = Visibility.Visible;
+                _actionStatus.Text = Loc.T("home.prep");
+                RefreshToggleUi();
+
+                _settings.LastStrategy = strategy;
+                _settings.Save();
+                ConsoleLog.Instance.Write(Loc.F("home.log_start", strategy));
+
+                _actionStatus.Text = Loc.T("home.wait_winws");
+                await _strategy.StartStrategyAsync(strategy, ct);
+
+                ConsoleLog.Instance.Write(Loc.T("home.log_started"));
+                _actionStatus.Text = Loc.T("home.done");
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                ConsoleLog.Instance.Write($"{Loc.T("common.error_prefix")} {ex.Message}");
+                UiHelpers.ShowError(ex.Message);
+                _actionStatus.Text = Loc.T("home.start_error");
+            }
+            finally
+            {
+                _startCts?.Dispose();
+                _startCts = null;
+                _isStarting = false;
+                _actionStatus.Visibility = Visibility.Collapsed;
+                RefreshToggleUi();
+            }
         }
         finally
         {
-            _startCts?.Dispose();
-            _startCts = null;
-            _isStarting = false;
-            _actionStatus.Visibility = Visibility.Collapsed;
-            RefreshToggleUi();
+            _operationGate.Release();
         }
     }
 }

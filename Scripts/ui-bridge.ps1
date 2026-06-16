@@ -102,6 +102,35 @@ function Parse-StrategyArgs {
     return ($result -replace 'EXCL_MARK', '!').Trim()
 }
 
+function Stop-WinwsAndWinDivert {
+    param([switch]$DeleteWinDivert)
+
+    Get-Process winws -ErrorAction SilentlyContinue | Stop-Process -Force
+    $stopDeadline = (Get-Date).AddSeconds(5)
+    while ((Get-Process winws -ErrorAction SilentlyContinue) -and (Get-Date) -lt $stopDeadline) {
+        Start-Sleep -Milliseconds 200
+    }
+
+    foreach ($n in @("WinDivert", "WinDivert14")) {
+        $s = Get-Service -Name $n -ErrorAction SilentlyContinue
+        if ($s -and $s.Status -eq 'Running') {
+            sc.exe stop $n 2>$null | Out-Null
+            $waitDeadline = (Get-Date).AddSeconds(3)
+            while ($true) {
+                $svc = Get-Service -Name $n -ErrorAction SilentlyContinue
+                if (-not $svc -or $svc.Status -ne 'Running') { break }
+                if ((Get-Date) -ge $waitDeadline) { break }
+                Start-Sleep -Milliseconds 150
+            }
+        }
+        if ($DeleteWinDivert) {
+            sc.exe delete $n 2>$null | Out-Null
+        }
+    }
+
+    Start-Sleep -Milliseconds 200
+}
+
 switch ($Action) {
     "CheckStatus" {
         $svc = Get-Service -Name "zapret" -ErrorAction SilentlyContinue
@@ -174,13 +203,7 @@ switch ($Action) {
             Write-Color "zapret service removed" Green
         } else { Write-Color "zapret service not installed" Yellow }
 
-        Get-Process winws -ErrorAction SilentlyContinue | Stop-Process -Force
-        Write-Color "winws.exe stopped" Green
-
-        foreach ($n in @("WinDivert", "WinDivert14")) {
-            sc.exe stop $n 2>$null | Out-Null
-            sc.exe delete $n 2>$null | Out-Null
-        }
+        Stop-WinwsAndWinDivert -DeleteWinDivert
         Write-Color "WinDivert services cleaned" Green
     }
 
@@ -246,19 +269,33 @@ switch ($Action) {
     }
 
     "StartStrategy" {
-        if (-not $Extra) { Write-Color "Strategy file not specified" Red; exit 1 }
-        $bat = Join-Path $Root $Extra
+        $quick = $false
+        $batName = $Extra
+        if ($Extra -match '^quick\|(.+)$') {
+            $quick = $true
+            $batName = $Matches[1]
+        }
+
+        if (-not $batName) { Write-Color "Strategy file not specified" Red; exit 1 }
+        $bat = Join-Path $Root $batName
         if (-not (Test-Path $bat)) { Write-Color "File not found: $bat" Red; exit 1 }
 
+        Stop-WinwsAndWinDivert
+
         Push-Location $Root
-        foreach ($prep in @("status_zapret", "check_updates", "load_game_filter", "load_user_lists")) {
+        $prepSteps = if ($quick) {
+            @("load_game_filter", "load_user_lists")
+        } else {
+            @("status_zapret", "check_updates", "load_game_filter", "load_user_lists")
+        }
+        foreach ($prep in $prepSteps) {
             Start-Process -FilePath "cmd.exe" -ArgumentList "/c call service.bat $prep" `
                 -WorkingDirectory $Root -WindowStyle Hidden -Wait | Out-Null
         }
         Pop-Location
 
         $parsed = Parse-StrategyArgs -BatFile $bat
-        if (-not $parsed) { Write-Color "Could not parse winws arguments from $Extra" Red; exit 1 }
+        if (-not $parsed) { Write-Color "Could not parse winws arguments from $batName" Red; exit 1 }
 
         $winwsPath = Join-Path $BinPath "winws.exe"
         if (-not (Test-Path $winwsPath)) { Write-Color "winws.exe not found" Red; exit 1 }
@@ -273,14 +310,25 @@ switch ($Action) {
         $proc = [System.Diagnostics.Process]::Start($psi)
         if (-not $proc) { Write-Color "Failed to start winws.exe" Red; exit 1 }
 
-        Start-Sleep -Milliseconds 900
+        $initialWait = if ($quick) { 300 } else { 900 }
+        $stableSeconds = if ($quick) { 1 } else { 3 }
+        Start-Sleep -Milliseconds $initialWait
         $running = Get-Process winws -ErrorAction SilentlyContinue
         if (-not $running) {
             Write-Color "winws.exe завершился сразу. Запустите Zapret UI от имени администратора." Red
             exit 1
         }
 
-        $name = [System.IO.Path]::GetFileNameWithoutExtension($Extra)
+        $stableDeadline = (Get-Date).AddSeconds($stableSeconds)
+        while ((Get-Date) -lt $stableDeadline) {
+            Start-Sleep -Milliseconds 200
+            if (-not (Get-Process winws -ErrorAction SilentlyContinue)) {
+                Write-Color "winws.exe завершился сразу. Запустите Zapret UI от имени администратора." Red
+                exit 1
+            }
+        }
+
+        $name = [System.IO.Path]::GetFileNameWithoutExtension($batName)
         Write-Color "Strategy started (hidden): $name" Green
     }
 

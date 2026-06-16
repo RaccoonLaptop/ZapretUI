@@ -110,10 +110,13 @@ public sealed class ZapretPaths
         return Directory.GetFiles(Root, "*.bat")
             .Select(Path.GetFileName)
             .Where(f => f is not null && !f.StartsWith("service", StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(f => f.Equals(BundledStrategiesService.FeaturedStrategy, StringComparison.OrdinalIgnoreCase))
-            .ThenBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(f => NaturalBatSortKey(f!), StringComparer.OrdinalIgnoreCase)
             .Cast<string>();
     }
+
+    /// <summary>Как в utils/test zapret.ps1: числа в имени дополняются нулями для естественной сортировки.</summary>
+    internal static string NaturalBatSortKey(string fileName) =>
+        Regex.Replace(fileName, @"(\d+)", m => m.Value.PadLeft(8, '0'));
 
     public IEnumerable<string> GetListFiles()
     {

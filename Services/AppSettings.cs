@@ -28,6 +28,11 @@ public sealed class AppSettings
     public bool StartUiOnLogin { get; set; }
     /// <summary>Устарело: объединено с StartUiOnLogin.</summary>
     public bool StartBypassOnLogin { get; set; }
+    public double? WindowWidth { get; set; }
+    public double? WindowHeight { get; set; }
+    public double? WindowLeft { get; set; }
+    public double? WindowTop { get; set; }
+    public bool WindowMaximized { get; set; }
 
     public static AppSettings Load()
     {

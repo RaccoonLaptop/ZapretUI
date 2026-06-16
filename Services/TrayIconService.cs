@@ -10,7 +10,7 @@ public sealed class TrayIconService : IDisposable
 {
     private readonly Window _window;
     private readonly Func<Task> _toggleBypassAsync;
-    private readonly Func<IReadOnlyList<string>> _getStrategies;
+    private readonly Func<IReadOnlyList<StrategyItem>> _getStrategies;
     private readonly Func<string?> _getSelectedStrategy;
     private readonly Func<string, Task> _switchStrategyAsync;
     private readonly NotifyIcon _notifyIcon;
@@ -25,7 +25,7 @@ public sealed class TrayIconService : IDisposable
     public TrayIconService(
         Window window,
         Func<Task> toggleBypassAsync,
-        Func<IReadOnlyList<string>> getStrategies,
+        Func<IReadOnlyList<StrategyItem>> getStrategies,
         Func<string?> getSelectedStrategy,
         Func<string, Task> switchStrategyAsync)
     {
