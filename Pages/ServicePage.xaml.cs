@@ -314,7 +314,7 @@ public partial class ServicePage : UserControl
                         prepared = preparedResult.Payload;
                         progressWin.SetStatus(Loc.T("update.download_complete"));
 
-                        if (UiHelpers.Confirm(Loc.F("update.app_ready", result.RemoteVersion), OwnerWindow))
+                        if (UiHelpers.Confirm(AppSelfUpdateService.GetInstallConfirmMessage(result.RemoteVersion), OwnerWindow))
                         {
                             progressWin.SetStatus(Loc.T("update.starting_install"));
                             progressWin.ReportProgress(new DownloadProgress

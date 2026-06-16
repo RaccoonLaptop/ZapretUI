@@ -64,7 +64,7 @@ public sealed class StartupUpdateService
                         prepared = preparedResult.Payload;
                         progressWin.SetStatus(Loc.T("update.download_complete"));
                         if (UiHelpers.Confirm(
-                                Loc.F("update.app_ready", appCheck.RemoteVersion),
+                                AppSelfUpdateService.GetInstallConfirmMessage(appCheck.RemoteVersion),
                                 owner))
                         {
                             progressWin.SetStatus(Loc.T("update.starting_install"));

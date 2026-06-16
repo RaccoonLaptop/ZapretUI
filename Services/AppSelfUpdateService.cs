@@ -148,6 +148,8 @@ public sealed class AppSelfUpdateService
     {
         try
         {
+            PrepareForSelfUpdateInstall();
+
             if (!string.IsNullOrWhiteSpace(prepared.InstallerExePath))
                 return InstallViaInstallerAsync(prepared);
 
@@ -427,6 +429,24 @@ public sealed class AppSelfUpdateService
                 return dir;
         }
         return null;
+    }
+
+    public static string GetInstallConfirmMessage(string remoteVersion)
+    {
+        var message = LocalizationService.F("update.app_ready", remoteVersion);
+        if (ZapretShutdownService.IsWinDivertOrWinwsActive())
+            message += "\n\n" + LocalizationService.T("update.bypass_active_hint");
+        return message;
+    }
+
+    private static void PrepareForSelfUpdateInstall()
+    {
+        try
+        {
+            ZapretShutdownService.StopAll();
+            Thread.Sleep(400);
+        }
+        catch { /* updater script will retry stopping bypass */ }
     }
 
     private static string? ResolveUpdateScript()
