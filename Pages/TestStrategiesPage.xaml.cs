@@ -101,8 +101,11 @@ public partial class TestStrategiesPage : UserControl
         root.Children.Add(_runPanel);
 
         Content = root;
-        SelectMode(PresetTestKind.Standard);
+        var restoredKind = _runPanel.RestoreFromStorage();
+        SelectMode(restoredKind);
     }
+
+    public void SaveSession() => _runPanel.SaveSession();
 
     private async Task OnStartStopClickedAsync()
     {

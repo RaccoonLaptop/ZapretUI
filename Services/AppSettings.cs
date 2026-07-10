@@ -11,7 +11,7 @@ public sealed class AppSettings
 
     public string? ZapretRoot { get; set; }
     public string? LastStrategy { get; set; }
-    public bool MinimizeToTray { get; set; } = true;
+    public bool MinimizeToTray { get; set; }
     /// <summary>Проверять Zapret UI и Flowseal при запуске (только с подтверждением пользователя).</summary>
     public bool CheckUpdatesOnStartup { get; set; } = true;
     /// <summary>Устарело: авто-установка без подтверждения отключена.</summary>

@@ -90,6 +90,9 @@ internal static class TestOutputLocalizer
         ("HTTP:UNSUP", "HTTP:НЕПОДД"),
         ("HTTP:ERROR", "HTTP:ОШИБКА"),
         ("HTTP:OK", "HTTP:ОК"),
+        ("TLS1.2:BLOCKED", "TLS1.2:БЛОК"),
+        ("TLS1.3:BLOCKED", "TLS1.3:БЛОК"),
+        ("HTTP:BLOCKED", "HTTP:БЛОК"),
     ];
 
     public static bool IsActive => !LocalizationService.IsEnglish;

@@ -48,6 +48,7 @@ public sealed class PresetTestRunPanel : UserControl
     private Border _logPanel = null!;
     private bool _logVisible;
     private DispatcherTimer? _transitionTimer;
+    private DispatcherTimer? _saveTimer;
 
     private TestRunTracker DisplayTracker => _trackers[_displayKind];
     private KindViewState DisplayView => _viewStates[_displayKind];
@@ -80,11 +81,56 @@ public sealed class PresetTestRunPanel : UserControl
         Unloaded += async (_, _) =>
         {
             _transitionTimer?.Stop();
+            SaveSession();
             _terminal.OutputReceived -= OnTerminalOutput;
             _terminal.ProcessExited -= OnTerminalExited;
             _terminal.ErrorOccurred -= OnTerminalError;
             await _terminal.DisposeAsync();
         };
+    }
+
+    public PresetTestKind RestoreFromStorage()
+    {
+        var session = TestRunStateStore.Load();
+        _trackers[PresetTestKind.Standard].ImportKindState(session.Standard);
+        _trackers[PresetTestKind.DpiFreeze].ImportKindState(session.Dpi);
+        _viewStates[PresetTestKind.Standard].ReviewPresetFile = session.Standard.ReviewPresetFile;
+        _viewStates[PresetTestKind.DpiFreeze].ReviewPresetFile = session.Dpi.ReviewPresetFile;
+
+        _displayKind = session.LastSelectedKind == nameof(PresetTestKind.DpiFreeze)
+            ? PresetTestKind.DpiFreeze
+            : PresetTestKind.Standard;
+
+        RefreshVisualState();
+        return _displayKind;
+    }
+
+    public void SaveSession()
+    {
+        var session = new SavedTestRunSession
+        {
+            LastSelectedKind = _displayKind.ToString(),
+            Standard = _trackers[PresetTestKind.Standard].ExportKindState(
+                _viewStates[PresetTestKind.Standard].ReviewPresetFile),
+            Dpi = _trackers[PresetTestKind.DpiFreeze].ExportKindState(
+                _viewStates[PresetTestKind.DpiFreeze].ReviewPresetFile)
+        };
+        TestRunStateStore.Save(session);
+    }
+
+    private void SchedulePersist()
+    {
+        _saveTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        _saveTimer.Stop();
+        _saveTimer.Tick -= OnSaveTimerTick;
+        _saveTimer.Tick += OnSaveTimerTick;
+        _saveTimer.Start();
+    }
+
+    private void OnSaveTimerTick(object? sender, EventArgs e)
+    {
+        _saveTimer?.Stop();
+        SaveSession();
     }
 
     public async Task StartAsync(PresetTestKind kind, PresetTestScope scope)
@@ -106,6 +152,7 @@ public sealed class PresetTestRunPanel : UserControl
         ResetTransitionState(_displayKind);
         _displayKind = kind;
         RefreshVisualState();
+        SchedulePersist();
     }
 
     public bool HasVisibleContent =>
@@ -296,6 +343,7 @@ public sealed class PresetTestRunPanel : UserControl
         };
         TextOptions.SetTextFormattingMode(_output, TextFormattingMode.Display);
         AnsiTerminalRenderer.ApplyTerminalLayout(_output.Document);
+        MouseWheelScrollHelper.Attach(_output);
 
         _input = new TextBox
         {
@@ -431,6 +479,7 @@ public sealed class PresetTestRunPanel : UserControl
             if (e.OriginalSource is Button) return;
             view.ReviewPresetFile = score.FileName;
             RefreshVisualState();
+            SchedulePersist();
         };
         var stack = new StackPanel();
 
@@ -527,6 +576,7 @@ public sealed class PresetTestRunPanel : UserControl
         RunTracker.StopRun();
         _input.IsEnabled = false;
         RefreshVisualState();
+        SaveSession();
     }
 
     private async Task ApplyBestAsync()
@@ -574,6 +624,7 @@ public sealed class PresetTestRunPanel : UserControl
             RunTracker.EndRun(exitCode);
             _input.IsEnabled = false;
             RefreshVisualState();
+            SaveSession();
         });
     }
 
@@ -589,6 +640,7 @@ public sealed class PresetTestRunPanel : UserControl
             HandlePresetTransition(active, view);
             RefreshVisualState();
             RunStateChanged?.Invoke();
+            SchedulePersist();
         });
     }
 

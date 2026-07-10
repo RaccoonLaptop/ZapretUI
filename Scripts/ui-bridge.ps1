@@ -250,13 +250,47 @@ switch ($Action) {
     }
 
     "UpdateHosts" {
-        $hostsUrl = "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/refs/heads/main/.service/hosts"
+        $hostsUrls = @(
+            "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/refs/heads/main/.service/hosts",
+            "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/hosts"
+        )
         $tempFile = Join-Path $env:TEMP "zapret_hosts.txt"
         $hostsFile = "$env:SystemRoot\System32\drivers\etc\hosts"
-        Invoke-WebRequest -Uri $hostsUrl -OutFile $tempFile -UseBasicParsing -TimeoutSec 15
-        $lines = Get-Content $tempFile
+        $downloaded = $false
+        foreach ($hostsUrl in $hostsUrls) {
+            try {
+                Invoke-WebRequest -Uri $hostsUrl -OutFile $tempFile -UseBasicParsing -TimeoutSec 15 -Headers @{ 'User-Agent' = 'ZapretUI' }
+                if (Test-Path $tempFile) {
+                    $downloaded = $true
+                    break
+                }
+            } catch { }
+        }
+        if (-not $downloaded) {
+            $fallbacks = @(
+                (Join-Path $ZapretRoot ".service\hosts"),
+                (Join-Path (Split-Path $PSScriptRoot -Parent) "packaging\zapret\.service\hosts")
+            )
+            foreach ($fallback in $fallbacks) {
+                if (Test-Path $fallback) {
+                    Copy-Item -Path $fallback -Destination $tempFile -Force
+                    $downloaded = $true
+                    Write-Color "Using local hosts fallback: $fallback" Yellow
+                    break
+                }
+            }
+        }
+        if (-not $downloaded) {
+            Write-Color "Failed to download hosts file and no local fallback is available" Red
+            exit 1
+        }
+        $lines = Get-Content $tempFile | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') }
+        if (-not $lines -or $lines.Count -lt 1) {
+            Write-Color "Hosts reference file is empty" Red
+            exit 1
+        }
         $first = $lines[0]; $last = $lines[-1]
-        $hostsContent = Get-Content $hostsFile -ErrorAction SilentlyContinue
+        $hostsContent = Get-Content $hostsFile -ErrorAction SilentlyContinue | ForEach-Object { $_.Trim() }
         $needs = ($hostsContent -notcontains $first) -or ($hostsContent -notcontains $last)
         if ($needs) {
             Write-Color "Hosts file needs update. Opening files..." Yellow

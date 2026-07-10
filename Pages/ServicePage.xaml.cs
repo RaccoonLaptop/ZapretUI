@@ -19,7 +19,6 @@ public partial class ServicePage : UserControl
     private readonly AppSettings _settings;
     private readonly ServiceSettingsService _settingsSvc;
     private readonly UpdateService _updates;
-    private readonly ProcessRunner _runner;
     private TextBlock _gameFilterStatus = null!;
     private TextBlock _ipsetStatus = null!;
     private Button _gameDisabledBtn = null!;
@@ -38,9 +37,6 @@ public partial class ServicePage : UserControl
         _settings = AppSettings.Load();
         _settingsSvc = new ServiceSettingsService(paths);
         _updates = new UpdateService(paths);
-        _runner = new ProcessRunner();
-        _runner.SetZapretRoot(paths.Root);
-        _runner.OutputReceived += line => ConsoleLog.Instance.Write(line);
         BuildUi();
         RefreshStatuses();
     }
@@ -112,7 +108,7 @@ public partial class ServicePage : UserControl
 
         var dataBtns = new WrapPanel { Margin = new Thickness(0, 0, 0, 0) };
         dataBtns.Children.Add(ActionBtn(Loc.T("service.update_ipset"), async () => await UpdateIpsetWithDialog()));
-        dataBtns.Children.Add(ActionBtn(Loc.T("service.update_hosts"), async () => await RunBridgeWithDialog(Loc.T("dialog.update_hosts"), "UpdateHosts")));
+        dataBtns.Children.Add(ActionBtn(Loc.T("service.update_hosts"), async () => await UpdateHostsWithDialog()));
         setStack.Children.Add(dataBtns);
 
         setCard.Child = setStack;
@@ -413,19 +409,38 @@ public partial class ServicePage : UserControl
         }
     }
 
-    private async Task RunBridgeWithDialog(string title, string action, string? extra = null)
+    private async Task UpdateHostsWithDialog()
     {
         try
         {
             var result = await UiHelpers.RunWithLoadingAsync(
                 OwnerWindow,
                 Loc.T("common.loading"),
-                () => _runner.RunBridgeAsync(action, extra));
-            UiHelpers.ShowResult(OwnerWindow, title, result);
+                () => _updates.PrepareHostsUpdateAsync());
+
+            if (result.Error is not null)
+            {
+                UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.update_hosts"), $"{Loc.T("common.error_prefix")} {result.Error}");
+                return;
+            }
+
+            if (result.IsUpToDate)
+            {
+                UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.update_hosts"), Loc.T("dialog.hosts_up_to_date"));
+                return;
+            }
+
+            if (result.NeedsManualMerge &&
+                !string.IsNullOrWhiteSpace(result.TempFilePath) &&
+                !string.IsNullOrWhiteSpace(result.SystemHostsPath))
+            {
+                UpdateService.OpenHostsMergeAssist(result.TempFilePath, result.SystemHostsPath);
+                UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.update_hosts"), Loc.T("dialog.hosts_manual"));
+            }
         }
         catch (Exception ex)
         {
-            UiHelpers.ShowResult(OwnerWindow, title, $"{Loc.T("common.error_prefix")} {ex.Message}");
+            UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.update_hosts"), $"{Loc.T("common.error_prefix")} {ex.Message}");
         }
     }
 

@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
-using ICSharpCode.AvalonEdit;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;using ICSharpCode.AvalonEdit;
 
 namespace ZapretUI.Helpers;
 
@@ -11,8 +11,17 @@ public static class MouseWheelScrollHelper
     {
         textBox.PreviewMouseWheel += (_, e) =>
         {
-            ScrollTextBox(textBox, e);
+            ScrollTextBoxBase(textBox, e);
             e.Handled = true;
+        };
+    }
+
+    public static void Attach(RichTextBox richTextBox)
+    {
+        richTextBox.PreviewMouseWheel += (_, e) =>
+        {
+            if (ScrollRichTextBox(richTextBox, e))
+                e.Handled = true;
         };
     }
 
@@ -50,7 +59,7 @@ public static class MouseWheelScrollHelper
         };
     }
 
-    private static void ScrollTextBox(TextBox textBox, MouseWheelEventArgs e)
+    private static void ScrollTextBoxBase(TextBoxBase textBox, MouseWheelEventArgs e)
     {
         var steps = Math.Max(1, Math.Abs(e.Delta) / 120);
         for (var i = 0; i < steps; i++)
@@ -62,8 +71,20 @@ public static class MouseWheelScrollHelper
         }
     }
 
-    private static ScrollViewer? FindScrollViewer(DependencyObject root)
+    private static bool ScrollRichTextBox(RichTextBox richTextBox, MouseWheelEventArgs e)
     {
+        var scrollViewer = FindScrollViewer(richTextBox);
+        if (scrollViewer is not null)
+        {
+            scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - e.Delta);
+            return true;
+        }
+
+        ScrollTextBoxBase(richTextBox, e);
+        return true;
+    }
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject root)    {
         if (root is ScrollViewer sv)
             return sv;
 

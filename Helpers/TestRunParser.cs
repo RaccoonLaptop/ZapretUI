@@ -18,7 +18,7 @@ public static class TestRunParser
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex DpiStatusLine = new(
-        @"\[(?<label>HTTP|TLS 1\.2|TLS 1\.3)\].*status=(?<status>\w+)",
+        @"\[(?<label>HTTP|TLS\s*1\.2|TLS\s*1\.3)\].*status=(?<status>[A-Za-z_]+)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public static bool TryParseConfigHeader(string line, out int current, out int total, out string fileName)

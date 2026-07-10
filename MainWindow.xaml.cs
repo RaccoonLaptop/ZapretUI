@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private readonly bool _startInTray;
     private Button? _activeNav;
     private HomePage? _homePage;
+    private TestStrategiesPage? _testStrategiesPage;
     private bool _isShuttingDown;
 
     public MainWindow(bool startInTray = false)
@@ -139,6 +140,7 @@ public partial class MainWindow : Window
     private void ExecuteShutdown()
     {
         SaveWindowBounds();
+        _testStrategiesPage?.SaveSession();
         _isShuttingDown = true;
 
         // Если обход был запущен, сначала останавливаем winws, затем закрываем UI.
@@ -163,8 +165,7 @@ public partial class MainWindow : Window
     private void OnStateChanged(object? sender, EventArgs e)
     {
         if (_isShuttingDown) return;
-        if (WindowState == WindowState.Minimized &&
-            (_strategy.IsRunning() || _settings.MinimizeToTray))
+        if (WindowState == WindowState.Minimized && _settings.MinimizeToTray)
             HideToTray();
     }
 
@@ -348,7 +349,13 @@ public partial class MainWindow : Window
         AddNav(Loc.T("nav.strategies"), () => Navigate(new StrategiesPage(_paths, _strategy, _settings)));
         AddNav(Loc.T("nav.service"), () => Navigate(new ServicePage(_paths, _strategy)));
         AddNav(Loc.T("nav.diagnostics"), () => Navigate(new DiagnosticsPage(_runner)));
-        AddNav(Loc.T("nav.test"), () => Navigate(new TestStrategiesPage(_paths, _strategy, _settings)));
+        AddNav(Loc.T("nav.test"), NavigateTest);
+    }
+
+    private void NavigateTest()
+    {
+        _testStrategiesPage ??= new TestStrategiesPage(_paths, _strategy, _settings);
+        Navigate(_testStrategiesPage);
     }
 
     private void NavigateHome()

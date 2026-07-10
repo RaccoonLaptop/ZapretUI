@@ -162,6 +162,8 @@
   "dialog.remove_services": "Remove services",
   "dialog.service_status": "Service status",
   "dialog.update_hosts": "Update Hosts",
+  "dialog.hosts_up_to_date": "Hosts file is up to date.",
+  "dialog.hosts_manual": "Hosts file needs to be updated.\n\nNotepad with the latest content and the system hosts folder were opened.\n\nCopy the text from Notepad and append it to your hosts file (or replace old zapret entries), saving hosts with a text editor run as administrator.",
   "dialog.ipset_list": "IPSet List",
   "dialog.ipset_ok": "ipset-all.txt list updated successfully from Flowseal repository.",
   "dialog.update_flowseal": "Flowseal update",

@@ -160,12 +160,13 @@ public sealed class TestRunTracker
                 && TestRunParser.TryParseDpiStatusLine(plain, out var label, out var status)
                 && _targetIndex.TryGetValue(NormalizeTargetKey(_currentDpiTarget), out var dpiRow))
             {
+                var token = FormatDpiStatusToken(label, status);
                 if (label.Equals("HTTP", StringComparison.OrdinalIgnoreCase))
-                    dpiRow.Http = status;
-                else if (label.Contains("1.2", StringComparison.Ordinal))
-                    dpiRow.Tls12 = status;
-                else if (label.Contains("1.3", StringComparison.Ordinal))
-                    dpiRow.Tls13 = status;
+                    dpiRow.Http = token;
+                else if (label.Replace(" ", "", StringComparison.Ordinal).Contains("1.2", StringComparison.Ordinal))
+                    dpiRow.Tls12 = token;
+                else if (label.Replace(" ", "", StringComparison.Ordinal).Contains("1.3", StringComparison.Ordinal))
+                    dpiRow.Tls13 = token;
                 Notify();
                 TryFinalizeIfTargetsComplete();
                 return;
@@ -184,6 +185,26 @@ public sealed class TestRunTracker
             StatusText = Loc.F("tools.test_best_found", StrategyDisplayHelper.ToDisplayName(BestPresetFile));
             Notify();
         }
+    }
+
+    private static string FormatDpiStatusToken(string label, string status)
+    {
+        var protocol = label.Replace(" ", "", StringComparison.Ordinal).ToUpperInvariant() switch
+        {
+            "HTTP" => "HTTP",
+            "TLS1.2" => "TLS1.2",
+            "TLS1.3" => "TLS1.3",
+            _ => label.Replace(" ", "", StringComparison.Ordinal).ToUpperInvariant()
+        };
+
+        var normalized = status.ToUpperInvariant() switch
+        {
+            "UNSUPPORTED" => "UNSUP",
+            "LIKELY_BLOCKED" => "BLOCKED",
+            _ => status.ToUpperInvariant()
+        };
+
+        return $"{protocol}:{normalized}";
     }
 
     private void UpsertTarget(TestTargetRow target)
@@ -444,4 +465,127 @@ public sealed class TestRunTracker
 
     private static string StripAnsi(string text) =>
         Regex.Replace(text, @"\x1B(?:\][^\x07]*\x07|\[[\d;?]*[ -/]*[@-~])", "");
+
+    public SavedTestKindState ExportKindState(string? reviewPresetFile) =>
+        new()
+        {
+            TestKind = TestKind.ToString(),
+            Targets = Targets.Select(SaveTarget).ToList(),
+            Scores = Scores.Select(SaveScore).ToList(),
+            Snapshots = _snapshots.Values.Select(SaveSnapshot).ToList(),
+            CurrentPreset = CurrentPreset,
+            CurrentPresetDisplay = CurrentPresetDisplay,
+            StatusText = IsRunning ? Loc.T("tools.test_stopped") : StatusText,
+            BestPresetFile = BestPresetFile,
+            Progress = Progress,
+            ProgressText = ProgressText,
+            ReviewPresetFile = reviewPresetFile
+        };
+
+    public void ImportKindState(SavedTestKindState state)
+    {
+        if (IsRunning) return;
+
+        Targets.Clear();
+        Scores.Clear();
+        _targetIndex.Clear();
+        _snapshots.Clear();
+        _finalizedPresets.Clear();
+        _lineBuffer.Clear();
+        _currentDpiTarget = null;
+        _targetTemplate = [];
+        _templateNames = [];
+
+        if (Enum.TryParse<PresetTestKind>(state.TestKind, out var kind))
+            TestKind = kind;
+
+        foreach (var saved in state.Targets)
+        {
+            var row = LoadTarget(saved);
+            Targets.Add(row);
+            _targetIndex[NormalizeTargetKey(row.Name)] = row;
+        }
+
+        foreach (var saved in state.Scores)
+            Scores.Add(LoadScore(saved));
+
+        foreach (var saved in state.Snapshots)
+        {
+            var fileName = NormalizeBat(saved.FileName);
+            _snapshots[fileName] = LoadSnapshot(saved);
+            _finalizedPresets.Add(fileName);
+        }
+
+        CurrentPreset = state.CurrentPreset;
+        CurrentPresetDisplay = state.CurrentPresetDisplay;
+        StatusText = string.IsNullOrWhiteSpace(state.StatusText)
+            ? Loc.T("tools.test_status_idle")
+            : state.StatusText;
+        BestPresetFile = state.BestPresetFile;
+        Progress = state.Progress;
+        ProgressText = state.ProgressText;
+        IsRunning = false;
+    }
+
+    private static SavedTestTargetRow SaveTarget(TestTargetRow row) =>
+        new()
+        {
+            Name = row.Name,
+            Http = row.Http,
+            Tls12 = row.Tls12,
+            Tls13 = row.Tls13,
+            Ping = row.Ping,
+            PingOnly = row.PingOnly
+        };
+
+    private static TestTargetRow LoadTarget(SavedTestTargetRow row) =>
+        new()
+        {
+            Name = row.Name,
+            PingOnly = row.PingOnly,
+            Http = row.Http,
+            Tls12 = row.Tls12,
+            Tls13 = row.Tls13,
+            Ping = row.Ping
+        };
+
+    private static SavedPresetScoreRow SaveScore(PresetScoreRow row) =>
+        new()
+        {
+            FileName = row.FileName,
+            DisplayName = row.DisplayName,
+            Detail = row.Detail,
+            Glyph = row.Glyph,
+            RankScore = row.RankScore,
+            Fail = row.Fail,
+            HttpOk = row.HttpOk
+        };
+
+    private static PresetScoreRow LoadScore(SavedPresetScoreRow row) =>
+        new()
+        {
+            FileName = row.FileName,
+            DisplayName = row.DisplayName,
+            Detail = row.Detail,
+            Glyph = row.Glyph,
+            RankScore = row.RankScore,
+            Fail = row.Fail,
+            HttpOk = row.HttpOk
+        };
+
+    private static SavedPresetTargetSnapshot SaveSnapshot(PresetTargetSnapshot snapshot) =>
+        new()
+        {
+            FileName = snapshot.FileName,
+            DisplayName = snapshot.DisplayName,
+            Targets = snapshot.Targets.Select(SaveTarget).ToList()
+        };
+
+    private static PresetTargetSnapshot LoadSnapshot(SavedPresetTargetSnapshot snapshot) =>
+        new()
+        {
+            FileName = snapshot.FileName,
+            DisplayName = snapshot.DisplayName,
+            Targets = snapshot.Targets.Select(LoadTarget).ToList()
+        };
 }

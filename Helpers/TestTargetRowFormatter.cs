@@ -126,6 +126,8 @@ public static class TestTargetRowFormatter
             return (Brush)Application.Current.FindResource("SuccessBrush");
         if (t.Contains("UNSUP") || t.Contains("НЕПОДД"))
             return (Brush)Application.Current.FindResource("WarningBrush");
+        if (t.Contains("BLOCKED"))
+            return (Brush)Application.Current.FindResource("WarningBrush");
         if (t.Contains("ERR") || t.Contains("FAIL") || t.Contains("SSL") || t.Contains("ОШ"))
             return (Brush)Application.Current.FindResource("ErrorBrush");
         return (Brush)Application.Current.FindResource("TextMutedBrush");

@@ -162,6 +162,8 @@
   "dialog.remove_services": "Удаление служб",
   "dialog.service_status": "Статус службы",
   "dialog.update_hosts": "Обновление Hosts",
+  "dialog.hosts_up_to_date": "Файл hosts актуален.",
+  "dialog.hosts_manual": "Hosts нужно обновить.\n\nОткрыты блокнот с актуальным содержимым и папка с системным hosts.\n\nСкопируйте текст из блокнота и добавьте в конец файла hosts (или замените старые записи zapret), сохранив его через редактор, запущенный от имени администратора.",
   "dialog.ipset_list": "IPSet List",
   "dialog.ipset_ok": "Список ipset-all.txt успешно обновлён из репозитория Flowseal.",
   "dialog.update_flowseal": "Обновление Flowseal",
