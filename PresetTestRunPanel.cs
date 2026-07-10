@@ -4,6 +4,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.TextFormatting;
+using System.Windows.Threading;
 using ZapretUI.Helpers;
 using ZapretUI.Models;
 using ZapretUI.Services;
@@ -34,6 +35,11 @@ public sealed class PresetTestRunPanel : UserControl
     private StackPanel _scoresPanel = null!;
     private Border _logPanel = null!;
     private bool _logVisible;
+    private string _lastSeenPreset = "";
+    private string? _reviewPresetFile;
+    private bool _inTransition;
+    private PresetTargetSnapshot? _transitionSnapshot;
+    private DispatcherTimer? _transitionTimer;
 
     public PresetTestRunPanel(ZapretPaths paths, StrategyService strategy, AppSettings settings)
     {
@@ -49,6 +55,7 @@ public sealed class PresetTestRunPanel : UserControl
         _terminal.ErrorOccurred += OnTerminalError;
         Unloaded += async (_, _) =>
         {
+            _transitionTimer?.Stop();
             _tracker.Changed -= OnTrackerChanged;
             _terminal.OutputReceived -= OnTerminalOutput;
             _terminal.ProcessExited -= OnTerminalExited;
@@ -258,21 +265,22 @@ public sealed class PresetTestRunPanel : UserControl
         _progressText.Text = _tracker.ProgressText;
         _progressBar.Value = _tracker.Progress;
 
-        _currentPresetText.Text = string.IsNullOrWhiteSpace(_tracker.CurrentPresetDisplay)
+        var (targets, presetDisplay) = ResolveDisplayTargets();
+        _currentPresetText.Text = string.IsNullOrWhiteSpace(presetDisplay)
             ? Loc.T("tools.test_current_strategy_waiting")
-            : Loc.F("tools.test_current_strategy", _tracker.CurrentPresetDisplay);
+            : Loc.F("tools.test_current_strategy", presetDisplay);
 
         _applyBestBtn.IsEnabled = !string.IsNullOrWhiteSpace(_tracker.BestPresetFile) && !_tracker.IsRunning;
 
         _targetsPanel.Children.Clear();
-        if (_tracker.Targets.Count == 0)
+        if (targets.Count == 0)
         {
             _targetsPanel.Children.Add(MakeMuted(Loc.T("tools.test_targets_empty")));
         }
         else
         {
-            var nameWidth = TestTargetRowFormatter.ComputeNameWidth(_tracker.Targets);
-            foreach (var row in _tracker.Targets)
+            var nameWidth = TestTargetRowFormatter.ComputeNameWidth(targets);
+            foreach (var row in targets)
             {
                 var line = new TextBlock
                 {
@@ -293,17 +301,79 @@ public sealed class PresetTestRunPanel : UserControl
                 _scoresPanel.Children.Add(BuildScoreCard(score));
     }
 
+    private (IReadOnlyList<TestTargetRow> Targets, string PresetDisplay) ResolveDisplayTargets()
+    {
+        if (!_tracker.IsRunning && _reviewPresetFile is not null
+            && _tracker.TryGetSnapshot(_reviewPresetFile, out var review))
+            return (review.Targets, review.DisplayName);
+
+        if (_inTransition && _transitionSnapshot is not null)
+            return (_transitionSnapshot.Targets, _transitionSnapshot.DisplayName);
+
+        return (_tracker.Targets, _tracker.CurrentPresetDisplay);
+    }
+
+    private void HandlePresetTransition()
+    {
+        var current = _tracker.CurrentPreset;
+        if (_tracker.IsRunning
+            && !string.IsNullOrEmpty(_lastSeenPreset)
+            && !string.IsNullOrEmpty(current)
+            && !current.Equals(_lastSeenPreset, StringComparison.OrdinalIgnoreCase)
+            && _tracker.TryGetSnapshot(_lastSeenPreset, out var snapshot))
+        {
+            _inTransition = true;
+            _transitionSnapshot = snapshot;
+            _reviewPresetFile = null;
+
+            _transitionTimer?.Stop();
+            _transitionTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            _transitionTimer.Tick += (_, _) =>
+            {
+                _transitionTimer?.Stop();
+                _inTransition = false;
+                _transitionSnapshot = null;
+                RefreshVisualState();
+            };
+            _transitionTimer.Start();
+        }
+
+        if (!string.IsNullOrEmpty(current))
+            _lastSeenPreset = current;
+    }
+
+    private void ResetTransitionState()
+    {
+        _transitionTimer?.Stop();
+        _inTransition = false;
+        _transitionSnapshot = null;
+        _lastSeenPreset = "";
+        _reviewPresetFile = null;
+    }
+
     private Border BuildScoreCard(PresetScoreRow score)
     {
+        var isSelected = !_tracker.IsRunning
+            && _reviewPresetFile is not null
+            && score.FileName.Equals(_reviewPresetFile, StringComparison.OrdinalIgnoreCase);
+
         var card = new Border
         {
-            Background = (Brush)Application.Current.FindResource("InputBrush"),
-            BorderBrush = (Brush)Application.Current.FindResource("BorderBrush"),
-            BorderThickness = new Thickness(1),
+            Background = (Brush)Application.Current.FindResource(isSelected ? "PanelOverlayBrush" : "InputBrush"),
+            BorderBrush = (Brush)Application.Current.FindResource(isSelected ? "AccentBrush" : "BorderBrush"),
+            BorderThickness = new Thickness(isSelected ? 2 : 1),
             CornerRadius = new CornerRadius(10),
             Padding = new Thickness(12, 10, 12, 10),
             Margin = new Thickness(0, 0, 0, 8),
-            HorizontalAlignment = HorizontalAlignment.Stretch
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Cursor = _tracker.IsRunning ? Cursors.Arrow : Cursors.Hand
+        };
+        card.MouseLeftButtonUp += (_, e) =>
+        {
+            if (_tracker.IsRunning) return;
+            if (e.OriginalSource is Button) return;
+            _reviewPresetFile = score.FileName;
+            RefreshVisualState();
         };
         var stack = new StackPanel();
 
@@ -378,6 +448,7 @@ public sealed class PresetTestRunPanel : UserControl
             _ansi.Clear(_output);
             _autoResponder = new TestScriptAutoResponder(_kind, _scope, _batFiles, _terminal);
             _autoResponder.Reset();
+            ResetTransitionState();
             _tracker.BeginRun(_kind, template);
             RefreshVisualState();
 
@@ -453,6 +524,7 @@ public sealed class PresetTestRunPanel : UserControl
     {
         Dispatcher.Invoke(() =>
         {
+            HandlePresetTransition();
             RefreshVisualState();
             RunStateChanged?.Invoke();
         });

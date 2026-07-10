@@ -9,6 +9,8 @@ public sealed class TestRunTracker
 {
     private readonly StringBuilder _lineBuffer = new();
     private readonly Dictionary<string, TestTargetRow> _targetIndex = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, PresetTargetSnapshot> _snapshots = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _finalizedPresets = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<TestTargetDefinition> _targetTemplate = [];
     private string? _currentDpiTarget;
 
@@ -26,12 +28,17 @@ public sealed class TestRunTracker
 
     public event Action? Changed;
 
+    public bool TryGetSnapshot(string fileName, out PresetTargetSnapshot snapshot) =>
+        _snapshots.TryGetValue(NormalizeBat(fileName), out snapshot!);
+
     public void BeginRun(PresetTestKind kind, IReadOnlyList<TestTargetDefinition>? targetTemplate = null)
     {
         TestKind = kind;
         Targets.Clear();
         Scores.Clear();
         _targetIndex.Clear();
+        _snapshots.Clear();
+        _finalizedPresets.Clear();
         _lineBuffer.Clear();
         _currentDpiTarget = null;
         _targetTemplate = targetTemplate ?? [];
@@ -54,6 +61,7 @@ public sealed class TestRunTracker
     public void EndRun(int exitCode)
     {
         FlushBuffer();
+        FinalizeCurrentPresetIfNeeded();
         IsRunning = false;
         StatusText = exitCode == 0
             ? Loc.T("tools.test_status_done")
@@ -64,6 +72,7 @@ public sealed class TestRunTracker
     public void StopRun()
     {
         FlushBuffer();
+        FinalizeCurrentPresetIfNeeded();
         IsRunning = false;
         StatusText = Loc.T("tools.test_stopped");
         Notify();
@@ -96,8 +105,9 @@ public sealed class TestRunTracker
 
         if (TestRunParser.TryParseConfigHeader(plain, out var cur, out var tot, out var fileName))
         {
-            CurrentPreset = fileName;
-            CurrentPresetDisplay = StrategyDisplayHelper.ToDisplayName(fileName);
+            FinalizeCurrentPresetIfNeeded();
+            CurrentPreset = NormalizeBat(fileName);
+            CurrentPresetDisplay = StrategyDisplayHelper.ToDisplayName(CurrentPreset);
             _currentDpiTarget = null;
             if (TestKind == PresetTestKind.Standard && _targetTemplate.Count > 0)
                 SeedStandardTargets();
@@ -119,6 +129,7 @@ public sealed class TestRunTracker
         if (TestKind == PresetTestKind.Standard && TestRunParser.TryParseTargetRow(plain, out var target))
         {
             UpsertTarget(target);
+            TryFinalizeIfTargetsComplete();
             return;
         }
 
@@ -140,7 +151,7 @@ public sealed class TestRunTracker
 
             if (_currentDpiTarget is not null
                 && TestRunParser.TryParseDpiStatusLine(plain, out var label, out var status)
-                && _targetIndex.TryGetValue(_currentDpiTarget, out var dpiRow))
+                && _targetIndex.TryGetValue(NormalizeTargetKey(_currentDpiTarget), out var dpiRow))
             {
                 if (label.Equals("HTTP", StringComparison.OrdinalIgnoreCase))
                     dpiRow.Http = status;
@@ -149,35 +160,20 @@ public sealed class TestRunTracker
                 else if (label.Contains("1.3", StringComparison.Ordinal))
                     dpiRow.Tls13 = status;
                 Notify();
+                TryFinalizeIfTargetsComplete();
                 return;
             }
         }
 
         if (TestRunParser.TryParseScoreRow(plain, out var score))
         {
-            var existingIdx = -1;
-            for (var i = 0; i < Scores.Count; i++)
-            {
-                if (Scores[i].FileName.Equals(score.FileName, StringComparison.OrdinalIgnoreCase))
-                {
-                    existingIdx = i;
-                    break;
-                }
-            }
-
-            if (existingIdx >= 0)
-                Scores[existingIdx] = score;
-            else
-                Scores.Add(score);
-
-            SortScores();
-            Notify();
+            UpsertScore(score);
             return;
         }
 
         if (TestRunParser.TryParseBestConfig(plain, out var best))
         {
-            BestPresetFile = best.Trim();
+            BestPresetFile = NormalizeBat(best.Trim());
             StatusText = Loc.F("tools.test_best_found", StrategyDisplayHelper.ToDisplayName(BestPresetFile));
             Notify();
         }
@@ -208,6 +204,114 @@ public sealed class TestRunTracker
         Notify();
     }
 
+    private void TryFinalizeIfTargetsComplete()
+    {
+        if (string.IsNullOrEmpty(CurrentPreset) || _finalizedPresets.Contains(CurrentPreset))
+            return;
+        if (!AreAllTargetsComplete())
+            return;
+        FinalizeCurrentPreset();
+    }
+
+    private void FinalizeCurrentPresetIfNeeded()
+    {
+        if (string.IsNullOrEmpty(CurrentPreset) || _finalizedPresets.Contains(CurrentPreset))
+            return;
+        if (Targets.Count == 0)
+            return;
+        FinalizeCurrentPreset();
+    }
+
+    private void FinalizeCurrentPreset()
+    {
+        if (string.IsNullOrEmpty(CurrentPreset) || _finalizedPresets.Contains(CurrentPreset))
+            return;
+
+        var clones = CloneTargets(Targets);
+        if (clones.Count == 0)
+            return;
+
+        _snapshots[CurrentPreset] = new PresetTargetSnapshot
+        {
+            FileName = CurrentPreset,
+            DisplayName = CurrentPresetDisplay,
+            Targets = clones
+        };
+        _finalizedPresets.Add(CurrentPreset);
+
+        var score = TestKind == PresetTestKind.DpiFreeze
+            ? PresetScoreCalculator.FromDpiTargets(CurrentPreset, clones)
+            : PresetScoreCalculator.FromStandardTargets(CurrentPreset, clones);
+        UpsertScore(score);
+    }
+
+    private bool AreAllTargetsComplete()
+    {
+        if (Targets.Count == 0)
+            return false;
+
+        foreach (var row in Targets)
+        {
+            if (row.Ping is "…")
+                return false;
+
+            if (!row.PingOnly)
+            {
+                if (row.Http is "HTTP:…" or "…")
+                    return false;
+                if (row.Tls12 is "TLS1.2:…" or "…")
+                    return false;
+                if (row.Tls13 is "TLS1.3:…" or "…")
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static List<TestTargetRow> CloneTargets(IEnumerable<TestTargetRow> rows) =>
+        rows.Select(row => new TestTargetRow
+        {
+            Name = row.Name,
+            PingOnly = row.PingOnly,
+            Http = row.Http,
+            Tls12 = row.Tls12,
+            Tls13 = row.Tls13,
+            Ping = row.Ping
+        }).ToList();
+
+    private void UpsertScore(PresetScoreRow score)
+    {
+        var fileName = NormalizeBat(score.FileName);
+        var normalized = new PresetScoreRow
+        {
+            FileName = fileName,
+            DisplayName = score.DisplayName,
+            Detail = score.Detail,
+            Glyph = score.Glyph,
+            RankScore = score.RankScore,
+            Fail = score.Fail,
+            HttpOk = score.HttpOk
+        };
+        var existingIdx = -1;
+        for (var i = 0; i < Scores.Count; i++)
+        {
+            if (Scores[i].FileName.Equals(fileName, StringComparison.OrdinalIgnoreCase))
+            {
+                existingIdx = i;
+                break;
+            }
+        }
+
+        if (existingIdx >= 0)
+            Scores[existingIdx] = normalized;
+        else
+            Scores.Add(normalized);
+
+        SortScores();
+        Notify();
+    }
+
     private void SeedStandardTargets()
     {
         Targets.Clear();
@@ -218,7 +322,7 @@ public sealed class TestRunTracker
             {
                 Name = def.Name,
                 PingOnly = def.PingOnly,
-                Http = def.PingOnly ? "HTTP:…" : "HTTP:…",
+                Http = "HTTP:…",
                 Tls12 = "TLS1.2:…",
                 Tls13 = "TLS1.3:…",
                 Ping = "…"
@@ -228,9 +332,6 @@ public sealed class TestRunTracker
         }
         Notify();
     }
-
-    private static string NormalizeTargetKey(string name) =>
-        name.Replace(" ", "", StringComparison.Ordinal).ToUpperInvariant();
 
     private void SortScores()
     {
@@ -251,6 +352,16 @@ public sealed class TestRunTracker
     }
 
     private void Notify() => Changed?.Invoke();
+
+    private static string NormalizeTargetKey(string name) =>
+        name.Replace(" ", "", StringComparison.Ordinal).ToUpperInvariant();
+
+    private static string NormalizeBat(string fileName)
+    {
+        if (!fileName.EndsWith(".bat", StringComparison.OrdinalIgnoreCase))
+            fileName += ".bat";
+        return fileName;
+    }
 
     private static string StripAnsi(string text) =>
         Regex.Replace(text, @"\x1B(?:\][^\x07]*\x07|\[[\d;?]*[ -/]*[@-~])", "");
