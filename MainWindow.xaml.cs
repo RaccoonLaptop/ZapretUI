@@ -348,7 +348,7 @@ public partial class MainWindow : Window
         AddNav(Loc.T("nav.strategies"), () => Navigate(new StrategiesPage(_paths, _strategy, _settings)));
         AddNav(Loc.T("nav.service"), () => Navigate(new ServicePage(_paths, _strategy)));
         AddNav(Loc.T("nav.diagnostics"), () => Navigate(new DiagnosticsPage(_runner)));
-        AddNav(Loc.T("nav.test"), () => Navigate(new TestStrategiesPage(_paths)));
+        AddNav(Loc.T("nav.test"), () => Navigate(new TestStrategiesPage(_paths, _strategy, _settings)));
     }
 
     private void NavigateHome()
