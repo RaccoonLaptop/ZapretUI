@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+             xmlns:helpers="clr-namespace:ZapretUI.Helpers"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
         <!-- Dark palette (high contrast) -->
@@ -405,5 +406,31 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <DataTemplate x:Key="StrategyListItemTemplate" DataType="{x:Type helpers:StrategyListEntry}">
+            <StackPanel ToolTip="{Binding DisplayName}">
+                <Grid>
+                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" Margin="0,0,72,0"/>
+                    <Border CornerRadius="5" Padding="6,1" HorizontalAlignment="Right"
+                            Background="#2634D399" VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding RunningBadgeText}" FontSize="9.5" FontWeight="Bold"
+                                   Foreground="{StaticResource SuccessBrush}"/>
+                    </Border>
+                </Grid>
+                <TextBlock Text="{Binding Description}" Foreground="{StaticResource TextMutedBrush}"
+                           FontSize="11.5" TextTrimming="CharacterEllipsis" MaxHeight="32"/>
+            </StackPanel>
+        </DataTemplate>
     </Application.Resources>
 </Application>

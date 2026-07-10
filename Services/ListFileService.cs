@@ -56,6 +56,18 @@ public sealed class ListFileService
         File.Delete(path);
     }
 
+    public IEnumerable<string> GetAllListFiles()
+    {
+        if (!Directory.Exists(_paths.Lists))
+            return [];
+
+        return Directory.GetFiles(_paths.Lists, "*.txt")
+            .Select(Path.GetFileName)
+            .Where(f => f is not null && !f.EndsWith(".backup", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .Cast<string>();
+    }
+
     public void EnsureUserLists()
     {
         Directory.CreateDirectory(_paths.Lists);
