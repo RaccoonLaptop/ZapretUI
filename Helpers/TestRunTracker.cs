@@ -150,6 +150,7 @@ public sealed class TestRunTracker
                     Http = "…",
                     Tls12 = "…",
                     Tls13 = "…",
+                    Ping = "n/a",
                     PingOnly = false
                 });
                 return;
@@ -187,8 +188,10 @@ public sealed class TestRunTracker
 
     private void UpsertTarget(TestTargetRow target)
     {
-        var canonicalName = ResolveCanonicalName(target.Name);
-        var key = NormalizeTargetKey(canonicalName);
+        var name = TestKind == PresetTestKind.Standard && _targetTemplate.Count > 0
+            ? ResolveCanonicalName(target.Name)
+            : target.Name.Trim();
+        var key = NormalizeTargetKey(name);
 
         if (TestKind == PresetTestKind.Standard && _targetTemplate.Count > 0)
         {
@@ -208,7 +211,7 @@ public sealed class TestRunTracker
         {
             var row = new TestTargetRow
             {
-                Name = canonicalName,
+                Name = name,
                 PingOnly = target.PingOnly,
                 Http = target.Http,
                 Tls12 = target.Tls12,
@@ -284,7 +287,7 @@ public sealed class TestRunTracker
 
         foreach (var row in Targets)
         {
-            if (row.Ping is "…")
+            if (TestKind != PresetTestKind.DpiFreeze && row.Ping is "…")
                 return false;
 
             if (!row.PingOnly)

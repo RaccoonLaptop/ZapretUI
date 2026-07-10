@@ -66,9 +66,18 @@ public static class TestRunParser
         targetName = "";
         var m = DpiTargetHeader.Match(line.Trim());
         if (!m.Success) return false;
+
+        var country = m.Groups["country"].Value.Trim();
         var id = m.Groups["id"].Value.Trim();
         var provider = m.Groups["provider"].Value.Trim();
-        targetName = string.IsNullOrEmpty(provider) ? id : $"{id} ({provider})";
+
+        if (!string.IsNullOrEmpty(provider))
+            targetName = string.IsNullOrEmpty(country) ? $"{id} ({provider})" : $"[{country}] {provider}";
+        else if (!string.IsNullOrEmpty(country))
+            targetName = $"[{country}] {id}";
+        else
+            targetName = id;
+
         return true;
     }
 

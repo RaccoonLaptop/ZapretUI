@@ -74,15 +74,18 @@ public static class TestTargetTableRenderer
             AppendToken(details, row.Http);
             AppendToken(details, row.Tls12);
             AppendToken(details, row.Tls13);
-            details.Inlines.Add(new Run(" | " + TestTargetRowFormatter.FormatPingLabel())
+            if (!IsPingHidden(row.Ping))
             {
-                Foreground = (Brush)Application.Current.FindResource("TextMutedBrush")
-            });
-            details.Inlines.Add(new Run(TestTargetRowFormatter.FormatPingValue(row.Ping))
-            {
-                Foreground = TestTargetRowFormatter.PingBrush(row.Ping),
-                FontWeight = FontWeights.SemiBold
-            });
+                details.Inlines.Add(new Run(" | " + TestTargetRowFormatter.FormatPingLabel())
+                {
+                    Foreground = (Brush)Application.Current.FindResource("TextMutedBrush")
+                });
+                details.Inlines.Add(new Run(TestTargetRowFormatter.FormatPingValue(row.Ping))
+                {
+                    Foreground = TestTargetRowFormatter.PingBrush(row.Ping),
+                    FontWeight = FontWeights.SemiBold
+                });
+            }
         }
 
         Grid.SetRow(details, rowIndex);
@@ -102,4 +105,9 @@ public static class TestTargetTableRenderer
             FontWeight = FontWeights.SemiBold
         });
     }
+
+    private static bool IsPingHidden(string? ping) =>
+        string.IsNullOrWhiteSpace(ping)
+        || ping is "n/a" or "—"
+        || ping.Equals("n/a", StringComparison.OrdinalIgnoreCase);
 }
