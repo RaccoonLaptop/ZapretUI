@@ -9,6 +9,7 @@ public sealed class TestRunTracker
 {
     private readonly StringBuilder _lineBuffer = new();
     private readonly Dictionary<string, TestTargetRow> _targetIndex = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<TestTargetDefinition> _targetTemplate = [];
     private string? _currentDpiTarget;
 
     public ObservableCollection<TestTargetRow> Targets { get; } = [];
@@ -25,7 +26,7 @@ public sealed class TestRunTracker
 
     public event Action? Changed;
 
-    public void BeginRun(PresetTestKind kind)
+    public void BeginRun(PresetTestKind kind, IReadOnlyList<TestTargetDefinition>? targetTemplate = null)
     {
         TestKind = kind;
         Targets.Clear();
@@ -33,6 +34,7 @@ public sealed class TestRunTracker
         _targetIndex.Clear();
         _lineBuffer.Clear();
         _currentDpiTarget = null;
+        _targetTemplate = targetTemplate ?? [];
         CurrentPreset = "";
         CurrentPresetDisplay = "";
         BestPresetFile = "";
@@ -92,9 +94,14 @@ public sealed class TestRunTracker
         {
             CurrentPreset = fileName;
             CurrentPresetDisplay = StrategyDisplayHelper.ToDisplayName(fileName);
-            Targets.Clear();
-            _targetIndex.Clear();
             _currentDpiTarget = null;
+            if (TestKind == PresetTestKind.Standard && _targetTemplate.Count > 0)
+                SeedStandardTargets();
+            else
+            {
+                Targets.Clear();
+                _targetIndex.Clear();
+            }
             if (tot > 0)
             {
                 Progress = (double)cur / tot;
@@ -176,15 +183,43 @@ public sealed class TestRunTracker
     {
         if (_targetIndex.TryGetValue(target.Name, out var existing))
         {
-            existing.Http = target.Http;
-            existing.Tls12 = target.Tls12;
-            existing.Tls13 = target.Tls13;
-            existing.Ping = target.Ping;
+            if (!target.PingOnly)
+            {
+                if (target.Http is not ("…" or "HTTP:…"))
+                    existing.Http = target.Http;
+                if (target.Tls12 is not ("…" or "TLS1.2:…"))
+                    existing.Tls12 = target.Tls12;
+                if (target.Tls13 is not ("…" or "TLS1.3:…"))
+                    existing.Tls13 = target.Tls13;
+            }
+            if (target.Ping is not "…")
+                existing.Ping = target.Ping;
         }
         else
         {
             Targets.Add(target);
             _targetIndex[target.Name] = target;
+        }
+        Notify();
+    }
+
+    private void SeedStandardTargets()
+    {
+        Targets.Clear();
+        _targetIndex.Clear();
+        foreach (var def in _targetTemplate)
+        {
+            var row = new TestTargetRow
+            {
+                Name = def.Name,
+                PingOnly = def.PingOnly,
+                Http = def.PingOnly ? "HTTP:…" : "HTTP:…",
+                Tls12 = "TLS1.2:…",
+                Tls13 = "TLS1.3:…",
+                Ping = "…"
+            };
+            Targets.Add(row);
+            _targetIndex[row.Name] = row;
         }
         Notify();
     }
