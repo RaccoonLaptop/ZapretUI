@@ -184,6 +184,7 @@
   "tools.test": "Тест стратегий",
   "tools.test_subtitle": "Тест запускается здесь — вводите ответы в поле внизу (как в PowerShell)",
   "tools.test_start": "Запустить тест",
+  "tools.test_stop_run": "Остановить тест",
   "tools.test_stop": "Остановить",
   "tools.test_starting": "Запуск теста стратегий...",
   "tools.test_stopped": "Тест остановлен.",

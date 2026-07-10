@@ -44,6 +44,10 @@ public sealed class TestRunTracker
         StatusText = kind == PresetTestKind.DpiFreeze
             ? Loc.T("tools.test_status_running_dpi")
             : Loc.T("tools.test_status_running");
+
+        if (kind == PresetTestKind.Standard && _targetTemplate.Count > 0)
+            SeedStandardTargets();
+
         Notify();
     }
 
@@ -181,7 +185,8 @@ public sealed class TestRunTracker
 
     private void UpsertTarget(TestTargetRow target)
     {
-        if (_targetIndex.TryGetValue(target.Name, out var existing))
+        var key = NormalizeTargetKey(target.Name);
+        if (_targetIndex.TryGetValue(key, out var existing))
         {
             if (!target.PingOnly)
             {
@@ -198,7 +203,7 @@ public sealed class TestRunTracker
         else
         {
             Targets.Add(target);
-            _targetIndex[target.Name] = target;
+            _targetIndex[key] = target;
         }
         Notify();
     }
@@ -219,10 +224,13 @@ public sealed class TestRunTracker
                 Ping = "…"
             };
             Targets.Add(row);
-            _targetIndex[row.Name] = row;
+            _targetIndex[NormalizeTargetKey(row.Name)] = row;
         }
         Notify();
     }
+
+    private static string NormalizeTargetKey(string name) =>
+        name.Replace(" ", "", StringComparison.Ordinal).ToUpperInvariant();
 
     private void SortScores()
     {

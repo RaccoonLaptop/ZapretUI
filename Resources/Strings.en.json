@@ -184,6 +184,7 @@
   "tools.test": "Strategy test",
   "tools.test_subtitle": "Test runs here — type answers in the field below (like in PowerShell)",
   "tools.test_start": "Start test",
+  "tools.test_stop_run": "Stop test",
   "tools.test_stop": "Stop",
   "tools.test_starting": "Starting strategy test...",
   "tools.test_stopped": "Test stopped.",

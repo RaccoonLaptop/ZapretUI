@@ -12,7 +12,10 @@ public sealed class TestScriptAutoResponder
     private readonly PresetTestScope _scope;
     private readonly IReadOnlyList<string> _batFiles;
     private readonly EmbeddedTerminalHost _terminal;
-    private int _enterPromptCount;
+    private readonly SemaphoreSlim _inputLock = new(1, 1);
+    private bool _testTypeAnswered;
+    private bool _modeAnswered;
+    private bool _configSelectionAnswered;
 
     public TestScriptAutoResponder(
         PresetTestKind kind,
@@ -29,48 +32,68 @@ public sealed class TestScriptAutoResponder
     public void Reset()
     {
         _buffer.Clear();
-        _enterPromptCount = 0;
+        _testTypeAnswered = false;
+        _modeAnswered = false;
+        _configSelectionAnswered = false;
     }
 
     public async Task FeedAsync(string chunk)
     {
         if (string.IsNullOrEmpty(chunk)) return;
 
-        _buffer.Append(StripAnsi(chunk));
-        if (_buffer.Length > 8000)
-            _buffer.Remove(0, _buffer.Length - 4000);
-
-        var text = _buffer.ToString();
-
-        if (ContainsSelectionPrompt(text))
+        await _inputLock.WaitAsync();
+        try
         {
-            await _terminal.WriteInputAsync(ResolveSelectionAnswer());
-            _buffer.Clear();
-            return;
-        }
+            _buffer.Append(StripAnsi(chunk));
+            if (_buffer.Length > 8000)
+                _buffer.Remove(0, _buffer.Length - 4000);
 
-        if (text.Contains("Enter 1 or 2", StringComparison.OrdinalIgnoreCase)
-            || text.Contains("Введите 1 или 2", StringComparison.OrdinalIgnoreCase))
-        {
-            _enterPromptCount++;
-            var answer = _enterPromptCount switch
+            var text = _buffer.ToString();
+
+            if (!_configSelectionAnswered && ContainsSelectionPrompt(text))
             {
-                1 => _testTypeChoice,
-                2 => _scope.TestAll ? "1" : "2",
-                _ => "1"
-            };
-            await _terminal.WriteInputAsync(answer);
-            _buffer.Clear();
-            return;
-        }
+                _configSelectionAnswered = true;
+                await _terminal.WriteInputAsync(ResolveSelectionAnswer());
+                _buffer.Clear();
+                return;
+            }
 
-        if (text.Contains("Press any key", StringComparison.OrdinalIgnoreCase)
-            || text.Contains("Нажмите любую клавишу", StringComparison.OrdinalIgnoreCase))
+            if (!_testTypeAnswered
+                && text.Contains("Select test type:", StringComparison.OrdinalIgnoreCase)
+                && ContainsEnterOneOrTwo(text))
+            {
+                _testTypeAnswered = true;
+                await _terminal.WriteInputAsync(_testTypeChoice);
+                _buffer.Clear();
+                return;
+            }
+
+            if (!_modeAnswered
+                && text.Contains("Select test run mode:", StringComparison.OrdinalIgnoreCase)
+                && ContainsEnterOneOrTwo(text))
+            {
+                _modeAnswered = true;
+                await _terminal.WriteInputAsync(_scope.TestAll ? "1" : "2");
+                _buffer.Clear();
+                return;
+            }
+
+            if (text.Contains("Press any key", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("Нажмите любую клавишу", StringComparison.OrdinalIgnoreCase))
+            {
+                await _terminal.SendKeyAsync(' ');
+                _buffer.Clear();
+            }
+        }
+        finally
         {
-            await _terminal.SendKeyAsync(' ');
-            _buffer.Clear();
+            _inputLock.Release();
         }
     }
+
+    private static bool ContainsEnterOneOrTwo(string text) =>
+        text.Contains("Enter 1 or 2", StringComparison.OrdinalIgnoreCase)
+        || text.Contains("Введите 1 или 2", StringComparison.OrdinalIgnoreCase);
 
     private static bool ContainsSelectionPrompt(string text) =>
         text.Contains("Enter numbers", StringComparison.OrdinalIgnoreCase)
@@ -95,7 +118,7 @@ public sealed class TestScriptAutoResponder
             return "1";
 
         indices.Sort();
-        return string.Join(",", indices);
+        return string.Join(",", indices.Distinct());
     }
 
     private static string StripAnsi(string text) =>

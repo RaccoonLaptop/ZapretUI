@@ -25,7 +25,6 @@ public sealed class PresetTestRunPanel : UserControl
 
     private RichTextBox _output = null!;
     private TextBox _input = null!;
-    private Button _stopBtn = null!;
     private Button _applyBestBtn = null!;
     private TextBlock _statusText = null!;
     private TextBlock _progressText = null!;
@@ -68,6 +67,15 @@ public sealed class PresetTestRunPanel : UserControl
 
         await StartTestAsync();
     }
+
+    public async Task StopAsync()
+    {
+        await StopTestAsync();
+    }
+
+    public bool IsRunning => _tracker.IsRunning;
+
+    public event Action? RunStateChanged;
 
     private void BuildUi()
     {
@@ -181,10 +189,8 @@ public sealed class PresetTestRunPanel : UserControl
         root.Children.Add(split);
 
         var footer = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
-        _stopBtn = MakeButton(Loc.T("tools.test_stop"), async () => await StopTestAsync());
         _applyBestBtn = MakeButton(Loc.T("tools.test_apply_best"), async () => await ApplyBestAsync());
         _applyBestBtn.IsEnabled = false;
-        footer.Children.Add(_stopBtn);
         footer.Children.Add(_applyBestBtn);
         footer.Children.Add(MakeButton(Loc.T("tools.test_toggle_log"), () =>
         {
@@ -257,7 +263,6 @@ public sealed class PresetTestRunPanel : UserControl
             : Loc.F("tools.test_current_strategy", _tracker.CurrentPresetDisplay);
 
         _applyBestBtn.IsEnabled = !string.IsNullOrWhiteSpace(_tracker.BestPresetFile) && !_tracker.IsRunning;
-        _stopBtn.IsEnabled = _tracker.IsRunning;
 
         _targetsPanel.Children.Clear();
         if (_tracker.Targets.Count == 0)
@@ -444,7 +449,14 @@ public sealed class PresetTestRunPanel : UserControl
         });
     }
 
-    private void OnTrackerChanged() => Dispatcher.Invoke(RefreshVisualState);
+    private void OnTrackerChanged()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            RefreshVisualState();
+            RunStateChanged?.Invoke();
+        });
+    }
 
     private static Border CreateCard() =>
         new()

@@ -18,6 +18,8 @@ public partial class TestStrategiesPage : UserControl
     private Button _startBtn = null!;
     private PresetTestRunPanel _runPanel = null!;
     private PresetTestKind _selectedKind = PresetTestKind.Standard;
+    private Style _primaryBtnStyle = null!;
+    private Style _dangerBtnStyle = null!;
 
     public TestStrategiesPage(ZapretPaths paths, StrategyService strategy, AppSettings settings)
     {
@@ -29,6 +31,9 @@ public partial class TestStrategiesPage : UserControl
 
     private void BuildUi()
     {
+        _primaryBtnStyle = (Style)Application.Current.FindResource("PrimaryButton");
+        _dangerBtnStyle = (Style)Application.Current.FindResource("DangerButton");
+
         var root = new StackPanel();
 
         root.Children.Add(new TextBlock
@@ -62,22 +67,34 @@ public partial class TestStrategiesPage : UserControl
         _startBtn = new Button
         {
             Content = Loc.T("tools.test_start"),
-            Style = (Style)Application.Current.FindResource("PrimaryButton"),
+            Style = _primaryBtnStyle,
             HorizontalAlignment = HorizontalAlignment.Left,
             MinWidth = 180,
             Padding = new Thickness(20, 12, 20, 12)
         };
-        _startBtn.Click += async (_, _) => await BeginTestFlowAsync();
+        _startBtn.Click += async (_, _) => await OnStartStopClickedAsync();
         root.Children.Add(_startBtn);
 
         _runPanel = new PresetTestRunPanel(_paths, _strategy, _settings)
         {
             Visibility = Visibility.Collapsed
         };
+        _runPanel.RunStateChanged += UpdateStartButtonState;
         root.Children.Add(_runPanel);
 
         Content = root;
         SelectMode(PresetTestKind.Standard);
+    }
+
+    private async Task OnStartStopClickedAsync()
+    {
+        if (_runPanel.IsRunning)
+        {
+            await _runPanel.StopAsync();
+            return;
+        }
+
+        await BeginTestFlowAsync();
     }
 
     private async Task BeginTestFlowAsync()
@@ -88,11 +105,24 @@ public partial class TestStrategiesPage : UserControl
             return;
 
         _runPanel.Visibility = Visibility.Visible;
+        UpdateStartButtonState();
         await _runPanel.StartAsync(_selectedKind, scope);
+    }
+
+    private void UpdateStartButtonState()
+    {
+        var running = _runPanel.IsRunning;
+        _startBtn.Content = running ? Loc.T("tools.test_stop_run") : Loc.T("tools.test_start");
+        _startBtn.Style = running ? _dangerBtnStyle : _primaryBtnStyle;
+        _modeStandard.IsHitTestVisible = !running;
+        _modeDpi.IsHitTestVisible = !running;
+        _modeStandard.Opacity = running ? 0.55 : 1;
+        _modeDpi.Opacity = running ? 0.55 : 1;
     }
 
     private void SelectMode(PresetTestKind kind)
     {
+        if (_runPanel.IsRunning) return;
         _selectedKind = kind;
         SetModeSelected(_modeStandard, kind == PresetTestKind.Standard);
         SetModeSelected(_modeDpi, kind == PresetTestKind.DpiFreeze);
