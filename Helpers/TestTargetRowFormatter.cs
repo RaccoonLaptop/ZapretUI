@@ -11,6 +11,27 @@ public static class TestTargetRowFormatter
     public static int ComputeNameWidth(IEnumerable<TestTargetRow> rows) =>
         rows.Select(r => r.Name.Length).DefaultIfEmpty(10).Max();
 
+    public static List<TestTargetRow> DedupeByKey(IReadOnlyList<TestTargetRow> targets)
+    {
+        var map = new Dictionary<string, TestTargetRow>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in targets)
+            map[NormalizeKey(row.Name)] = row;
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<TestTargetRow>();
+        foreach (var row in targets)
+        {
+            var key = NormalizeKey(row.Name);
+            if (!seen.Add(key)) continue;
+            result.Add(map[key]);
+        }
+
+        return result;
+    }
+
+    private static string NormalizeKey(string name) =>
+        name.Replace(" ", "", StringComparison.Ordinal).ToUpperInvariant();
+
     public static void ApplyRowInlines(TextBlock block, TestTargetRow row, int nameWidth)
     {
         block.Inlines.Clear();

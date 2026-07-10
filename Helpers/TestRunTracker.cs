@@ -181,7 +181,7 @@ public sealed class TestRunTracker
 
     private void UpsertTarget(TestTargetRow target)
     {
-        var key = NormalizeTargetKey(target.Name);
+        var key = NormalizeTargetKey(target.Name.Trim());
         if (_targetIndex.TryGetValue(key, out var existing))
         {
             if (!target.PingOnly)
@@ -227,7 +227,7 @@ public sealed class TestRunTracker
         if (string.IsNullOrEmpty(CurrentPreset) || _finalizedPresets.Contains(CurrentPreset))
             return;
 
-        var clones = CloneTargets(Targets);
+        var clones = CloneTargets(TestTargetRowFormatter.DedupeByKey(Targets));
         if (clones.Count == 0)
             return;
 

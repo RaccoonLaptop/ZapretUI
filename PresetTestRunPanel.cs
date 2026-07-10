@@ -175,7 +175,10 @@ public sealed class PresetTestRunPanel : UserControl
             ClipToBounds = true,
             CanContentScroll = false
         };
-        _targetsPanel = new StackPanel();
+        _targetsPanel = new StackPanel
+        {
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
         _targetsScroll.Content = _targetsPanel;
         MouseWheelScrollHelper.Attach(_targetsScroll);
         Grid.SetRow(_targetsScroll, 2);
@@ -308,20 +311,7 @@ public sealed class PresetTestRunPanel : UserControl
         }
         else
         {
-            var orderedTargets = DedupeTargets(targets);
-            var nameWidth = TestTargetRowFormatter.ComputeNameWidth(orderedTargets);
-            foreach (var row in orderedTargets)
-            {
-                var line = new TextBlock
-                {
-                    Margin = new Thickness(0, 0, 0, 4),
-                    FontFamily = new FontFamily("Consolas"),
-                    FontSize = 12,
-                    TextWrapping = TextWrapping.NoWrap
-                };
-                TestTargetRowFormatter.ApplyRowInlines(line, row, nameWidth);
-                _targetsPanel.Children.Add(line);
-            }
+            TestTargetTableRenderer.Render(_targetsPanel, targets);
         }
 
         _scoresPanel.Children.Clear();
@@ -330,27 +320,6 @@ public sealed class PresetTestRunPanel : UserControl
         else
             foreach (var score in _tracker.Scores)
                 _scoresPanel.Children.Add(BuildScoreCard(score));
-    }
-
-    private static List<TestTargetRow> DedupeTargets(IReadOnlyList<TestTargetRow> targets)
-    {
-        var map = new Dictionary<string, TestTargetRow>(StringComparer.OrdinalIgnoreCase);
-        foreach (var row in targets)
-        {
-            var key = row.Name.Replace(" ", "", StringComparison.Ordinal);
-            map[key] = row;
-        }
-
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var result = new List<TestTargetRow>();
-        foreach (var row in targets)
-        {
-            var key = row.Name.Replace(" ", "", StringComparison.Ordinal);
-            if (!seen.Add(key)) continue;
-            result.Add(map[key]);
-        }
-
-        return result;
     }
 
     private (IReadOnlyList<TestTargetRow> Targets, string PresetDisplay) ResolveDisplayTargets()
