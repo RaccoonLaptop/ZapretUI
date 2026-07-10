@@ -8,25 +8,21 @@ namespace ZapretUI;
 
 public sealed class PresetTestSetupWindow : Window
 {
-    private readonly RadioButton _allRadio;
-    private readonly RadioButton _oneRadio;
-    private readonly ComboBox _strategyCombo;
+    private readonly CheckBox _allCheck;
+    private readonly List<(CheckBox Box, StrategyItem Item)> _strategyChecks = [];
 
     public bool Confirmed { get; private set; }
-    public bool TestAll => _allRadio.IsChecked == true;
-    public string? SelectedStrategyFile =>
-        _strategyCombo.SelectedItem is StrategyItem item ? item.FileName : null;
 
     private PresetTestSetupWindow(IReadOnlyList<StrategyItem> strategies)
     {
         Title = Loc.T("tools.test_setup_title");
         Width = 520;
-        Height = 360;
+        Height = 480;
         MinWidth = 420;
-        MinHeight = 320;
+        MinHeight = 380;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = (Brush)Application.Current.FindResource("BgBrush");
-        ResizeMode = ResizeMode.NoResize;
+        ResizeMode = ResizeMode.CanResizeWithGrip;
 
         var root = new StackPanel { Margin = new Thickness(22) };
         root.Children.Add(new TextBlock
@@ -40,38 +36,55 @@ public sealed class PresetTestSetupWindow : Window
             Text = Loc.T("tools.test_setup_subtitle"),
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 8, 0, 16)
+            Margin = new Thickness(0, 8, 0, 12)
         });
 
-        _allRadio = new RadioButton
+        _allCheck = new CheckBox
         {
             Content = Loc.T("tools.test_scope_all"),
             IsChecked = true,
-            Margin = new Thickness(0, 0, 0, 8)
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 10)
         };
-        _oneRadio = new RadioButton
-        {
-            Content = Loc.T("tools.test_scope_one"),
-            Margin = new Thickness(0, 0, 0, 8)
-        };
-        root.Children.Add(_allRadio);
-        root.Children.Add(_oneRadio);
+        _allCheck.Checked += (_, _) => SetIndividualEnabled(false);
+        _allCheck.Unchecked += (_, _) => SetIndividualEnabled(true);
+        root.Children.Add(_allCheck);
 
-        _strategyCombo = new ComboBox
+        var listBorder = new Border
         {
-            Margin = new Thickness(20, 0, 0, 12),
-            DisplayMemberPath = nameof(StrategyItem.DisplayName),
-            SelectedValuePath = nameof(StrategyItem.FileName),
-            IsEnabled = false
+            Background = (Brush)Application.Current.FindResource("InputBrush"),
+            BorderBrush = (Brush)Application.Current.FindResource("BorderBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(10, 8, 10, 8),
+            MaxHeight = 260
         };
+        var listScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var listStack = new StackPanel();
         foreach (var item in strategies)
-            _strategyCombo.Items.Add(item);
-        if (_strategyCombo.Items.Count > 0)
-            _strategyCombo.SelectedIndex = 0;
-        root.Children.Add(_strategyCombo);
+        {
+            var box = new CheckBox
+            {
+                Content = item.DisplayName,
+                Tag = item,
+                IsEnabled = false,
+                Margin = new Thickness(0, 0, 0, 6)
+            };
+            _strategyChecks.Add((box, item));
+            listStack.Children.Add(box);
+        }
+        listScroll.Content = listStack;
+        listBorder.Child = listScroll;
+        root.Children.Add(listBorder);
 
-        _oneRadio.Checked += (_, _) => _strategyCombo.IsEnabled = true;
-        _allRadio.Checked += (_, _) => _strategyCombo.IsEnabled = false;
+        root.Children.Add(new TextBlock
+        {
+            Text = Loc.T("tools.test_scope_pick_hint"),
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            FontSize = 11,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 8, 0, 0)
+        });
 
         var buttons = new StackPanel
         {
@@ -89,7 +102,7 @@ public sealed class PresetTestSetupWindow : Window
         };
         ok.Click += (_, _) =>
         {
-            if (_oneRadio.IsChecked == true && _strategyCombo.SelectedItem is null)
+            if (_allCheck.IsChecked != true && !HasAnySelected())
             {
                 UiHelpers.ShowError(Loc.T("tools.test_scope_pick"), this);
                 return;
@@ -110,6 +123,15 @@ public sealed class PresetTestSetupWindow : Window
         Content = root;
     }
 
+    private void SetIndividualEnabled(bool enabled)
+    {
+        foreach (var (box, _) in _strategyChecks)
+            box.IsEnabled = enabled;
+    }
+
+    private bool HasAnySelected() =>
+        _strategyChecks.Any(entry => entry.Box.IsChecked == true);
+
     public static bool TryShow(Window? owner, IReadOnlyList<StrategyItem> strategies, out PresetTestScope scope)
     {
         scope = new PresetTestScope();
@@ -123,10 +145,18 @@ public sealed class PresetTestSetupWindow : Window
         dlg.ShowDialog();
         if (!dlg.Confirmed) return false;
 
+        var testAll = dlg._allCheck.IsChecked == true;
+        var selected = testAll
+            ? (IReadOnlyList<string>)[]
+            : dlg._strategyChecks
+                .Where(entry => entry.Box.IsChecked == true)
+                .Select(entry => entry.Item.FileName)
+                .ToList();
+
         scope = new PresetTestScope
         {
-            TestAll = dlg.TestAll,
-            SingleStrategyFile = dlg.TestAll ? null : dlg.SelectedStrategyFile
+            TestAll = testAll,
+            SelectedStrategyFiles = selected
         };
         return true;
     }

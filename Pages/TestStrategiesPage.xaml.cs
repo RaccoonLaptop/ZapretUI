@@ -15,6 +15,8 @@ public partial class TestStrategiesPage : UserControl
     private readonly AppSettings _settings;
     private Border _modeStandard = null!;
     private Border _modeDpi = null!;
+    private Button _startBtn = null!;
+    private PresetTestRunPanel _runPanel = null!;
     private PresetTestKind _selectedKind = PresetTestKind.Standard;
 
     public TestStrategiesPage(ZapretPaths paths, StrategyService strategy, AppSettings settings)
@@ -57,7 +59,7 @@ public partial class TestStrategiesPage : UserControl
         modeRow.Children.Add(_modeDpi);
         root.Children.Add(modeRow);
 
-        var startBtn = new Button
+        _startBtn = new Button
         {
             Content = Loc.T("tools.test_start"),
             Style = (Style)Application.Current.FindResource("PrimaryButton"),
@@ -65,25 +67,28 @@ public partial class TestStrategiesPage : UserControl
             MinWidth = 180,
             Padding = new Thickness(20, 12, 20, 12)
         };
-        startBtn.Click += (_, _) => BeginTestFlow();
-        root.Children.Add(startBtn);
+        _startBtn.Click += async (_, _) => await BeginTestFlowAsync();
+        root.Children.Add(_startBtn);
+
+        _runPanel = new PresetTestRunPanel(_paths, _strategy, _settings)
+        {
+            Visibility = Visibility.Collapsed
+        };
+        root.Children.Add(_runPanel);
 
         Content = root;
         SelectMode(PresetTestKind.Standard);
     }
 
-    private void BeginTestFlow()
+    private async Task BeginTestFlowAsync()
     {
         var strategies = StrategyDisplayHelper.LoadItems(_paths.Root, _paths.GetStrategyFiles());
         var owner = Window.GetWindow(this);
         if (!PresetTestSetupWindow.TryShow(owner, strategies, out var scope))
             return;
 
-        var runWindow = new PresetTestRunWindow(_paths, _strategy, _settings, _selectedKind, scope)
-        {
-            Owner = owner
-        };
-        runWindow.Show();
+        _runPanel.Visibility = Visibility.Visible;
+        await _runPanel.StartAsync(_selectedKind, scope);
     }
 
     private void SelectMode(PresetTestKind kind)

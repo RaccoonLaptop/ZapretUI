@@ -9,7 +9,7 @@ public enum PresetTestKind
 public sealed class PresetTestScope
 {
     public bool TestAll { get; init; } = true;
-    public string? SingleStrategyFile { get; init; }
+    public IReadOnlyList<string> SelectedStrategyFiles { get; init; } = Array.Empty<string>();
 }
 
 public sealed class TestTargetRow

@@ -78,16 +78,24 @@ public sealed class TestScriptAutoResponder
 
     private string ResolveSelectionAnswer()
     {
-        if (_scope.TestAll || string.IsNullOrWhiteSpace(_scope.SingleStrategyFile))
+        if (_scope.TestAll || _scope.SelectedStrategyFiles.Count == 0)
             return "0";
 
-        for (var i = 0; i < _batFiles.Count; i++)
+        var indices = new List<int>();
+        foreach (var file in _scope.SelectedStrategyFiles)
         {
-            if (_batFiles[i].Equals(_scope.SingleStrategyFile, StringComparison.OrdinalIgnoreCase))
-                return (i + 1).ToString();
+            for (var i = 0; i < _batFiles.Count; i++)
+            {
+                if (_batFiles[i].Equals(file, StringComparison.OrdinalIgnoreCase))
+                    indices.Add(i + 1);
+            }
         }
 
-        return "1";
+        if (indices.Count == 0)
+            return "1";
+
+        indices.Sort();
+        return string.Join(",", indices);
     }
 
     private static string StripAnsi(string text) =>

@@ -10,24 +10,23 @@ using ZapretUI.Services;
 
 namespace ZapretUI;
 
-public sealed class PresetTestRunWindow : Window
+public sealed class PresetTestRunPanel : UserControl
 {
     private readonly ZapretPaths _paths;
     private readonly StrategyService _strategy;
     private readonly AppSettings _settings;
-    private readonly PresetTestKind _kind;
-    private readonly PresetTestScope _scope;
     private readonly IReadOnlyList<string> _batFiles;
     private readonly EmbeddedTerminalHost _terminal = new();
     private readonly AnsiTerminalRenderer _ansi = new();
     private readonly TestRunTracker _tracker = new();
     private TestScriptAutoResponder? _autoResponder;
+    private PresetTestKind _kind;
+    private PresetTestScope _scope = new();
 
     private RichTextBox _output = null!;
     private TextBox _input = null!;
     private Button _stopBtn = null!;
     private Button _applyBestBtn = null!;
-    private Button _closeBtn = null!;
     private TextBlock _statusText = null!;
     private TextBlock _progressText = null!;
     private ProgressBar _progressBar = null!;
@@ -37,34 +36,19 @@ public sealed class PresetTestRunWindow : Window
     private Border _logPanel = null!;
     private bool _logVisible;
 
-    public PresetTestRunWindow(
-        ZapretPaths paths,
-        StrategyService strategy,
-        AppSettings settings,
-        PresetTestKind kind,
-        PresetTestScope scope)
+    public PresetTestRunPanel(ZapretPaths paths, StrategyService strategy, AppSettings settings)
     {
         _paths = paths;
         _strategy = strategy;
         _settings = settings;
-        _kind = kind;
-        _scope = scope;
         _batFiles = paths.GetStrategyFiles().ToList();
-
-        Title = Loc.T("tools.test_run_window_title");
-        Width = 960;
-        Height = 680;
-        MinWidth = 760;
-        MinHeight = 520;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        Background = (Brush)Application.Current.FindResource("BgBrush");
 
         BuildUi();
         _tracker.Changed += OnTrackerChanged;
         _terminal.OutputReceived += OnTerminalOutput;
         _terminal.ProcessExited += OnTerminalExited;
         _terminal.ErrorOccurred += OnTerminalError;
-        Closed += async (_, _) =>
+        Unloaded += async (_, _) =>
         {
             _tracker.Changed -= OnTrackerChanged;
             _terminal.OutputReceived -= OnTerminalOutput;
@@ -72,31 +56,22 @@ public sealed class PresetTestRunWindow : Window
             _terminal.ErrorOccurred -= OnTerminalError;
             await _terminal.DisposeAsync();
         };
+    }
 
-        Loaded += async (_, _) => await StartTestAsync();
+    public async Task StartAsync(PresetTestKind kind, PresetTestScope scope)
+    {
+        _kind = kind;
+        _scope = scope;
+
+        if (_terminal.IsRunning)
+            await _terminal.StopAsync();
+
+        await StartTestAsync();
     }
 
     private void BuildUi()
     {
-        var root = new DockPanel { Margin = new Thickness(18) };
-
-        var header = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
-        DockPanel.SetDock(header, Dock.Top);
-        header.Children.Add(new TextBlock
-        {
-            Text = Loc.T("tools.test"),
-            FontSize = 22,
-            FontWeight = FontWeights.Bold
-        });
-        header.Children.Add(new TextBlock
-        {
-            Text = _kind == PresetTestKind.DpiFreeze
-                ? Loc.T("tools.test_mode_dpi_title")
-                : Loc.T("tools.test_mode_standard_title"),
-            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-            Margin = new Thickness(0, 4, 0, 0)
-        });
-        root.Children.Add(header);
+        var root = new DockPanel { Margin = new Thickness(0, 20, 0, 0) };
 
         var progressCard = CreateCard();
         DockPanel.SetDock(progressCard, Dock.Top);
@@ -140,7 +115,7 @@ public sealed class PresetTestRunWindow : Window
         _logPanel.Visibility = Visibility.Collapsed;
         root.Children.Add(_logPanel);
 
-        var split = new Grid();
+        var split = new Grid { MinHeight = 320 };
         split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.45, GridUnitType.Star) });
         split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
         split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -160,7 +135,7 @@ public sealed class PresetTestRunWindow : Window
         };
         DockPanel.SetDock(_currentPresetText, Dock.Top);
         leftStack.Children.Add(_currentPresetText);
-        var leftScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var leftScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 420 };
         _targetsPanel = new StackPanel();
         leftScroll.Content = _targetsPanel;
         leftStack.Children.Add(leftScroll);
@@ -180,7 +155,7 @@ public sealed class PresetTestRunWindow : Window
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 8)
         });
-        var rightScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var rightScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 420 };
         _scoresPanel = new StackPanel();
         rightScroll.Content = _scoresPanel;
         rightStack.Children.Add(rightScroll);
@@ -190,39 +165,19 @@ public sealed class PresetTestRunWindow : Window
 
         root.Children.Add(split);
 
-        var footer = new Grid { Margin = new Thickness(0, 14, 0, 0) };
+        var footer = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
         DockPanel.SetDock(footer, Dock.Bottom);
-        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var leftBtns = new WrapPanel();
         _stopBtn = MakeButton(Loc.T("tools.test_stop"), async () => await StopTestAsync());
         _applyBestBtn = MakeButton(Loc.T("tools.test_apply_best"), async () => await ApplyBestAsync());
         _applyBestBtn.IsEnabled = false;
-        leftBtns.Children.Add(_stopBtn);
-        leftBtns.Children.Add(_applyBestBtn);
-        leftBtns.Children.Add(MakeButton(Loc.T("tools.test_toggle_log"), () =>
+        footer.Children.Add(_stopBtn);
+        footer.Children.Add(_applyBestBtn);
+        footer.Children.Add(MakeButton(Loc.T("tools.test_toggle_log"), () =>
         {
             _logVisible = !_logVisible;
             _logPanel.Visibility = _logVisible ? Visibility.Visible : Visibility.Collapsed;
             return Task.CompletedTask;
         }));
-        Grid.SetColumn(leftBtns, 0);
-        footer.Children.Add(leftBtns);
-
-        _closeBtn = new Button
-        {
-            Content = Loc.T("common.close"),
-            Style = (Style)Application.Current.FindResource("SecondaryButton"),
-            Visibility = Visibility.Collapsed,
-            VerticalAlignment = VerticalAlignment.Center,
-            MinWidth = 100
-        };
-        _closeBtn.Click += (_, _) => Close();
-        Grid.SetColumn(_closeBtn, 1);
-        footer.Children.Add(_closeBtn);
-
-        DockPanel.SetDock(footer, Dock.Bottom);
         root.Children.Add(footer);
 
         Content = root;
@@ -282,7 +237,6 @@ public sealed class PresetTestRunWindow : Window
 
         _applyBestBtn.IsEnabled = !string.IsNullOrWhiteSpace(_tracker.BestPresetFile) && !_tracker.IsRunning;
         _stopBtn.IsEnabled = _tracker.IsRunning;
-        _closeBtn.Visibility = _tracker.IsRunning ? Visibility.Collapsed : Visibility.Visible;
 
         _targetsPanel.Children.Clear();
         if (_tracker.Targets.Count == 0)
@@ -373,13 +327,13 @@ public sealed class PresetTestRunWindow : Window
 
     private async Task StartTestAsync()
     {
+        var owner = Window.GetWindow(this);
         try
         {
             var script = ProcessRunner.ResolveTestScript(_paths.Root);
             if (script is null)
             {
-                UiHelpers.ShowError(Loc.T("tools.test_script_missing"), this);
-                Close();
+                UiHelpers.ShowError(Loc.T("tools.test_script_missing"), owner);
                 return;
             }
 
@@ -400,7 +354,7 @@ public sealed class PresetTestRunWindow : Window
         }
         catch (Exception ex)
         {
-            UiHelpers.ShowError(ex.Message, this);
+            UiHelpers.ShowError(ex.Message, owner);
             _tracker.StopRun();
             RefreshVisualState();
         }
@@ -423,6 +377,7 @@ public sealed class PresetTestRunWindow : Window
 
     private async Task ApplyPresetAsync(string fileName)
     {
+        var owner = Window.GetWindow(this);
         try
         {
             _settings.LastStrategy = fileName;
@@ -430,11 +385,11 @@ public sealed class PresetTestRunWindow : Window
             if (_strategy.IsRunning())
                 await _strategy.StopStrategyAsync();
             await _strategy.StartStrategyAsync(fileName);
-            UiHelpers.ShowInfo(Loc.F("tools.test_applied", StrategyDisplayHelper.ToDisplayName(fileName)), this);
+            UiHelpers.ShowInfo(Loc.F("tools.test_applied", StrategyDisplayHelper.ToDisplayName(fileName)), owner);
         }
         catch (Exception ex)
         {
-            UiHelpers.ShowError(ex.Message, this);
+            UiHelpers.ShowError(ex.Message, owner);
         }
     }
 
