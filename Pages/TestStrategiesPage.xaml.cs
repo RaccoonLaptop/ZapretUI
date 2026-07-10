@@ -125,6 +125,8 @@ public partial class TestStrategiesPage : UserControl
         _runPanel.Visibility = Visibility.Visible;
         UpdateStartButtonState();
         await _runPanel.StartAsync(_selectedKind, scope);
+        if (_runPanel.HasVisibleContent)
+            _runPanel.Visibility = Visibility.Visible;
     }
 
     private void UpdateStartButtonState()
@@ -144,6 +146,10 @@ public partial class TestStrategiesPage : UserControl
         _selectedKind = kind;
         SetModeSelected(_modeStandard, kind == PresetTestKind.Standard);
         SetModeSelected(_modeDpi, kind == PresetTestKind.DpiFreeze);
+        _runPanel.SwitchDisplayKind(kind);
+        _runPanel.Visibility = _runPanel.HasVisibleContent
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private static Border CreateModeCard(string title, string hint, bool selected)

@@ -12,6 +12,7 @@ public sealed class TestRunTracker
     private readonly Dictionary<string, PresetTargetSnapshot> _snapshots = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _finalizedPresets = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<TestTargetDefinition> _targetTemplate = [];
+    private Dictionary<string, string> _templateNames = new(StringComparer.OrdinalIgnoreCase);
     private string? _currentDpiTarget;
 
     public ObservableCollection<TestTargetRow> Targets { get; } = [];
@@ -42,6 +43,7 @@ public sealed class TestRunTracker
         _lineBuffer.Clear();
         _currentDpiTarget = null;
         _targetTemplate = targetTemplate ?? [];
+        _templateNames = BuildTemplateNameMap(_targetTemplate);
         CurrentPreset = "";
         CurrentPresetDisplay = "";
         BestPresetFile = "";
@@ -89,9 +91,13 @@ public sealed class TestRunTracker
         {
             var text = _lineBuffer.ToString();
             var nl = text.IndexOf('\n');
-            if (nl < 0) break;
+            if (nl < 0)
+            {
+                TrimCarriageReturnOverwrite();
+                break;
+            }
 
-            var line = text[..nl].TrimEnd('\r');
+            var line = NormalizePhysicalLine(text[..nl]);
             _lineBuffer.Clear();
             _lineBuffer.Append(text[(nl + 1)..]);
             ProcessLine(line);
@@ -181,27 +187,53 @@ public sealed class TestRunTracker
 
     private void UpsertTarget(TestTargetRow target)
     {
-        var key = NormalizeTargetKey(target.Name.Trim());
+        var canonicalName = ResolveCanonicalName(target.Name);
+        var key = NormalizeTargetKey(canonicalName);
+
+        if (TestKind == PresetTestKind.Standard && _targetTemplate.Count > 0)
+        {
+            if (!_targetIndex.TryGetValue(key, out var seeded))
+                return;
+
+            MergeTargetValues(seeded, target);
+            Notify();
+            return;
+        }
+
         if (_targetIndex.TryGetValue(key, out var existing))
         {
-            if (!target.PingOnly)
-            {
-                if (target.Http is not ("…" or "HTTP:…"))
-                    existing.Http = target.Http;
-                if (target.Tls12 is not ("…" or "TLS1.2:…"))
-                    existing.Tls12 = target.Tls12;
-                if (target.Tls13 is not ("…" or "TLS1.3:…"))
-                    existing.Tls13 = target.Tls13;
-            }
-            if (target.Ping is not "…")
-                existing.Ping = target.Ping;
+            MergeTargetValues(existing, target);
         }
         else
         {
-            Targets.Add(target);
-            _targetIndex[key] = target;
+            var row = new TestTargetRow
+            {
+                Name = canonicalName,
+                PingOnly = target.PingOnly,
+                Http = target.Http,
+                Tls12 = target.Tls12,
+                Tls13 = target.Tls13,
+                Ping = target.Ping
+            };
+            Targets.Add(row);
+            _targetIndex[key] = row;
         }
         Notify();
+    }
+
+    private static void MergeTargetValues(TestTargetRow existing, TestTargetRow target)
+    {
+        if (!target.PingOnly)
+        {
+            if (target.Http is not ("…" or "HTTP:…"))
+                existing.Http = target.Http;
+            if (target.Tls12 is not ("…" or "TLS1.2:…"))
+                existing.Tls12 = target.Tls12;
+            if (target.Tls13 is not ("…" or "TLS1.3:…"))
+                existing.Tls13 = target.Tls13;
+        }
+        if (target.Ping is not "…")
+            existing.Ping = target.Ping;
     }
 
     private void TryFinalizeIfTargetsComplete()
@@ -347,11 +379,55 @@ public sealed class TestRunTracker
     private void FlushBuffer()
     {
         if (_lineBuffer.Length == 0) return;
-        ProcessLine(_lineBuffer.ToString());
+        ProcessLine(NormalizePhysicalLine(_lineBuffer.ToString()));
         _lineBuffer.Clear();
     }
 
+    private void TrimCarriageReturnOverwrite()
+    {
+        var text = _lineBuffer.ToString();
+        var idx = text.LastIndexOf('\r');
+        if (idx < 0) return;
+
+        _lineBuffer.Clear();
+        _lineBuffer.Append(text[(idx + 1)..]);
+    }
+
+    private static string NormalizePhysicalLine(string line)
+    {
+        line = line.TrimEnd('\r');
+        var idx = line.LastIndexOf('\r');
+        if (idx >= 0)
+            line = line[(idx + 1)..];
+        return line.Trim();
+    }
+
     private void Notify() => Changed?.Invoke();
+
+    private string ResolveCanonicalName(string rawName)
+    {
+        rawName = rawName.Trim();
+        if (string.IsNullOrEmpty(rawName))
+            return rawName;
+
+        var leading = Regex.Match(rawName, @"^(\w+)");
+        if (!leading.Success)
+            return rawName;
+
+        var key = NormalizeTargetKey(leading.Groups[1].Value);
+        if (_templateNames.TryGetValue(key, out var templateName))
+            return templateName;
+
+        return leading.Groups[1].Value;
+    }
+
+    private static Dictionary<string, string> BuildTemplateNameMap(IReadOnlyList<TestTargetDefinition> template)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var def in template)
+            map[NormalizeTargetKey(def.Name)] = def.Name;
+        return map;
+    }
 
     private static string NormalizeTargetKey(string name) =>
         name.Replace(" ", "", StringComparison.Ordinal).ToUpperInvariant();

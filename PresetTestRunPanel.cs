@@ -19,9 +19,19 @@ public sealed class PresetTestRunPanel : UserControl
     private readonly IReadOnlyList<string> _batFiles;
     private readonly EmbeddedTerminalHost _terminal = new();
     private readonly AnsiTerminalRenderer _ansi = new();
-    private readonly TestRunTracker _tracker = new();
+    private readonly Dictionary<PresetTestKind, TestRunTracker> _trackers = new()
+    {
+        [PresetTestKind.Standard] = new TestRunTracker(),
+        [PresetTestKind.DpiFreeze] = new TestRunTracker()
+    };
+    private readonly Dictionary<PresetTestKind, KindViewState> _viewStates = new()
+    {
+        [PresetTestKind.Standard] = new KindViewState(),
+        [PresetTestKind.DpiFreeze] = new KindViewState()
+    };
+    private PresetTestKind _displayKind = PresetTestKind.Standard;
+    private PresetTestKind _runKind = PresetTestKind.Standard;
     private TestScriptAutoResponder? _autoResponder;
-    private PresetTestKind _kind;
     private PresetTestScope _scope = new();
 
     private RichTextBox _output = null!;
@@ -37,11 +47,19 @@ public sealed class PresetTestRunPanel : UserControl
     private ScrollViewer _scoresScroll = null!;
     private Border _logPanel = null!;
     private bool _logVisible;
-    private string _lastSeenPreset = "";
-    private string? _reviewPresetFile;
-    private bool _inTransition;
-    private PresetTargetSnapshot? _transitionSnapshot;
     private DispatcherTimer? _transitionTimer;
+
+    private TestRunTracker DisplayTracker => _trackers[_displayKind];
+    private KindViewState DisplayView => _viewStates[_displayKind];
+    private TestRunTracker RunTracker => _trackers[_runKind];
+
+    private sealed class KindViewState
+    {
+        public string LastSeenPreset = "";
+        public string? ReviewPresetFile;
+        public bool InTransition;
+        public PresetTargetSnapshot? TransitionSnapshot;
+    }
 
     public PresetTestRunPanel(ZapretPaths paths, StrategyService strategy, AppSettings settings)
     {
@@ -54,14 +72,14 @@ public sealed class PresetTestRunPanel : UserControl
         HorizontalAlignment = HorizontalAlignment.Stretch;
 
         BuildUi();
-        _tracker.Changed += OnTrackerChanged;
+        foreach (var pair in _trackers)
+            pair.Value.Changed += () => OnTrackerChanged(pair.Key);
         _terminal.OutputReceived += OnTerminalOutput;
         _terminal.ProcessExited += OnTerminalExited;
         _terminal.ErrorOccurred += OnTerminalError;
         Unloaded += async (_, _) =>
         {
             _transitionTimer?.Stop();
-            _tracker.Changed -= OnTrackerChanged;
             _terminal.OutputReceived -= OnTerminalOutput;
             _terminal.ProcessExited -= OnTerminalExited;
             _terminal.ErrorOccurred -= OnTerminalError;
@@ -71,7 +89,8 @@ public sealed class PresetTestRunPanel : UserControl
 
     public async Task StartAsync(PresetTestKind kind, PresetTestScope scope)
     {
-        _kind = kind;
+        _displayKind = kind;
+        _runKind = kind;
         _scope = scope;
 
         if (_terminal.IsRunning)
@@ -80,12 +99,24 @@ public sealed class PresetTestRunPanel : UserControl
         await StartTestAsync();
     }
 
+    public void SwitchDisplayKind(PresetTestKind kind)
+    {
+        if (IsRunning || _displayKind == kind) return;
+
+        ResetTransitionState(_displayKind);
+        _displayKind = kind;
+        RefreshVisualState();
+    }
+
+    public bool HasVisibleContent =>
+        _trackers.Values.Any(t => t.Scores.Count > 0 || t.Targets.Count > 0);
+
+    public bool IsRunning => _trackers.Values.Any(t => t.IsRunning);
+
     public async Task StopAsync()
     {
         await StopTestAsync();
     }
-
-    public bool IsRunning => _tracker.IsRunning;
 
     public event Action? RunStateChanged;
 
@@ -293,16 +324,19 @@ public sealed class PresetTestRunPanel : UserControl
 
     private void RefreshVisualState()
     {
-        _statusText.Text = _tracker.StatusText;
-        _progressText.Text = _tracker.ProgressText;
-        _progressBar.Value = _tracker.Progress;
+        var tracker = DisplayTracker;
+        var view = DisplayView;
 
-        var (targets, presetDisplay) = ResolveDisplayTargets();
+        _statusText.Text = tracker.StatusText;
+        _progressText.Text = tracker.ProgressText;
+        _progressBar.Value = tracker.Progress;
+
+        var (targets, presetDisplay) = ResolveDisplayTargets(tracker, view);
         _currentPresetText.Text = string.IsNullOrWhiteSpace(presetDisplay)
             ? Loc.T("tools.test_current_strategy_waiting")
             : Loc.F("tools.test_current_strategy", presetDisplay);
 
-        _applyBestBtn.IsEnabled = !string.IsNullOrWhiteSpace(_tracker.BestPresetFile) && !_tracker.IsRunning;
+        _applyBestBtn.IsEnabled = !string.IsNullOrWhiteSpace(tracker.BestPresetFile) && !IsRunning;
 
         _targetsPanel.Children.Clear();
         if (targets.Count == 0)
@@ -315,68 +349,70 @@ public sealed class PresetTestRunPanel : UserControl
         }
 
         _scoresPanel.Children.Clear();
-        if (_tracker.Scores.Count == 0)
+        if (tracker.Scores.Count == 0)
             _scoresPanel.Children.Add(MakeMuted(Loc.T("tools.test_scores_empty")));
         else
-            foreach (var score in _tracker.Scores)
-                _scoresPanel.Children.Add(BuildScoreCard(score));
+            foreach (var score in tracker.Scores)
+                _scoresPanel.Children.Add(BuildScoreCard(score, tracker, view));
     }
 
-    private (IReadOnlyList<TestTargetRow> Targets, string PresetDisplay) ResolveDisplayTargets()
+    private (IReadOnlyList<TestTargetRow> Targets, string PresetDisplay) ResolveDisplayTargets(
+        TestRunTracker tracker,
+        KindViewState view)
     {
-        if (!_tracker.IsRunning && _reviewPresetFile is not null
-            && _tracker.TryGetSnapshot(_reviewPresetFile, out var review))
+        if (!tracker.IsRunning && view.ReviewPresetFile is not null
+            && tracker.TryGetSnapshot(view.ReviewPresetFile, out var review))
             return (review.Targets, review.DisplayName);
 
-        if (_inTransition && _transitionSnapshot is not null)
-            return (_transitionSnapshot.Targets, _transitionSnapshot.DisplayName);
+        if (view.InTransition && view.TransitionSnapshot is not null)
+            return (view.TransitionSnapshot.Targets, view.TransitionSnapshot.DisplayName);
 
-        return (_tracker.Targets, _tracker.CurrentPresetDisplay);
+        return (tracker.Targets, tracker.CurrentPresetDisplay);
     }
 
-    private void HandlePresetTransition()
+    private void HandlePresetTransition(TestRunTracker tracker, KindViewState view)
     {
-        var current = _tracker.CurrentPreset;
-        if (_tracker.IsRunning
-            && !string.IsNullOrEmpty(_lastSeenPreset)
+        var current = tracker.CurrentPreset;
+        if (tracker.IsRunning
+            && !string.IsNullOrEmpty(view.LastSeenPreset)
             && !string.IsNullOrEmpty(current)
-            && !current.Equals(_lastSeenPreset, StringComparison.OrdinalIgnoreCase)
-            && _tracker.TryGetSnapshot(_lastSeenPreset, out var snapshot))
+            && !current.Equals(view.LastSeenPreset, StringComparison.OrdinalIgnoreCase)
+            && tracker.TryGetSnapshot(view.LastSeenPreset, out var snapshot))
         {
-            _inTransition = true;
-            _transitionSnapshot = snapshot;
-            _reviewPresetFile = null;
+            view.InTransition = true;
+            view.TransitionSnapshot = snapshot;
+            view.ReviewPresetFile = null;
 
             _transitionTimer?.Stop();
             _transitionTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             _transitionTimer.Tick += (_, _) =>
             {
                 _transitionTimer?.Stop();
-                _inTransition = false;
-                _transitionSnapshot = null;
+                view.InTransition = false;
+                view.TransitionSnapshot = null;
                 RefreshVisualState();
             };
             _transitionTimer.Start();
         }
 
         if (!string.IsNullOrEmpty(current))
-            _lastSeenPreset = current;
+            view.LastSeenPreset = current;
     }
 
-    private void ResetTransitionState()
+    private void ResetTransitionState(PresetTestKind kind)
     {
-        _transitionTimer?.Stop();
-        _inTransition = false;
-        _transitionSnapshot = null;
-        _lastSeenPreset = "";
-        _reviewPresetFile = null;
+        var view = _viewStates[kind];
+        view.LastSeenPreset = "";
+        view.ReviewPresetFile = null;
+        view.InTransition = false;
+        view.TransitionSnapshot = null;
     }
 
-    private Border BuildScoreCard(PresetScoreRow score)
+    private Border BuildScoreCard(PresetScoreRow score, TestRunTracker tracker, KindViewState view)
     {
-        var isSelected = !_tracker.IsRunning
-            && _reviewPresetFile is not null
-            && score.FileName.Equals(_reviewPresetFile, StringComparison.OrdinalIgnoreCase);
+        var isSelected = !tracker.IsRunning
+            && view.ReviewPresetFile is not null
+            && score.FileName.Equals(view.ReviewPresetFile, StringComparison.OrdinalIgnoreCase);
 
         var card = new Border
         {
@@ -387,13 +423,13 @@ public sealed class PresetTestRunPanel : UserControl
             Padding = new Thickness(12, 10, 12, 10),
             Margin = new Thickness(0, 0, 0, 8),
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Cursor = _tracker.IsRunning ? Cursors.Arrow : Cursors.Hand
+            Cursor = tracker.IsRunning ? Cursors.Arrow : Cursors.Hand
         };
         card.MouseLeftButtonUp += (_, e) =>
         {
-            if (_tracker.IsRunning) return;
+            if (tracker.IsRunning) return;
             if (e.OriginalSource is Button) return;
-            _reviewPresetFile = score.FileName;
+            view.ReviewPresetFile = score.FileName;
             RefreshVisualState();
         };
         var stack = new StackPanel();
@@ -461,16 +497,16 @@ public sealed class PresetTestRunPanel : UserControl
             }
 
             TestTargetsService.EnsureTargetsFile(_paths);
-            var template = _kind == PresetTestKind.Standard
+            var template = _runKind == PresetTestKind.Standard
                 ? TestTargetsLoader.LoadDefinitions(_paths)
                 : null;
 
             _ansi.Reset();
             _ansi.Clear(_output);
-            _autoResponder = new TestScriptAutoResponder(_kind, _scope, _batFiles, _terminal);
+            _autoResponder = new TestScriptAutoResponder(_runKind, _scope, _batFiles, _terminal);
             _autoResponder.Reset();
-            ResetTransitionState();
-            _tracker.BeginRun(_kind, template);
+            ResetTransitionState(_runKind);
+            RunTracker.BeginRun(_runKind, template);
             RefreshVisualState();
 
             await _terminal.StartPowerShellScriptAsync(script, _paths.Root);
@@ -479,7 +515,7 @@ public sealed class PresetTestRunPanel : UserControl
         catch (Exception ex)
         {
             UiHelpers.ShowError(ex.Message, owner);
-            _tracker.StopRun();
+            RunTracker.StopRun();
             RefreshVisualState();
         }
     }
@@ -488,15 +524,15 @@ public sealed class PresetTestRunPanel : UserControl
     {
         await _terminal.StopAsync();
         _ansi.Flush(_output);
-        _tracker.StopRun();
+        RunTracker.StopRun();
         _input.IsEnabled = false;
         RefreshVisualState();
     }
 
     private async Task ApplyBestAsync()
     {
-        if (string.IsNullOrWhiteSpace(_tracker.BestPresetFile)) return;
-        await ApplyPresetAsync(_tracker.BestPresetFile);
+        if (string.IsNullOrWhiteSpace(DisplayTracker.BestPresetFile)) return;
+        await ApplyPresetAsync(DisplayTracker.BestPresetFile);
     }
 
     private async Task ApplyPresetAsync(string fileName)
@@ -520,7 +556,7 @@ public sealed class PresetTestRunPanel : UserControl
     private void OnTerminalOutput(string chunk) =>
         Dispatcher.InvokeAsync(async () =>
         {
-            _tracker.Feed(chunk);
+            RunTracker.Feed(chunk);
             _ansi.Append(_output, chunk);
             if (_autoResponder is not null)
                 await _autoResponder.FeedAsync(chunk);
@@ -535,17 +571,22 @@ public sealed class PresetTestRunPanel : UserControl
         Dispatcher.Invoke(() =>
         {
             _ansi.Flush(_output);
-            _tracker.EndRun(exitCode);
+            RunTracker.EndRun(exitCode);
             _input.IsEnabled = false;
             RefreshVisualState();
         });
     }
 
-    private void OnTrackerChanged()
+    private void OnTrackerChanged(PresetTestKind kind)
     {
+        if (IsRunning && kind != _runKind) return;
+        if (!IsRunning && kind != _displayKind) return;
+
         Dispatcher.Invoke(() =>
         {
-            HandlePresetTransition();
+            var active = IsRunning ? RunTracker : DisplayTracker;
+            var view = IsRunning ? _viewStates[_runKind] : DisplayView;
+            HandlePresetTransition(active, view);
             RefreshVisualState();
             RunStateChanged?.Invoke();
         });
