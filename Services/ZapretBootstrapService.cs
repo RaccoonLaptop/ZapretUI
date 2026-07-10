@@ -102,6 +102,21 @@ public sealed class ZapretBootstrapService
         }
         catch (Exception ex)
         {
+            if (BundledZapretService.TryDeployTo(targetDir, out var bundledMessage))
+            {
+                try
+                {
+                    await new ServiceDefaultsService(new ZapretPaths(targetDir))
+                        .ApplyFreshInstallDefaultsAsync(ct)
+                        .ConfigureAwait(false);
+                }
+                catch { /* ignore */ }
+
+                return BootstrapResult.Ok(
+                    $"{bundledMessage} (GitHub недоступен: {ex.Message})",
+                    targetDir);
+            }
+
             return BootstrapResult.Fail(ex.Message);
         }
     }

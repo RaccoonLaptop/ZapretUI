@@ -28,6 +28,15 @@ dotnet publish -c Release -r win-x64 --self-contained true `
 if ($LASTEXITCODE -ne 0) { Pop-Location; exit 1 }
 Pop-Location
 
+$bundledZapret = Join-Path $Packaging "zapret"
+$stagingZapret = Join-Path $StagingDir "zapret"
+if (-not (Test-Path (Join-Path $bundledZapret "service.bat")) -or -not (Test-Path (Join-Path $bundledZapret "bin"))) {
+    Write-Error "Bundled zapret is missing or incomplete. Expected service.bat and bin/ in packaging/zapret"
+}
+Write-Host "Deploying bundled Flowseal to staging/zapret..." -ForegroundColor Cyan
+if (Test-Path $stagingZapret) { Remove-Item $stagingZapret -Recurse -Force }
+Copy-Item -Path $bundledZapret -Destination $stagingZapret -Recurse -Force
+
 $isccCandidates = @(
     (Join-Path $ProjectDir "tools\innosetup\ISCC.exe"),
     "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
