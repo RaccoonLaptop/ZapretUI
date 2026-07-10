@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Threading;
 using ICSharpCode.AvalonEdit;
 using ZapretUI.Helpers;
 using ZapretUI.Services;
@@ -13,11 +12,9 @@ public partial class StrategiesPage : UserControl
     private readonly ZapretPaths _paths;
     private readonly StrategyService _strategy;
     private readonly AppSettings _settings;
-    private readonly DispatcherTimer _runningTimer;
     private ListBox _list = null!;
     private TextEditor _editor = null!;
     private TextBlock _fileName = null!;
-    private TextBlock _descriptionBlock = null!;
     private TextBlock _runStatus = null!;
     private Button _runBtn = null!;
     private string? _currentFile;
@@ -28,12 +25,8 @@ public partial class StrategiesPage : UserControl
         _paths = paths;
         _strategy = strategy;
         _settings = settings;
-        _runningTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-        _runningTimer.Tick += (_, _) => RefreshRunningBadges();
         BuildUi();
         RefreshList();
-        Loaded += (_, _) => _runningTimer.Start();
-        Unloaded += (_, _) => _runningTimer.Stop();
     }
 
     private void BuildUi()
@@ -80,12 +73,7 @@ public partial class StrategiesPage : UserControl
         var listsTopBtn = MakeToolbarBtn(Loc.T("strategies.lists"), "SecondaryButton", (_, _) => OpenListsWindow());
         DockPanel.SetDock(listsTopBtn, Dock.Top);
         leftStack.Children.Add(listsTopBtn);
-        _list = new ListBox
-        {
-            BorderThickness = new Thickness(0),
-            Margin = new Thickness(0, 8, 0, 0),
-            ItemTemplate = (DataTemplate)Application.Current.FindResource("StrategyListItemTemplate")
-        };
+        _list = new ListBox { BorderThickness = new Thickness(0), Margin = new Thickness(0, 8, 0, 0) };
         _list.SelectionChanged += (_, _) => LoadSelected();
         DockPanel.SetDock(_list, Dock.Top);
         leftStack.Children.Add(_list);
@@ -118,19 +106,9 @@ public partial class StrategiesPage : UserControl
             Padding = new Thickness(16)
         };
         var rightStack = new DockPanel();
-        _fileName = new TextBlock { FontWeight = FontWeights.SemiBold, FontSize = 18, Margin = new Thickness(0, 0, 0, 6) };
+        _fileName = new TextBlock { FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 12) };
         DockPanel.SetDock(_fileName, Dock.Top);
         rightStack.Children.Add(_fileName);
-        _descriptionBlock = new TextBlock
-        {
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-            FontSize = 13,
-            LineHeight = 20,
-            Margin = new Thickness(0, 0, 0, 12)
-        };
-        DockPanel.SetDock(_descriptionBlock, Dock.Top);
-        rightStack.Children.Add(_descriptionBlock);
 
         var editorToolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
         DockPanel.SetDock(editorToolbar, Dock.Top);
@@ -189,71 +167,16 @@ public partial class StrategiesPage : UserControl
 
     private void RefreshList()
     {
-        var selectedFile = GetSelectedFile();
-        var running = ResolveRunningFileName();
-        var entries = StrategyDisplayHelper.LoadItems(_paths.Root, _paths.GetStrategyFiles())
-            .Select(item => new StrategyListEntry
-            {
-                Item = item,
-                IsRunning = IsSameStrategy(item.FileName, running)
-            })
-            .ToList();
-
-        _list.ItemsSource = entries;
-        if (entries.Count == 0) return;
-
-        var idx = 0;
-        if (!string.IsNullOrEmpty(selectedFile))
-        {
-            for (var i = 0; i < entries.Count; i++)
-            {
-                if (entries[i].FileName.Equals(selectedFile, StringComparison.OrdinalIgnoreCase))
-                {
-                    idx = i;
-                    break;
-                }
-            }
-        }
-        _list.SelectedIndex = idx;
+        _list.Items.Clear();
+        foreach (var f in _paths.GetStrategyFiles())
+            _list.Items.Add(f);
+        if (_list.Items.Count > 0)
+            _list.SelectedIndex = 0;
     }
-
-    private void RefreshRunningBadges()
-    {
-        if (_list.ItemsSource is not IEnumerable<StrategyListEntry> entries) return;
-        var running = ResolveRunningFileName();
-        var list = entries.ToList();
-        var changed = false;
-        for (var i = 0; i < list.Count; i++)
-        {
-            var shouldRun = IsSameStrategy(list[i].FileName, running);
-            if (list[i].IsRunning == shouldRun) continue;
-            list[i] = new StrategyListEntry { Item = list[i].Item, IsRunning = shouldRun };
-            changed = true;
-        }
-        if (changed)
-            _list.ItemsSource = list;
-    }
-
-    private string? ResolveRunningFileName()
-    {
-        var title = _strategy.GetRunningStrategyTitle();
-        if (string.IsNullOrWhiteSpace(title)) return null;
-        if (title.EndsWith(".bat", StringComparison.OrdinalIgnoreCase))
-            return title;
-        return title + ".bat";
-    }
-
-    private static bool IsSameStrategy(string fileName, string? runningFile) =>
-        !string.IsNullOrWhiteSpace(runningFile)
-        && fileName.Equals(runningFile, StringComparison.OrdinalIgnoreCase);
-
-    private StrategyListEntry? GetSelectedEntry() => _list.SelectedItem as StrategyListEntry;
-
-    private string? GetSelectedFile() => GetSelectedEntry()?.FileName ?? _currentFile;
 
     private void OpenListsWindow()
     {
-        var file = GetSelectedFile();
+        var file = _currentFile ?? _list.SelectedItem as string;
         if (string.IsNullOrEmpty(file))
         {
             UiHelpers.ShowError(Loc.T("strategies.select_first"));
@@ -270,13 +193,9 @@ public partial class StrategiesPage : UserControl
 
     private void LoadSelected()
     {
-        if (GetSelectedEntry() is not { } entry) return;
-        var file = entry.FileName;
+        if (_list.SelectedItem is not string file) return;
         _currentFile = file;
-        _fileName.Text = entry.DisplayName;
-        _descriptionBlock.Text = string.IsNullOrWhiteSpace(entry.Description)
-            ? Loc.T("strategies.no_description")
-            : entry.Description!;
+        _fileName.Text = file;
         try
         {
             _editor.Text = _strategy.ReadStrategyContent(file);
@@ -306,7 +225,7 @@ public partial class StrategiesPage : UserControl
     private async Task RunSelectedAsync()
     {
         if (_isStarting) return;
-        if (GetSelectedFile() is not string file) return;
+        if (_list.SelectedItem is not string file) return;
         _settings.LastStrategy = file;
         _settings.Save();
         try
@@ -321,7 +240,6 @@ public partial class StrategiesPage : UserControl
             await _strategy.StartStrategyAsync(file);
             ConsoleLog.Instance.Write(Loc.F("strategies.log_run", file));
             _runStatus.Text = Loc.T("strategies.done");
-            RefreshRunningBadges();
         }
         catch (OperationCanceledException)
         {
@@ -344,7 +262,7 @@ public partial class StrategiesPage : UserControl
 
     private void CreateCopy()
     {
-        if (GetSelectedFile() is not string baseFile) return;
+        if (_list.SelectedItem is not string baseFile) return;
         var name = Prompt(
             Loc.T("strategies.dialog.copy_title"),
             Loc.T("strategies.dialog.copy_prompt"),
@@ -355,7 +273,7 @@ public partial class StrategiesPage : UserControl
         {
             var created = _strategy.CreateCustomStrategy(baseFile, name);
             RefreshList();
-            SelectFile(created);
+            _list.SelectedItem = created;
             ConsoleLog.Instance.Write(Loc.F("strategies.log_created", created));
             UiHelpers.ShowInfo(Loc.F("strategies.copy_created", created));
         }
@@ -392,7 +310,7 @@ public partial class StrategiesPage : UserControl
                 _settings.Save();
             }
             RefreshList();
-            SelectFile(renamed);
+            _list.SelectedItem = renamed;
             ConsoleLog.Instance.Write(Loc.F("strategies.log_renamed", _currentFile, renamed));
             UiHelpers.ShowInfo(Loc.F("strategies.renamed_to", renamed));
         }
@@ -467,24 +385,12 @@ public partial class StrategiesPage : UserControl
         {
             var created = _strategy.CreateCustomStrategy(template, name);
             RefreshList();
-            SelectFile(created);
+            _list.SelectedItem = created;
             UiHelpers.ShowInfo(Loc.F("strategies.file_created", created));
         }
         catch (Exception ex)
         {
             UiHelpers.ShowError(ex.Message);
-        }
-    }
-
-    private void SelectFile(string fileName)
-    {
-        if (_list.ItemsSource is not IEnumerable<StrategyListEntry> entries) return;
-        var list = entries.ToList();
-        for (var i = 0; i < list.Count; i++)
-        {
-            if (!list[i].FileName.Equals(fileName, StringComparison.OrdinalIgnoreCase)) continue;
-            _list.SelectedIndex = i;
-            return;
         }
     }
 

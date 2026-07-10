@@ -3,17 +3,6 @@ using System.Text.Json;
 
 namespace ZapretUI.Helpers;
 
-public sealed class StrategyListEntry
-{
-    public required StrategyItem Item { get; init; }
-    public bool IsRunning { get; init; }
-
-    public string DisplayName => Item.DisplayName;
-    public string? Description => Item.Description;
-    public string FileName => Item.FileName;
-    public string RunningBadgeText => IsRunning ? Loc.T("strategies.badge_running") : "";
-}
-
 public sealed class StrategyItem
 {
     public required string FileName { get; init; }
