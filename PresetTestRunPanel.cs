@@ -71,10 +71,13 @@ public sealed class PresetTestRunPanel : UserControl
 
     private void BuildUi()
     {
-        var root = new DockPanel { Margin = new Thickness(0, 20, 0, 0) };
+        var root = new Grid { Margin = new Thickness(0, 20, 0, 0) };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 340 });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         var progressCard = CreateCard();
-        DockPanel.SetDock(progressCard, Dock.Top);
         progressCard.Margin = new Thickness(0, 0, 0, 12);
         var progressStack = new StackPanel();
         var progressHeader = new Grid();
@@ -83,7 +86,8 @@ public sealed class PresetTestRunPanel : UserControl
         _statusText = new TextBlock
         {
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-            TextWrapping = TextWrapping.Wrap
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 12, 0)
         };
         _progressText = new TextBlock
         {
@@ -108,22 +112,23 @@ public sealed class PresetTestRunPanel : UserControl
         };
         progressStack.Children.Add(_progressBar);
         progressCard.Child = progressStack;
+        Grid.SetRow(progressCard, 0);
         root.Children.Add(progressCard);
 
-        _logPanel = CreateLogPanel();
-        DockPanel.SetDock(_logPanel, Dock.Bottom);
-        _logPanel.Visibility = Visibility.Collapsed;
-        root.Children.Add(_logPanel);
-
-        var split = new Grid { MinHeight = 320 };
-        split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.45, GridUnitType.Star) });
-        split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
-        split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var split = new Grid();
+        split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star), MinWidth = 360 });
+        split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
+        split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 280 });
 
         var leftCard = CreateCard();
         leftCard.Padding = new Thickness(14);
-        var leftStack = new DockPanel();
-        leftStack.Children.Add(MakeSectionTitle(Loc.T("tools.test_targets_title")));
+        var leftGrid = new Grid();
+        leftGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        leftGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        leftGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        var targetsTitle = MakeSectionTitle(Loc.T("tools.test_targets_title"));
+        Grid.SetRow(targetsTitle, 0);
+        leftGrid.Children.Add(targetsTitle);
         _currentPresetText = new TextBlock
         {
             FontWeight = FontWeights.SemiBold,
@@ -133,40 +138,49 @@ public sealed class PresetTestRunPanel : UserControl
             TextWrapping = TextWrapping.Wrap,
             Text = Loc.T("tools.test_current_strategy_waiting")
         };
-        DockPanel.SetDock(_currentPresetText, Dock.Top);
-        leftStack.Children.Add(_currentPresetText);
-        var leftScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 420 };
+        Grid.SetRow(_currentPresetText, 1);
+        leftGrid.Children.Add(_currentPresetText);
+        var leftScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         _targetsPanel = new StackPanel();
         leftScroll.Content = _targetsPanel;
-        leftStack.Children.Add(leftScroll);
-        leftCard.Child = leftStack;
+        Grid.SetRow(leftScroll, 2);
+        leftGrid.Children.Add(leftScroll);
+        leftCard.Child = leftGrid;
         Grid.SetColumn(leftCard, 0);
         split.Children.Add(leftCard);
 
         var rightCard = CreateCard();
         rightCard.Padding = new Thickness(14);
-        var rightStack = new DockPanel();
-        rightStack.Children.Add(MakeSectionTitle(Loc.T("tools.test_scores_title")));
-        rightStack.Children.Add(new TextBlock
+        var rightGrid = new Grid();
+        rightGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        rightGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        rightGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        var scoresTitle = MakeSectionTitle(Loc.T("tools.test_scores_title"));
+        Grid.SetRow(scoresTitle, 0);
+        rightGrid.Children.Add(scoresTitle);
+        var scoresHint = new TextBlock
         {
             Text = Loc.T("tools.test_scores_hint"),
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 8)
-        });
-        var rightScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 420 };
+        };
+        Grid.SetRow(scoresHint, 1);
+        rightGrid.Children.Add(scoresHint);
+        var rightScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         _scoresPanel = new StackPanel();
         rightScroll.Content = _scoresPanel;
-        rightStack.Children.Add(rightScroll);
-        rightCard.Child = rightStack;
+        Grid.SetRow(rightScroll, 2);
+        rightGrid.Children.Add(rightScroll);
+        rightCard.Child = rightGrid;
         Grid.SetColumn(rightCard, 2);
         split.Children.Add(rightCard);
 
+        Grid.SetRow(split, 1);
         root.Children.Add(split);
 
         var footer = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
-        DockPanel.SetDock(footer, Dock.Bottom);
         _stopBtn = MakeButton(Loc.T("tools.test_stop"), async () => await StopTestAsync());
         _applyBestBtn = MakeButton(Loc.T("tools.test_apply_best"), async () => await ApplyBestAsync());
         _applyBestBtn.IsEnabled = false;
@@ -178,7 +192,14 @@ public sealed class PresetTestRunPanel : UserControl
             _logPanel.Visibility = _logVisible ? Visibility.Visible : Visibility.Collapsed;
             return Task.CompletedTask;
         }));
+        Grid.SetRow(footer, 2);
         root.Children.Add(footer);
+
+        _logPanel = CreateLogPanel();
+        _logPanel.Visibility = Visibility.Collapsed;
+        _logPanel.Margin = new Thickness(0, 10, 0, 0);
+        Grid.SetRow(_logPanel, 3);
+        root.Children.Add(_logPanel);
 
         Content = root;
         RefreshVisualState();
@@ -248,7 +269,12 @@ public sealed class PresetTestRunPanel : UserControl
             var nameWidth = TestTargetRowFormatter.ComputeNameWidth(_tracker.Targets);
             foreach (var row in _tracker.Targets)
             {
-                var line = new TextBlock { Margin = new Thickness(0, 0, 0, 4) };
+                var line = new TextBlock
+                {
+                    Margin = new Thickness(0, 0, 0, 4),
+                    FontFamily = new FontFamily("Consolas"),
+                    FontSize = 12
+                };
                 TestTargetRowFormatter.ApplyRowInlines(line, row, nameWidth);
                 _targetsPanel.Children.Add(line);
             }
@@ -271,54 +297,55 @@ public sealed class PresetTestRunPanel : UserControl
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(10),
             Padding = new Thickness(12, 10, 12, 10),
-            Margin = new Thickness(0, 0, 0, 7)
+            Margin = new Thickness(0, 0, 0, 8),
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
         var stack = new StackPanel();
-        var header = new Grid();
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var glyph = new TextBlock
+
+        var header = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 0, 0, 6) };
+        var applyBtn = new Button
+        {
+            Content = "▶",
+            Padding = new Thickness(10, 4, 10, 4),
+            Style = (Style)Application.Current.FindResource("PrimaryButton"),
+            ToolTip = Loc.T("tools.test_apply_preset"),
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        applyBtn.Click += async (_, _) => await ApplyPresetAsync(score.FileName);
+        DockPanel.SetDock(applyBtn, Dock.Right);
+
+        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 8, 0) };
+        titleRow.Children.Add(new TextBlock
         {
             Text = score.Glyph,
             FontWeight = FontWeights.Bold,
             FontSize = 14,
             Width = 18,
+            Margin = new Thickness(0, 0, 6, 0),
             Foreground = score.Glyph switch
             {
                 "✓" => (Brush)Application.Current.FindResource("SuccessBrush"),
                 "≈" => (Brush)Application.Current.FindResource("WarningBrush"),
                 _ => (Brush)Application.Current.FindResource("ErrorBrush")
             }
-        };
-        var title = new TextBlock
+        });
+        titleRow.Children.Add(new TextBlock
         {
             Text = score.DisplayName,
             FontWeight = FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(8, 0, 8, 0)
-        };
-        var applyBtn = new Button
-        {
-            Content = "▶",
-            Padding = new Thickness(12, 4, 12, 4),
-            Style = (Style)Application.Current.FindResource("PrimaryButton"),
-            ToolTip = Loc.T("tools.test_apply_preset")
-        };
-        applyBtn.Click += async (_, _) => await ApplyPresetAsync(score.FileName);
-        Grid.SetColumn(glyph, 0);
-        Grid.SetColumn(title, 1);
-        Grid.SetColumn(applyBtn, 2);
-        header.Children.Add(glyph);
-        header.Children.Add(title);
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
         header.Children.Add(applyBtn);
+        header.Children.Add(titleRow);
         stack.Children.Add(header);
         stack.Children.Add(new TextBlock
         {
             Text = score.Detail,
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             FontSize = 11,
-            Margin = new Thickness(26, 4, 0, 0),
+            Margin = new Thickness(24, 0, 0, 0),
             TextWrapping = TextWrapping.Wrap
         });
         card.Child = stack;
@@ -452,7 +479,8 @@ public sealed class PresetTestRunPanel : UserControl
         {
             Content = text,
             Style = (Style)Application.Current.FindResource("SecondaryButton"),
-            Margin = new Thickness(0, 0, 8, 0)
+            Margin = new Thickness(0, 0, 8, 0),
+            Padding = new Thickness(14, 8, 14, 8)
         };
         btn.Click += async (_, _) => await action();
         return btn;

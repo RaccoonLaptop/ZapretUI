@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using ZapretUI.Helpers;
 using ZapretUI.Models;
@@ -8,89 +9,107 @@ namespace ZapretUI;
 
 public sealed class PresetTestSetupWindow : Window
 {
-    private readonly CheckBox _allCheck;
-    private readonly List<(CheckBox Box, StrategyItem Item)> _strategyChecks = [];
+    private readonly Border _allCard;
+    private readonly List<(Border Row, StrategyItem Item)> _strategyRows = [];
+    private bool _allMode = true;
 
     public bool Confirmed { get; private set; }
 
     private PresetTestSetupWindow(IReadOnlyList<StrategyItem> strategies)
     {
         Title = Loc.T("tools.test_setup_title");
-        Width = 520;
-        Height = 480;
-        MinWidth = 420;
-        MinHeight = 380;
+        Width = 540;
+        Height = 580;
+        MinWidth = 540;
+        MaxWidth = 540;
+        MinHeight = 580;
+        MaxHeight = 580;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = (Brush)Application.Current.FindResource("BgBrush");
-        ResizeMode = ResizeMode.CanResizeWithGrip;
+        ResizeMode = ResizeMode.NoResize;
 
-        var root = new StackPanel { Margin = new Thickness(22) };
-        root.Children.Add(new TextBlock
+        var root = new Grid { Margin = new Thickness(22) };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var header = new StackPanel();
+        header.Children.Add(new TextBlock
         {
             Text = Loc.T("tools.test_setup_title"),
             FontSize = 20,
             FontWeight = FontWeights.Bold
         });
-        root.Children.Add(new TextBlock
+        header.Children.Add(new TextBlock
         {
             Text = Loc.T("tools.test_setup_subtitle"),
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 8, 0, 12)
+            Margin = new Thickness(0, 8, 0, 0)
         });
+        Grid.SetRow(header, 0);
+        root.Children.Add(header);
 
-        _allCheck = new CheckBox
+        _allCard = CreateSelectableCard(Loc.T("tools.test_scope_all"), null, true);
+        _allCard.Margin = new Thickness(0, 16, 0, 10);
+        _allCard.MouseLeftButtonUp += (_, _) => SetAllMode(true);
+        Grid.SetRow(_allCard, 1);
+        root.Children.Add(_allCard);
+
+        var listLabel = new TextBlock
         {
-            Content = Loc.T("tools.test_scope_all"),
-            IsChecked = true,
+            Text = Loc.T("tools.test_scope_list_title"),
+            FontSize = 11,
             FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 0, 0, 10)
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            Margin = new Thickness(0, 0, 0, 8)
         };
-        _allCheck.Checked += (_, _) => SetIndividualEnabled(false);
-        _allCheck.Unchecked += (_, _) => SetIndividualEnabled(true);
-        root.Children.Add(_allCheck);
+        Grid.SetRow(listLabel, 2);
+        root.Children.Add(listLabel);
 
         var listBorder = new Border
         {
             Background = (Brush)Application.Current.FindResource("InputBrush"),
             BorderBrush = (Brush)Application.Current.FindResource("BorderBrush"),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(10, 8, 10, 8),
-            MaxHeight = 260
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(6)
         };
         var listScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         var listStack = new StackPanel();
         foreach (var item in strategies)
         {
-            var box = new CheckBox
-            {
-                Content = item.DisplayName,
-                Tag = item,
-                IsEnabled = false,
-                Margin = new Thickness(0, 0, 0, 6)
-            };
-            _strategyChecks.Add((box, item));
-            listStack.Children.Add(box);
+            var row = CreateSelectableCard(item.DisplayName, item, false);
+            row.Margin = new Thickness(0, 0, 0, 4);
+            row.Opacity = 0.55;
+            row.MouseLeftButtonUp += (_, _) => ToggleStrategy(row, item);
+            _strategyRows.Add((row, item));
+            listStack.Children.Add(row);
         }
         listScroll.Content = listStack;
         listBorder.Child = listScroll;
+        Grid.SetRow(listBorder, 3);
         root.Children.Add(listBorder);
 
-        root.Children.Add(new TextBlock
+        var hint = new TextBlock
         {
             Text = Loc.T("tools.test_scope_pick_hint"),
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 8, 0, 0)
-        });
+            Margin = new Thickness(0, 10, 0, 0)
+        };
+        Grid.SetRow(hint, 4);
+        root.Children.Add(hint);
 
         var buttons = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(0, 16, 0, 0)
+            Margin = new Thickness(0, 14, 0, 0)
         };
         var ok = new Button
         {
@@ -98,11 +117,12 @@ public sealed class PresetTestSetupWindow : Window
             Style = (Style)Application.Current.FindResource("PrimaryButton"),
             Margin = new Thickness(0, 0, 8, 0),
             IsDefault = true,
-            MinWidth = 120
+            MinWidth = 130,
+            Padding = new Thickness(16, 10, 16, 10)
         };
         ok.Click += (_, _) =>
         {
-            if (_allCheck.IsChecked != true && !HasAnySelected())
+            if (!_allMode && !HasAnySelected())
             {
                 UiHelpers.ShowError(Loc.T("tools.test_scope_pick"), this);
                 return;
@@ -114,23 +134,89 @@ public sealed class PresetTestSetupWindow : Window
         {
             Content = Loc.T("common.cancel"),
             Style = (Style)Application.Current.FindResource("SecondaryButton"),
-            IsCancel = true
+            IsCancel = true,
+            MinWidth = 100,
+            Padding = new Thickness(16, 10, 16, 10)
         };
         cancel.Click += (_, _) => Close();
         buttons.Children.Add(ok);
         buttons.Children.Add(cancel);
+        Grid.SetRow(buttons, 5);
         root.Children.Add(buttons);
+
         Content = root;
     }
 
-    private void SetIndividualEnabled(bool enabled)
+    private static Border CreateSelectableCard(string title, StrategyItem? item, bool selected)
     {
-        foreach (var (box, _) in _strategyChecks)
-            box.IsEnabled = enabled;
+        var card = new Border
+        {
+            Background = (Brush)Application.Current.FindResource(selected ? "PanelOverlayBrush" : "InputBrush"),
+            BorderBrush = (Brush)Application.Current.FindResource(selected ? "AccentBrush" : "BorderBrush"),
+            BorderThickness = new Thickness(selected ? 2 : 1),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(14, 11, 14, 11),
+            Cursor = Cursors.Hand,
+            Tag = item
+        };
+        card.Child = new TextBlock
+        {
+            Text = title,
+            FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal,
+            TextWrapping = TextWrapping.Wrap
+        };
+        return card;
     }
 
+    private void SetAllMode(bool all)
+    {
+        _allMode = all;
+        ApplyCardStyle(_allCard, all);
+
+        foreach (var (row, _) in _strategyRows)
+        {
+            if (all)
+            {
+                ApplyCardStyle(row, false);
+                row.Opacity = 0.55;
+            }
+            else
+            {
+                row.Opacity = 1;
+            }
+        }
+    }
+
+    private void ToggleStrategy(Border row, StrategyItem item)
+    {
+        if (_allMode)
+        {
+            SetAllMode(false);
+            ApplyCardStyle(row, true);
+            return;
+        }
+
+        var selected = !IsRowSelected(row);
+        ApplyCardStyle(row, selected);
+
+        if (!HasAnySelected())
+            SetAllMode(true);
+    }
+
+    private static void ApplyCardStyle(Border card, bool selected)
+    {
+        card.Background = (Brush)Application.Current.FindResource(selected ? "PanelOverlayBrush" : "InputBrush");
+        card.BorderBrush = (Brush)Application.Current.FindResource(selected ? "AccentBrush" : "BorderBrush");
+        card.BorderThickness = new Thickness(selected ? 2 : 1);
+        if (card.Child is TextBlock text)
+            text.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
+    }
+
+    private static bool IsRowSelected(Border row) =>
+        row.BorderThickness.Left > 1;
+
     private bool HasAnySelected() =>
-        _strategyChecks.Any(entry => entry.Box.IsChecked == true);
+        _strategyRows.Any(entry => IsRowSelected(entry.Row));
 
     public static bool TryShow(Window? owner, IReadOnlyList<StrategyItem> strategies, out PresetTestScope scope)
     {
@@ -145,11 +231,11 @@ public sealed class PresetTestSetupWindow : Window
         dlg.ShowDialog();
         if (!dlg.Confirmed) return false;
 
-        var testAll = dlg._allCheck.IsChecked == true;
+        var testAll = dlg._allMode;
         var selected = testAll
             ? (IReadOnlyList<string>)[]
-            : dlg._strategyChecks
-                .Where(entry => entry.Box.IsChecked == true)
+            : dlg._strategyRows
+                .Where(entry => IsRowSelected(entry.Row))
                 .Select(entry => entry.Item.FileName)
                 .ToList();
 
