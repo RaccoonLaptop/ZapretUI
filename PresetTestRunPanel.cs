@@ -33,6 +33,8 @@ public sealed class PresetTestRunPanel : UserControl
     private TextBlock _currentPresetText = null!;
     private StackPanel _targetsPanel = null!;
     private StackPanel _scoresPanel = null!;
+    private ScrollViewer _targetsScroll = null!;
+    private ScrollViewer _scoresScroll = null!;
     private Border _logPanel = null!;
     private bool _logVisible;
     private string _lastSeenPreset = "";
@@ -47,6 +49,9 @@ public sealed class PresetTestRunPanel : UserControl
         _strategy = strategy;
         _settings = settings;
         _batFiles = paths.GetStrategyFiles().ToList();
+
+        VerticalAlignment = VerticalAlignment.Stretch;
+        HorizontalAlignment = HorizontalAlignment.Stretch;
 
         BuildUi();
         _tracker.Changed += OnTrackerChanged;
@@ -88,7 +93,7 @@ public sealed class PresetTestRunPanel : UserControl
     {
         var root = new Grid { Margin = new Thickness(0, 20, 0, 0) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 340 });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 0 });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
@@ -130,17 +135,23 @@ public sealed class PresetTestRunPanel : UserControl
         Grid.SetRow(progressCard, 0);
         root.Children.Add(progressCard);
 
-        var split = new Grid();
+        var split = new Grid
+        {
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
         split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star), MinWidth = 360 });
         split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
         split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 280 });
 
         var leftCard = CreateCard();
         leftCard.Padding = new Thickness(14);
-        var leftGrid = new Grid();
+        leftCard.VerticalAlignment = VerticalAlignment.Stretch;
+        leftCard.ClipToBounds = true;
+        var leftGrid = new Grid { VerticalAlignment = VerticalAlignment.Stretch };
         leftGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         leftGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        leftGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        leftGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 0 });
         var targetsTitle = MakeSectionTitle(Loc.T("tools.test_targets_title"));
         Grid.SetRow(targetsTitle, 0);
         leftGrid.Children.Add(targetsTitle);
@@ -155,21 +166,31 @@ public sealed class PresetTestRunPanel : UserControl
         };
         Grid.SetRow(_currentPresetText, 1);
         leftGrid.Children.Add(_currentPresetText);
-        var leftScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        _targetsScroll = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            ClipToBounds = true,
+            CanContentScroll = false
+        };
         _targetsPanel = new StackPanel();
-        leftScroll.Content = _targetsPanel;
-        Grid.SetRow(leftScroll, 2);
-        leftGrid.Children.Add(leftScroll);
+        _targetsScroll.Content = _targetsPanel;
+        MouseWheelScrollHelper.Attach(_targetsScroll);
+        Grid.SetRow(_targetsScroll, 2);
+        leftGrid.Children.Add(_targetsScroll);
         leftCard.Child = leftGrid;
         Grid.SetColumn(leftCard, 0);
         split.Children.Add(leftCard);
 
         var rightCard = CreateCard();
         rightCard.Padding = new Thickness(14);
-        var rightGrid = new Grid();
+        rightCard.VerticalAlignment = VerticalAlignment.Stretch;
+        var rightGrid = new Grid { VerticalAlignment = VerticalAlignment.Stretch };
         rightGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         rightGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        rightGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        rightGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 0 });
         var scoresTitle = MakeSectionTitle(Loc.T("tools.test_scores_title"));
         Grid.SetRow(scoresTitle, 0);
         rightGrid.Children.Add(scoresTitle);
@@ -183,11 +204,19 @@ public sealed class PresetTestRunPanel : UserControl
         };
         Grid.SetRow(scoresHint, 1);
         rightGrid.Children.Add(scoresHint);
-        var rightScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        _scoresScroll = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            ClipToBounds = true,
+            CanContentScroll = false
+        };
         _scoresPanel = new StackPanel();
-        rightScroll.Content = _scoresPanel;
-        Grid.SetRow(rightScroll, 2);
-        rightGrid.Children.Add(rightScroll);
+        _scoresScroll.Content = _scoresPanel;
+        MouseWheelScrollHelper.Attach(_scoresScroll);
+        Grid.SetRow(_scoresScroll, 2);
+        rightGrid.Children.Add(_scoresScroll);
         rightCard.Child = rightGrid;
         Grid.SetColumn(rightCard, 2);
         split.Children.Add(rightCard);
@@ -279,14 +308,16 @@ public sealed class PresetTestRunPanel : UserControl
         }
         else
         {
-            var nameWidth = TestTargetRowFormatter.ComputeNameWidth(targets);
-            foreach (var row in targets)
+            var orderedTargets = DedupeTargets(targets);
+            var nameWidth = TestTargetRowFormatter.ComputeNameWidth(orderedTargets);
+            foreach (var row in orderedTargets)
             {
                 var line = new TextBlock
                 {
                     Margin = new Thickness(0, 0, 0, 4),
                     FontFamily = new FontFamily("Consolas"),
-                    FontSize = 12
+                    FontSize = 12,
+                    TextWrapping = TextWrapping.NoWrap
                 };
                 TestTargetRowFormatter.ApplyRowInlines(line, row, nameWidth);
                 _targetsPanel.Children.Add(line);
@@ -299,6 +330,27 @@ public sealed class PresetTestRunPanel : UserControl
         else
             foreach (var score in _tracker.Scores)
                 _scoresPanel.Children.Add(BuildScoreCard(score));
+    }
+
+    private static List<TestTargetRow> DedupeTargets(IReadOnlyList<TestTargetRow> targets)
+    {
+        var map = new Dictionary<string, TestTargetRow>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in targets)
+        {
+            var key = row.Name.Replace(" ", "", StringComparison.Ordinal);
+            map[key] = row;
+        }
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<TestTargetRow>();
+        foreach (var row in targets)
+        {
+            var key = row.Name.Replace(" ", "", StringComparison.Ordinal);
+            if (!seen.Add(key)) continue;
+            result.Add(map[key]);
+        }
+
+        return result;
     }
 
     private (IReadOnlyList<TestTargetRow> Targets, string PresetDisplay) ResolveDisplayTargets()

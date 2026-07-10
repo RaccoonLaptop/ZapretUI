@@ -26,6 +26,8 @@ public partial class TestStrategiesPage : UserControl
         _paths = paths;
         _strategy = strategy;
         _settings = settings;
+        VerticalAlignment = VerticalAlignment.Stretch;
+        HorizontalAlignment = HorizontalAlignment.Stretch;
         BuildUi();
     }
 
@@ -34,21 +36,31 @@ public partial class TestStrategiesPage : UserControl
         _primaryBtnStyle = (Style)Application.Current.FindResource("PrimaryButton");
         _dangerBtnStyle = (Style)Application.Current.FindResource("DangerButton");
 
-        var root = new StackPanel();
+        var root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 0 });
 
-        root.Children.Add(new TextBlock
+        var title = new TextBlock
         {
             Text = Loc.T("tools.test"),
             FontSize = 28,
             FontWeight = FontWeights.Bold
-        });
-        root.Children.Add(new TextBlock
+        };
+        Grid.SetRow(title, 0);
+        root.Children.Add(title);
+
+        var subtitle = new TextBlock
         {
             Text = Loc.T("tools.test_subtitle_visual"),
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 6, 0, 16)
-        });
+        };
+        Grid.SetRow(subtitle, 1);
+        root.Children.Add(subtitle);
 
         var modeRow = new Grid { Margin = new Thickness(0, 0, 0, 16) };
         modeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -62,6 +74,7 @@ public partial class TestStrategiesPage : UserControl
         _modeDpi.MouseLeftButtonUp += (_, _) => SelectMode(PresetTestKind.DpiFreeze);
         Grid.SetColumn(_modeDpi, 2);
         modeRow.Children.Add(_modeDpi);
+        Grid.SetRow(modeRow, 2);
         root.Children.Add(modeRow);
 
         _startBtn = new Button
@@ -70,16 +83,21 @@ public partial class TestStrategiesPage : UserControl
             Style = _primaryBtnStyle,
             HorizontalAlignment = HorizontalAlignment.Left,
             MinWidth = 180,
+            Margin = new Thickness(0, 0, 0, 16),
             Padding = new Thickness(20, 12, 20, 12)
         };
         _startBtn.Click += async (_, _) => await OnStartStopClickedAsync();
+        Grid.SetRow(_startBtn, 3);
         root.Children.Add(_startBtn);
 
         _runPanel = new PresetTestRunPanel(_paths, _strategy, _settings)
         {
-            Visibility = Visibility.Collapsed
+            Visibility = Visibility.Collapsed,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
         _runPanel.RunStateChanged += UpdateStartButtonState;
+        Grid.SetRow(_runPanel, 4);
         root.Children.Add(_runPanel);
 
         Content = root;

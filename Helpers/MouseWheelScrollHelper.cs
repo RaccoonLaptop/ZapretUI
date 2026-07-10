@@ -41,6 +41,15 @@ public static class MouseWheelScrollHelper
         };
     }
 
+    public static void Attach(ScrollViewer scrollViewer)
+    {
+        scrollViewer.PreviewMouseWheel += (_, e) =>
+        {
+            scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - e.Delta);
+            e.Handled = true;
+        };
+    }
+
     private static void ScrollTextBox(TextBox textBox, MouseWheelEventArgs e)
     {
         var steps = Math.Max(1, Math.Abs(e.Delta) / 120);
