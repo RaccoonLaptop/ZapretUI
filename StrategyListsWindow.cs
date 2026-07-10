@@ -76,6 +76,7 @@ public sealed class StrategyListsWindow : Window
         };
         var leftStack = new DockPanel();
         _list = new ListBox { BorderThickness = new Thickness(0) };
+        MouseWheelScrollHelper.Attach(_list);
         _list.SelectionChanged += (_, _) => LoadSelected();
         DockPanel.SetDock(_list, Dock.Top);
         leftStack.Children.Add(_list);
@@ -150,6 +151,7 @@ public sealed class StrategyListsWindow : Window
             FontSize = 13,
             IsReadOnly = false
         };
+        MouseWheelScrollHelper.Attach(_editor);
         rightStack.Children.Add(_editor);
         right.Child = rightStack;
         Grid.SetColumn(right, 1);

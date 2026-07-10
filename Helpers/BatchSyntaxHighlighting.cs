@@ -15,6 +15,9 @@ public static class BatchSyntaxHighlighting
         editor.SyntaxHighlighting = GetDefinition();
         editor.FontSize = 15;
         editor.LineNumbersForeground = System.Windows.Media.Brushes.Gray;
+        editor.Options.EnableHyperlinks = false;
+        editor.Options.EnableEmailHyperlinks = false;
+        MouseWheelScrollHelper.Attach(editor);
     }
 
     private static IHighlightingDefinition GetDefinition()

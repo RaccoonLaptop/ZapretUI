@@ -74,6 +74,7 @@ public partial class StrategiesPage : UserControl
         DockPanel.SetDock(listsTopBtn, Dock.Top);
         leftStack.Children.Add(listsTopBtn);
         _list = new ListBox { BorderThickness = new Thickness(0), Margin = new Thickness(0, 8, 0, 0) };
+        MouseWheelScrollHelper.Attach(_list);
         _list.SelectionChanged += (_, _) => LoadSelected();
         DockPanel.SetDock(_list, Dock.Top);
         leftStack.Children.Add(_list);

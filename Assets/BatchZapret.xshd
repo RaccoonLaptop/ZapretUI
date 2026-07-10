@@ -9,6 +9,7 @@
   <Color name="Label" foreground="#E8B86A" fontWeight="bold" />
   <Color name="Operator" foreground="#F07088" />
   <Color name="Number" foreground="#FFB347" />
+  <Color name="SniHost" foreground="#8FAFC4" />
 
   <RuleSet ignoreCase="true">
     <Rule color="Comment">
@@ -22,6 +23,9 @@
     </Rule>
     <Rule color="String">
       &quot;[^&quot;\\]*(?:\\.[^&quot;\\]*)*&quot;
+    </Rule>
+    <Rule color="SniHost">
+      \b(?:sni|host)=[A-Za-z0-9._\-]+
     </Rule>
     <Rule color="Variable">
       %[\w\-]+%
