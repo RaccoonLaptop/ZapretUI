@@ -62,6 +62,7 @@ public sealed class AppSettings
 
     public void Save()
     {
+        Language = LocalizationService.Language;
         var dir = Path.GetDirectoryName(SettingsPath)!;
         Directory.CreateDirectory(dir);
         var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });

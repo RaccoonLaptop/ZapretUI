@@ -117,6 +117,7 @@ public partial class MainWindow : Window
 
     public void ApplyLanguageChange()
     {
+        _settings.Language = LocalizationService.Language;
         ApplyShellLocalization();
         UpdateBgSwitchLabel();
 
@@ -367,7 +368,7 @@ public partial class MainWindow : Window
     {
         AddNav(Loc.T("nav.home"), "home", NavigateHome);
         AddNav(Loc.T("nav.strategies"), "strategies", () => Navigate(new StrategiesPage(_paths, _strategy, _settings)));
-        AddNav(Loc.T("nav.service"), "service", () => Navigate(new ServicePage(_paths, _strategy)));
+        AddNav(Loc.T("nav.service"), "service", () => Navigate(new ServicePage(_paths, _strategy, _settings)));
         AddNav(Loc.T("nav.diagnostics"), "diagnostics", () => Navigate(new DiagnosticsPage(_runner)));
         AddNav(Loc.T("nav.test"), "test", NavigateTest);
     }
@@ -384,7 +385,7 @@ public partial class MainWindow : Window
                 Navigate(new StrategiesPage(_paths, _strategy, _settings));
                 break;
             case "service":
-                Navigate(new ServicePage(_paths, _strategy));
+                Navigate(new ServicePage(_paths, _strategy, _settings));
                 break;
             case "diagnostics":
                 Navigate(new DiagnosticsPage(_runner));

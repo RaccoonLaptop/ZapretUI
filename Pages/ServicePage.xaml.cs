@@ -29,11 +29,11 @@ public partial class ServicePage : UserControl
     private Button _ipsetNoneBtn = null!;
     private Button _ipsetAnyBtn = null!;
 
-    public ServicePage(ZapretPaths paths, StrategyService strategy)
+    public ServicePage(ZapretPaths paths, StrategyService strategy, AppSettings settings)
     {
         _paths = paths;
         _ = strategy;
-        _settings = AppSettings.Load();
+        _settings = settings;
         _settingsSvc = new ServiceSettingsService(paths);
         _updates = new UpdateService(paths);
         BuildUi();
