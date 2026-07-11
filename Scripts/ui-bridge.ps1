@@ -288,20 +288,24 @@ switch ($Action) {
             Write-Color "[OK] VPN check passed" Green
         }
 
+        $isWin11OrNewer = [Environment]::OSVersion.Version.Build -ge 22000
         try {
             $dohCount = Get-ChildItem -Recurse -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\InterfaceSpecificParameters\' -ErrorAction SilentlyContinue |
                 Get-ItemProperty -ErrorAction SilentlyContinue |
                 Where-Object { $_.DohFlags -gt 0 } |
                 Measure-Object |
                 Select-Object -ExpandProperty Count
-            if ($dohCount -gt 0) { Write-Color "[OK] Secure DNS check passed" Green }
-            else {
+            if ($dohCount -gt 0) {
+                Write-Color "[OK] Secure DNS check passed" Green
+            } elseif ($isWin11OrNewer) {
                 Write-Color "[?] Make sure you have configured secure DNS in a browser with some non-default DNS service provider," Yellow
                 Write-Color "[?] If you use Windows 11 you can configure encrypted DNS in the Settings to hide this warning" Yellow
             }
         } catch {
-            Write-Color "[?] Make sure you have configured secure DNS in a browser with some non-default DNS service provider," Yellow
-            Write-Color "[?] If you use Windows 11 you can configure encrypted DNS in the Settings to hide this warning" Yellow
+            if ($isWin11OrNewer) {
+                Write-Color "[?] Make sure you have configured secure DNS in a browser with some non-default DNS service provider," Yellow
+                Write-Color "[?] If you use Windows 11 you can configure encrypted DNS in the Settings to hide this warning" Yellow
+            }
         }
 
         $hostsFile = "$env:SystemRoot\System32\drivers\etc\hosts"
