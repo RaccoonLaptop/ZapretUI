@@ -28,7 +28,6 @@ public partial class ServicePage : UserControl
     private Button _ipsetLoadedBtn = null!;
     private Button _ipsetNoneBtn = null!;
     private Button _ipsetAnyBtn = null!;
-    private CheckBox _minimizeTrayCheck = null!;
 
     public ServicePage(ZapretPaths paths, StrategyService strategy)
     {
@@ -60,27 +59,6 @@ public partial class ServicePage : UserControl
         root.Children.Add(Section(Loc.T("service.section_settings")));
         var setCard = Card();
         var setStack = new StackPanel();
-
-        _minimizeTrayCheck = new CheckBox
-        {
-            Content = Loc.T("service.minimize_to_tray"),
-            IsChecked = _settings.MinimizeToTray,
-            Margin = new Thickness(0, 0, 0, 16)
-        };
-        _minimizeTrayCheck.Checked += (_, _) =>
-        {
-            _settings.MinimizeToTray = _minimizeTrayCheck.IsChecked == true;
-            _settings.Save();
-        };
-        _minimizeTrayCheck.Unchecked += (_, _) =>
-        {
-            if (_minimizeTrayCheck.IsChecked != true)
-            {
-                _settings.MinimizeToTray = false;
-                _settings.Save();
-            }
-        };
-        setStack.Children.Add(_minimizeTrayCheck);
 
         _gameFilterStatus = StatusLine(Loc.T("service.game_filter"));
         setStack.Children.Add(_gameFilterStatus);

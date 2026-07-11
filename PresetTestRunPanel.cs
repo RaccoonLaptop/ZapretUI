@@ -49,6 +49,7 @@ public sealed class PresetTestRunPanel : UserControl
     private bool _logVisible;
     private DispatcherTimer? _transitionTimer;
     private DispatcherTimer? _saveTimer;
+    private bool _terminalHandlersAttached;
 
     private TestRunTracker DisplayTracker => _trackers[_displayKind];
     private KindViewState DisplayView => _viewStates[_displayKind];
@@ -75,18 +76,50 @@ public sealed class PresetTestRunPanel : UserControl
         BuildUi();
         foreach (var pair in _trackers)
             pair.Value.Changed += () => OnTrackerChanged(pair.Key);
+        Loaded += OnPanelLoaded;
+        Unloaded += OnPanelUnloaded;
+    }
+
+    private void OnPanelLoaded(object? sender, RoutedEventArgs e) => AttachTerminalHandlers();
+
+    private async void OnPanelUnloaded(object? sender, RoutedEventArgs e)
+    {
+        _transitionTimer?.Stop();
+        _saveTimer?.Stop();
+
+        if (_terminal.IsRunning || IsRunning)
+            await StopTestAsync();
+        else
+            SaveSession();
+
+        DetachTerminalHandlers();
+    }
+
+    public async Task DisposeTerminalAsync()
+    {
+        _transitionTimer?.Stop();
+        _saveTimer?.Stop();
+        await StopTestAsync();
+        DetachTerminalHandlers();
+        await _terminal.DisposeAsync();
+    }
+
+    private void AttachTerminalHandlers()
+    {
+        if (_terminalHandlersAttached) return;
         _terminal.OutputReceived += OnTerminalOutput;
         _terminal.ProcessExited += OnTerminalExited;
         _terminal.ErrorOccurred += OnTerminalError;
-        Unloaded += async (_, _) =>
-        {
-            _transitionTimer?.Stop();
-            SaveSession();
-            _terminal.OutputReceived -= OnTerminalOutput;
-            _terminal.ProcessExited -= OnTerminalExited;
-            _terminal.ErrorOccurred -= OnTerminalError;
-            await _terminal.DisposeAsync();
-        };
+        _terminalHandlersAttached = true;
+    }
+
+    private void DetachTerminalHandlers()
+    {
+        if (!_terminalHandlersAttached) return;
+        _terminal.OutputReceived -= OnTerminalOutput;
+        _terminal.ProcessExited -= OnTerminalExited;
+        _terminal.ErrorOccurred -= OnTerminalError;
+        _terminalHandlersAttached = false;
     }
 
     public PresetTestKind RestoreFromStorage()

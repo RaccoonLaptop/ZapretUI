@@ -107,6 +107,8 @@ public partial class TestStrategiesPage : UserControl
 
     public void SaveSession() => _runPanel.SaveSession();
 
+    public async Task DisposePanelAsync() => await _runPanel.DisposeTerminalAsync();
+
     private async Task OnStartStopClickedAsync()
     {
         if (_runPanel.IsRunning)

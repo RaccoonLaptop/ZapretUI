@@ -112,7 +112,10 @@ public partial class DiagnosticsPage : UserControl
         AppendLine("--- " + Loc.T("tools.diagnostics") + " ---");
         try
         {
-            var result = await _runner.RunBridgeAsync("RunDiagnostics");
+            var result = await UiHelpers.RunWithLoadingAsync(
+                Window.GetWindow(this),
+                Loc.T("common.loading"),
+                () => _runner.RunBridgeAsync("RunDiagnostics"));
             if (!string.IsNullOrWhiteSpace(result))
                 AppendLine(result);
             AppendLine("--- " + Loc.T("tools.done") + " ---");

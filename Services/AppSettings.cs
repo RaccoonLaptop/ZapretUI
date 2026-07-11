@@ -51,6 +51,8 @@ public sealed class AppSettings
                     settings.StartUiOnLogin = true;
                     settings.StartBypassOnLogin = false;
                 }
+                // Минимизация всегда в панель задач; настройка больше не используется.
+                settings.MinimizeToTray = false;
                 return settings;
             }
         }

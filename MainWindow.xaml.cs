@@ -77,7 +77,6 @@ public partial class MainWindow : Window
         RefreshStatus();
 
         Closing += OnClosing;
-        StateChanged += OnStateChanged;
         Loaded += OnLoaded;
     }
 
@@ -156,17 +155,19 @@ public partial class MainWindow : Window
             }
         }
 
+        try
+        {
+            _testStrategiesPage?.DisposePanelAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            ConsoleLog.Instance.Write(Loc.F("shutdown.stop_error", ex.Message));
+        }
+
         _statusTimer.Stop();
         _powerResume.Dispose();
         _tray.Dispose();
         Application.Current.Shutdown();
-    }
-
-    private void OnStateChanged(object? sender, EventArgs e)
-    {
-        if (_isShuttingDown) return;
-        if (WindowState == WindowState.Minimized && _settings.MinimizeToTray)
-            HideToTray();
     }
 
     public void ShowAndActivate()
