@@ -236,7 +236,6 @@
   "diag.proxy_enabled": "[?] Включён системный прокси: {0}",
   "diag.proxy_hint": "[?] Убедитесь, что прокси настроен верно, или отключите его, если не используете",
   "diag.tcp_ok": "[OK] Проверка TCP timestamps пройдена",
-  "diag.tcp_enabling": "[?] TCP timestamps отключены. Включаем timestamps...",
   "diag.tcp_enabled": "[OK] TCP timestamps успешно включены",
   "diag.tcp_fail": "[X] Не удалось включить TCP timestamps",
   "diag.adguard_fail": "[X] Найден процесс Adguard — может мешать Discord",

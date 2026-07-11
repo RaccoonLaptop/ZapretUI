@@ -15,7 +15,6 @@ internal static class DiagnosticOutputLocalizer
         ["[?] Make sure it's valid or disable it if you don't use a proxy"] = "diag.proxy_hint",
         ["[OK] Proxy check passed"] = "diag.proxy_ok",
         ["[OK] TCP timestamps check passed"] = "diag.tcp_ok",
-        ["[?] TCP timestamps are disabled. Enabling timestamps..."] = "diag.tcp_enabling",
         ["[OK] TCP timestamps successfully enabled"] = "diag.tcp_enabled",
         ["[X] Failed to enable TCP timestamps"] = "diag.tcp_fail",
         ["[X] Adguard process found. Adguard may cause problems with Discord"] = "diag.adguard_fail",

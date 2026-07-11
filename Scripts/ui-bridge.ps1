@@ -224,7 +224,6 @@ switch ($Action) {
         if ($ts -match "timestamps" -and $ts -match "enabled") {
             Write-Color "[OK] TCP timestamps check passed" Green
         } else {
-            Write-Color "[?] TCP timestamps are disabled. Enabling timestamps..." Yellow
             netsh interface tcp set global timestamps=enabled | Out-Null
             if ($LASTEXITCODE -eq 0) { Write-Color "[OK] TCP timestamps successfully enabled" Green }
             else { Write-Color "[X] Failed to enable TCP timestamps" Red }
