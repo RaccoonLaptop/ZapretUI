@@ -10,6 +10,9 @@ internal static class BridgeOutputFormatter
         if (action is "InstallService" or "RemoveServices")
             return SummarizeServiceAction(action, raw);
 
+        if (action == "RunDiagnostics")
+            raw = DiagnosticOutputLocalizer.Localize(raw);
+
         return FilterVerboseLines(raw);
     }
 

@@ -110,6 +110,7 @@ public partial class DiagnosticsPage : UserControl
     private async Task RunDiagnosticsAsync()
     {
         AppendLine("--- " + Loc.T("tools.diagnostics") + " ---");
+        ConsoleLog.Instance.LineAdded -= OnLineAdded;
         try
         {
             var result = await UiHelpers.RunWithLoadingAsync(
@@ -117,12 +118,19 @@ public partial class DiagnosticsPage : UserControl
                 Loc.T("common.loading"),
                 () => _runner.RunBridgeAsync("RunDiagnostics"));
             if (!string.IsNullOrWhiteSpace(result))
-                AppendLine(result);
+            {
+                foreach (var line in result.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries))
+                    AppendLine(line);
+            }
             AppendLine("--- " + Loc.T("tools.done") + " ---");
         }
         catch (Exception ex)
         {
             AppendLine($"{Loc.T("common.error_prefix")} {ex.Message}");
+        }
+        finally
+        {
+            ConsoleLog.Instance.LineAdded += OnLineAdded;
         }
     }
 }
