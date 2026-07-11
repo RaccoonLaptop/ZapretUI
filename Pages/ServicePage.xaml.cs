@@ -184,8 +184,8 @@ public partial class ServicePage : UserControl
             _settings.Language = newLang;
             _settings.Save();
             LocalizationService.Initialize(newLang);
-            if (UiHelpers.Confirm(Loc.T("lang.restart_confirm"), OwnerWindow))
-                LocalizationService.RestartApplication();
+            if (Application.Current.MainWindow is MainWindow mainWindow)
+                mainWindow.ApplyLanguageChange();
         };
         langStack.Children.Add(langCombo);
         langCard.Child = langStack;

@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private readonly PowerResumeService _powerResume;
     private readonly bool _startInTray;
     private Button? _activeNav;
+    private string _activeSection = "home";
     private HomePage? _homePage;
     private TestStrategiesPage? _testStrategiesPage;
     private bool _isShuttingDown;
@@ -113,6 +114,18 @@ public partial class MainWindow : Window
     }
 
     public void RunSecuritySetup() => ShowSecuritySetup();
+
+    public void ApplyLanguageChange()
+    {
+        ApplyShellLocalization();
+        UpdateBgSwitchLabel();
+
+        NavPanel.Children.Clear();
+        _activeNav = null;
+        BuildNavigation();
+        NavigateToSection(_activeSection);
+        RefreshStatus();
+    }
 
     public void ShutdownApplication()
     {
@@ -352,41 +365,69 @@ public partial class MainWindow : Window
 
     private void BuildNavigation()
     {
-        AddNav(Loc.T("nav.home"), NavigateHome);
-        AddNav(Loc.T("nav.strategies"), () => Navigate(new StrategiesPage(_paths, _strategy, _settings)));
-        AddNav(Loc.T("nav.service"), () => Navigate(new ServicePage(_paths, _strategy)));
-        AddNav(Loc.T("nav.diagnostics"), () => Navigate(new DiagnosticsPage(_runner)));
-        AddNav(Loc.T("nav.test"), NavigateTest);
+        AddNav(Loc.T("nav.home"), "home", NavigateHome);
+        AddNav(Loc.T("nav.strategies"), "strategies", () => Navigate(new StrategiesPage(_paths, _strategy, _settings)));
+        AddNav(Loc.T("nav.service"), "service", () => Navigate(new ServicePage(_paths, _strategy)));
+        AddNav(Loc.T("nav.diagnostics"), "diagnostics", () => Navigate(new DiagnosticsPage(_runner)));
+        AddNav(Loc.T("nav.test"), "test", NavigateTest);
+    }
+
+    private void NavigateToSection(string sectionId)
+    {
+        _activeSection = sectionId;
+        switch (sectionId)
+        {
+            case "home":
+                NavigateHome();
+                break;
+            case "strategies":
+                Navigate(new StrategiesPage(_paths, _strategy, _settings));
+                break;
+            case "service":
+                Navigate(new ServicePage(_paths, _strategy));
+                break;
+            case "diagnostics":
+                Navigate(new DiagnosticsPage(_runner));
+                break;
+            case "test":
+                _testStrategiesPage = null;
+                NavigateTest();
+                break;
+        }
     }
 
     private void NavigateTest()
     {
+        _activeSection = "test";
         _testStrategiesPage ??= new TestStrategiesPage(_paths, _strategy, _settings);
         Navigate(_testStrategiesPage);
     }
 
     private void NavigateHome()
     {
+        _activeSection = "home";
         _homePage = new HomePage(_paths, _strategy, _settings);
         Navigate(_homePage);
     }
 
-    private void AddNav(string text, Action action)
+    private void AddNav(string text, string sectionId, Action action)
     {
         var btn = new Button
         {
             Content = text,
+            Tag = sectionId,
             Style = (Style)FindResource("NavButton"),
             HorizontalContentAlignment = HorizontalAlignment.Left,
             Margin = new Thickness(0, 2, 0, 2)
         };
         btn.Click += (_, _) =>
         {
+            _activeSection = sectionId;
             SetActiveNav(btn);
             action();
         };
         NavPanel.Children.Add(btn);
-        if (_activeNav is null)
+        if (_activeSection == sectionId)
         {
             _activeNav = btn;
             btn.Style = (Style)FindResource("NavButtonActive");

@@ -25,7 +25,7 @@ public partial class App : Application
             return;
         }
 
-        _singleInstance = SingleInstanceService.Acquire();
+        _singleInstance = SingleInstanceService.Acquire(StartupArgs.WaitForSingleInstance);
         if (!_singleInstance.IsFirstInstance)
         {
             SingleInstanceService.TryActivateExisting();
@@ -84,7 +84,8 @@ public partial class App : Application
         {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe)
             {
-                UseShellExecute = true
+                UseShellExecute = true,
+                Arguments = "--restart"
             });
         }
     }

@@ -19,8 +19,25 @@ public sealed class SingleInstanceService : IDisposable
         IsFirstInstance = isFirstInstance;
     }
 
-    public static SingleInstanceService Acquire()
+    public static SingleInstanceService Acquire(bool waitForRelease = false)
     {
+        if (waitForRelease)
+        {
+            for (var attempt = 0; attempt < 50; attempt++)
+            {
+                var waitMutex = new Mutex(true, MutexName, out var acquired);
+                if (acquired)
+                {
+                    var waited = new SingleInstanceService(waitMutex, true);
+                    waited.StartListening();
+                    return waited;
+                }
+
+                waitMutex.Dispose();
+                Thread.Sleep(100);
+            }
+        }
+
         var mutex = new Mutex(true, MutexName, out var created);
         var service = new SingleInstanceService(mutex, created);
         if (created)
