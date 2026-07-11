@@ -75,8 +75,18 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        var restart = LocalizationService.RestartPending;
+        var exe = Environment.ProcessPath;
         _singleInstance?.Dispose();
         base.OnExit(e);
+
+        if (restart && !string.IsNullOrWhiteSpace(exe))
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe)
+            {
+                UseShellExecute = true
+            });
+        }
     }
 
     private static void ScheduleFreshInstallDefaults(string root)

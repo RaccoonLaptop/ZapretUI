@@ -13,6 +13,8 @@ public static class LocalizationService
     public static string Language => _language;
     public static bool IsEnglish => _language == "en";
 
+    public static bool RestartPending { get; private set; }
+
     public static void Initialize(string? language)
     {
         _language = NormalizeLanguage(language);
@@ -36,14 +38,7 @@ public static class LocalizationService
 
     public static void RestartApplication()
     {
-        var exe = Environment.ProcessPath;
-        if (!string.IsNullOrWhiteSpace(exe))
-        {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe)
-            {
-                UseShellExecute = true
-            });
-        }
+        RestartPending = true;
         System.Windows.Application.Current.Shutdown();
     }
 

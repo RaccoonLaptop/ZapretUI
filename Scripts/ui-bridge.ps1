@@ -209,42 +209,162 @@ switch ($Action) {
 
     "RunDiagnostics" {
         $bfe = Get-Service BFE -ErrorAction SilentlyContinue
-        if ($bfe -and $bfe.Status -eq 'Running') { Write-Color "[OK] Base Filtering Engine" Green }
-        else { Write-Color "[X] Base Filtering Engine not running" Red }
+        if ($bfe -and $bfe.Status -eq 'Running') { Write-Color "[OK] Base Filtering Engine check passed" Green }
+        else { Write-Color "[X] Base Filtering Engine is not running. This service is required for zapret to work" Red }
 
         $proxy = Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -ErrorAction SilentlyContinue
-        if ($proxy.ProxyEnable -eq 1) { Write-Color "[?] System proxy enabled: $($proxy.ProxyServer)" Yellow }
-        else { Write-Color "[OK] Proxy check passed" Green }
-
-        $ts = netsh interface tcp show global 2>$null
-        if ($ts -match "enabled") { Write-Color "[OK] TCP timestamps enabled" Green }
-        else {
-            Write-Color "[?] Enabling TCP timestamps..." Yellow
-            netsh interface tcp set global timestamps=enabled | Out-Null
+        if ($proxy.ProxyEnable -eq 1) {
+            Write-Color "[?] System proxy is enabled: $($proxy.ProxyServer)" Yellow
+            Write-Color "[?] Make sure it's valid or disable it if you don't use a proxy" Yellow
+        } else {
+            Write-Color "[OK] Proxy check passed" Green
         }
 
-        if (Get-Process AdguardSvc -ErrorAction SilentlyContinue) { Write-Color "[X] Adguard found - may cause Discord issues" Red }
-        else { Write-Color "[OK] Adguard check passed" Green }
+        $ts = netsh interface tcp show global 2>$null
+        if ($ts -match "timestamps" -and $ts -match "enabled") {
+            Write-Color "[OK] TCP timestamps check passed" Green
+        } else {
+            Write-Color "[?] TCP timestamps are disabled. Enabling timestamps..." Yellow
+            netsh interface tcp set global timestamps=enabled | Out-Null
+            if ($LASTEXITCODE -eq 0) { Write-Color "[OK] TCP timestamps successfully enabled" Green }
+            else { Write-Color "[X] Failed to enable TCP timestamps" Red }
+        }
 
-        $killers = Get-Service | Where-Object { $_.Name -like "*Killer*" }
-        if ($killers) { Write-Color "[X] Killer services conflict with zapret" Red }
-        else { Write-Color "[OK] Killer check passed" Green }
+        if (Get-Process AdguardSvc -ErrorAction SilentlyContinue) {
+            Write-Color "[X] Adguard process found. Adguard may cause problems with Discord" Red
+            Write-Color "[X] https://github.com/Flowseal/zapret-discord-youtube/issues/417" Red
+        } else {
+            Write-Color "[OK] Adguard check passed" Green
+        }
+
+        $killers = Get-Service | Where-Object { $_.Name -like "*Killer*" -or $_.DisplayName -like "*Killer*" }
+        if ($killers) {
+            Write-Color "[X] Killer services found. Killer conflicts with zapret" Red
+            Write-Color "[X] https://github.com/Flowseal/zapret-discord-youtube/issues/2512#issuecomment-2821119513" Red
+        } else {
+            Write-Color "[OK] Killer check passed" Green
+        }
+
+        $intel = Get-Service | Where-Object {
+            ($_.Name -like "*Intel*" -or $_.DisplayName -like "*Intel*") -and
+            ($_.Name -like "*Connectivity*" -or $_.DisplayName -like "*Connectivity*") -and
+            ($_.Name -like "*Network*" -or $_.DisplayName -like "*Network*")
+        }
+        if ($intel) {
+            Write-Color "[X] Intel Connectivity Network Service found. It conflicts with zapret" Red
+            Write-Color "[X] https://github.com/ValdikSS/GoodbyeDPI/issues/541#issuecomment-2661670982" Red
+        } else {
+            Write-Color "[OK] Intel Connectivity check passed" Green
+        }
+
+        $checkpoint = Get-Service | Where-Object {
+            $_.Name -like "*TracSrvWrapper*" -or $_.DisplayName -like "*TracSrvWrapper*" -or
+            $_.Name -like "*EPWD*" -or $_.DisplayName -like "*EPWD*"
+        }
+        if ($checkpoint) {
+            Write-Color "[X] Check Point services found. Check Point conflicts with zapret" Red
+            Write-Color "[X] Try to uninstall Check Point" Red
+        } else {
+            Write-Color "[OK] Check Point check passed" Green
+        }
+
+        $smartByte = Get-Service | Where-Object { $_.Name -like "*SmartByte*" -or $_.DisplayName -like "*SmartByte*" }
+        if ($smartByte) {
+            Write-Color "[X] SmartByte services found. SmartByte conflicts with zapret" Red
+            Write-Color "[X] Try to uninstall or disable SmartByte through services.msc" Red
+        } else {
+            Write-Color "[OK] SmartByte check passed" Green
+        }
 
         $sys = Get-ChildItem $BinPath -Filter "*.sys" -ErrorAction SilentlyContinue
-        if (-not $sys) { Write-Color "[X] WinDivert64.sys NOT found" Red }
+        if (-not $sys) { Write-Color "[X] WinDivert64.sys file NOT found." Red }
         else { Write-Color "[OK] WinDivert driver present" Green }
+
+        $vpnServices = Get-Service | Where-Object { $_.Name -like "*VPN*" -or $_.DisplayName -like "*VPN*" }
+        if ($vpnServices) {
+            $names = ($vpnServices | ForEach-Object { $_.DisplayName }) -join ', '
+            Write-Color "[?] VPN services found: $names. Some VPNs can conflict with zapret" Yellow
+            Write-Color "[?] Make sure that all VPNs are disabled" Yellow
+        } else {
+            Write-Color "[OK] VPN check passed" Green
+        }
+
+        try {
+            $dohCount = Get-ChildItem -Recurse -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\InterfaceSpecificParameters\' -ErrorAction SilentlyContinue |
+                Get-ItemProperty -ErrorAction SilentlyContinue |
+                Where-Object { $_.DohFlags -gt 0 } |
+                Measure-Object |
+                Select-Object -ExpandProperty Count
+            if ($dohCount -gt 0) { Write-Color "[OK] Secure DNS check passed" Green }
+            else {
+                Write-Color "[?] Make sure you have configured secure DNS in a browser with some non-default DNS service provider," Yellow
+                Write-Color "[?] If you use Windows 11 you can configure encrypted DNS in the Settings to hide this warning" Yellow
+            }
+        } catch {
+            Write-Color "[?] Make sure you have configured secure DNS in a browser with some non-default DNS service provider," Yellow
+            Write-Color "[?] If you use Windows 11 you can configure encrypted DNS in the Settings to hide this warning" Yellow
+        }
+
+        $hostsFile = "$env:SystemRoot\System32\drivers\etc\hosts"
+        if (Test-Path $hostsFile) {
+            $hostsContent = Get-Content $hostsFile -ErrorAction SilentlyContinue
+            $ytHosts = $hostsContent | Where-Object { $_ -match '(?i)youtube\.com|youtu\.be' }
+            if ($ytHosts) {
+                Write-Color "[?] Your hosts file contains entries for youtube.com or youtu.be. This may cause problems with YouTube access" Yellow
+            }
+        }
+
+        $winwsRunning = [bool](Get-Process winws -ErrorAction SilentlyContinue)
+        $windivert = Get-Service WinDivert -ErrorAction SilentlyContinue
+        $windivertActive = $windivert -and ($windivert.Status -in @('Running', 'StopPending'))
+        if (-not $winwsRunning -and $windivertActive) {
+            Write-Color "[?] winws.exe is not running but WinDivert service is active. Attempting to delete WinDivert..." Yellow
+            sc.exe stop WinDivert 2>$null | Out-Null
+            sc.exe delete WinDivert 2>$null | Out-Null
+            $windivertAfter = Get-Service WinDivert -ErrorAction SilentlyContinue
+            if ($windivertAfter) {
+                Write-Color "[X] Failed to delete WinDivert. Checking for conflicting services..." Red
+                if (Get-Service GoodbyeDPI -ErrorAction SilentlyContinue) {
+                    Write-Color "[?] Found conflicting service: GoodbyeDPI. Stopping and removing..." Yellow
+                    Stop-Service GoodbyeDPI -Force -ErrorAction SilentlyContinue
+                    sc.exe delete GoodbyeDPI 2>$null | Out-Null
+                    sc.exe stop WinDivert 2>$null | Out-Null
+                    sc.exe delete WinDivert 2>$null | Out-Null
+                    if (-not (Get-Service WinDivert -ErrorAction SilentlyContinue)) {
+                        Write-Color "[OK] WinDivert successfully deleted after removing conflicting services" Green
+                    } else {
+                        Write-Color "[X] WinDivert still cannot be deleted. Check manually if any other bypass is using WinDivert." Red
+                    }
+                } else {
+                    Write-Color "[X] No conflicting services found. Check manually if any other bypass is using WinDivert." Red
+                }
+            } else {
+                Write-Color "[OK] WinDivert successfully removed" Green
+            }
+        }
 
         $conflicts = @("GoodbyeDPI", "discordfix_zapret", "winws1", "winws2") | Where-Object {
             Get-Service $_ -ErrorAction SilentlyContinue
         }
         if ($conflicts) {
-            Write-Color "[X] Conflicting services: $($conflicts -join ', ')" Red
+            Write-Color "[X] Conflicting bypass services found: $($conflicts -join ', ')" Red
             foreach ($c in $conflicts) {
+                Write-Color "  Stopping and removing service: $c" Yellow
                 Stop-Service $c -Force -ErrorAction SilentlyContinue
                 sc.exe delete $c | Out-Null
-                Write-Color "  Removed $c" Yellow
+                if ($LASTEXITCODE -eq 0) { Write-Color "[OK] Successfully removed service: $c" Green }
+                else { Write-Color "[X] Failed to remove service: $c" Red }
             }
-        } else { Write-Color "[OK] No conflicting bypass services" Green }
+            foreach ($n in @("WinDivert", "WinDivert14")) {
+                sc.exe stop $n 2>$null | Out-Null
+                sc.exe delete $n 2>$null | Out-Null
+            }
+        } else {
+            Write-Color "[OK] No conflicting bypass services" Green
+        }
+
+        if ($winwsRunning) { Write-Color "[OK] Bypass (winws.exe) is RUNNING" Green }
+        else { Write-Color "[?] Bypass (winws.exe) is NOT running" Yellow }
 
         Write-Color "Diagnostics complete" Cyan
     }

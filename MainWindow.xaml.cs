@@ -126,6 +126,12 @@ public partial class MainWindow : Window
 
         if (_isShuttingDown) return;
 
+        if (LocalizationService.RestartPending)
+        {
+            ExecuteShutdown();
+            return;
+        }
+
         if (_strategy.IsRunning())
         {
             e.Cancel = true;
