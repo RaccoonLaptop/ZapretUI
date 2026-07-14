@@ -117,6 +117,16 @@ public sealed class UpdateService
 
     private async Task<string> GetReferenceHostsContentAsync(CancellationToken ct)
     {
+        foreach (var path in GetLocalHostsFallbackPaths())
+        {
+            if (!File.Exists(path))
+                continue;
+
+            var content = await File.ReadAllTextAsync(path, ct).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(content))
+                return content;
+        }
+
         foreach (var url in HostsUrls)
         {
             try
@@ -134,18 +144,8 @@ public sealed class UpdateService
             }
             catch
             {
-                // Try local fallbacks below.
+                // Try next source.
             }
-        }
-
-        foreach (var path in GetLocalHostsFallbackPaths())
-        {
-            if (!File.Exists(path))
-                continue;
-
-            var content = await File.ReadAllTextAsync(path, ct).ConfigureAwait(false);
-            if (!string.IsNullOrWhiteSpace(content))
-                return content;
         }
 
         throw new InvalidOperationException("Failed to download hosts file and no local fallback is available.");
@@ -153,16 +153,16 @@ public sealed class UpdateService
 
     private IEnumerable<string> GetLocalHostsFallbackPaths()
     {
-        var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        var candidates = new[]
         {
-            Path.Combine(_paths.Root, ".service", "hosts"),
-            Path.Combine(ZapretPaths.GetBundledZapretPath(), ".service", "hosts"),
+            Path.Combine(AppContext.BaseDirectory, "zapret", ".service", "hosts"),
             Path.Combine(BundledZapretService.BundledDirectory, ".service", "hosts"),
             Path.Combine(AppContext.BaseDirectory, "packaging", "zapret", ".service", "hosts"),
-            Path.Combine(AppContext.BaseDirectory, "packaging", "zapret", "packaging", "zapret", ".service", "hosts")
+            Path.Combine(_paths.Root, ".service", "hosts"),
+            Path.Combine(ZapretPaths.GetBundledZapretPath(), ".service", "hosts"),
         };
 
-        return candidates;
+        return candidates.Distinct(StringComparer.OrdinalIgnoreCase);
     }
 
     private static List<string> ParseHostsLines(string content) =>
