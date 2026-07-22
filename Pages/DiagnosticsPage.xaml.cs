@@ -123,6 +123,12 @@ public partial class DiagnosticsPage : UserControl
                     AppendLine(line);
             }
             AppendLine("--- " + Loc.T("tools.done") + " ---");
+
+            if (UiHelpers.Confirm(Loc.T("diag.discord_cache_confirm"), Window.GetWindow(this)))
+            {
+                foreach (var line in DiscordCacheService.ClearCaches())
+                    AppendLine(line);
+            }
         }
         catch (Exception ex)
         {

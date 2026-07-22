@@ -87,6 +87,7 @@ public partial class ServicePage : UserControl
         var dataBtns = new WrapPanel { Margin = new Thickness(0, 0, 0, 0) };
         dataBtns.Children.Add(ActionBtn(Loc.T("service.update_ipset"), async () => await UpdateIpsetWithDialog()));
         dataBtns.Children.Add(ActionBtn(Loc.T("service.update_hosts"), async () => await UpdateHostsWithDialog()));
+        dataBtns.Children.Add(ActionBtn(Loc.T("service.replace_fakes"), async () => await ReplaceFakesAsync()));
         setStack.Children.Add(dataBtns);
 
         setCard.Child = setStack;
@@ -420,6 +421,42 @@ public partial class ServicePage : UserControl
         {
             UiHelpers.ShowResult(OwnerWindow, Loc.T("dialog.update_hosts"), $"{Loc.T("common.error_prefix")} {ex.Message}");
         }
+    }
+
+    private Task ReplaceFakesAsync()
+    {
+        var svc = new FakeReplacementService(_paths);
+        var status = svc.GetStatus();
+        if (status.Error is not null)
+        {
+            UiHelpers.ShowResult(OwnerWindow, Loc.T("fake.title"), status.Error);
+            return Task.CompletedTask;
+        }
+
+        if (status.AvailableFiles.Count == 0)
+        {
+            UiHelpers.ShowResult(OwnerWindow, Loc.T("fake.title"), Loc.T("fake.no_files"));
+            return Task.CompletedTask;
+        }
+
+        if (!FakeReplacementWindow.TryShow(status, out var target, out var file, OwnerWindow))
+            return Task.CompletedTask;
+
+        try
+        {
+            svc.Replace(target, file!);
+            var typeLabel = target == FakeTarget.DiscordUdp
+                ? Loc.T("fake.type_discord")
+                : Loc.T("fake.type_game");
+            var fakeName = Path.GetFileNameWithoutExtension(file!) ?? file!;
+            UiHelpers.ShowResult(OwnerWindow, Loc.T("fake.title"), Loc.F("fake.replaced", typeLabel, fakeName));
+        }
+        catch (Exception ex)
+        {
+            UiHelpers.ShowResult(OwnerWindow, Loc.T("fake.title"), $"{Loc.T("common.error_prefix")} {ex.Message}");
+        }
+
+        return Task.CompletedTask;
     }
 
     private static void OpenUrl(string url) =>
