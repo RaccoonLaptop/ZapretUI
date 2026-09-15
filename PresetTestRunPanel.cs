@@ -368,19 +368,20 @@ public sealed class PresetTestRunPanel : UserControl
             IsReadOnly = true,
             Height = 160,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            FontFamily = new FontFamily("Consolas"),
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            FontFamily = TerminalFonts.Mono,
             FontSize = 12,
             Background = (Brush)Application.Current.FindResource("InputBrush"),
             BorderThickness = new Thickness(0),
             Document = new FlowDocument()
         };
-        TextOptions.SetTextFormattingMode(_output, TextFormattingMode.Display);
+        TerminalFonts.ApplyDisplayMode(_output);
         AnsiTerminalRenderer.ApplyTerminalLayout(_output.Document);
         MouseWheelScrollHelper.Attach(_output);
 
         _input = new TextBox
         {
-            FontFamily = new FontFamily("Consolas"),
+            FontFamily = TerminalFonts.Mono,
             FontSize = 12,
             IsEnabled = false,
             Margin = new Thickness(0, 6, 0, 0)

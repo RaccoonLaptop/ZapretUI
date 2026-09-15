@@ -35,8 +35,10 @@ public static class TestTargetRowFormatter
     public static void ApplyRowInlines(TextBlock block, TestTargetRow row, int nameWidth)
     {
         block.Inlines.Clear();
-        block.FontFamily = new FontFamily("Consolas");
-        block.FontSize = 12.5;
+        block.FontFamily = TerminalFonts.Mono;
+        block.FontSize = TerminalFonts.Size;
+        block.TextWrapping = TextWrapping.NoWrap;
+        TerminalFonts.ApplyDisplayMode(block);
 
         block.Inlines.Add(new Run(row.Name.PadRight(nameWidth))
         {
@@ -51,8 +53,7 @@ public static class TestTargetRowFormatter
             });
             block.Inlines.Add(new Run(FormatPingValue(row.Ping))
             {
-                Foreground = PingBrush(row.Ping),
-                FontWeight = FontWeights.SemiBold
+                Foreground = PingBrush(row.Ping)
             });
             return;
         }
@@ -66,8 +67,7 @@ public static class TestTargetRowFormatter
         });
         block.Inlines.Add(new Run(FormatPingValue(row.Ping))
         {
-            Foreground = PingBrush(row.Ping),
-            FontWeight = FontWeights.SemiBold
+            Foreground = PingBrush(row.Ping)
         });
     }
 
@@ -79,8 +79,7 @@ public static class TestTargetRowFormatter
         });
         block.Inlines.Add(new Run(FormatProtocolToken(rawToken))
         {
-            Foreground = TokenBrush(rawToken),
-            FontWeight = FontWeights.SemiBold
+            Foreground = TokenBrush(rawToken)
         });
     }
 

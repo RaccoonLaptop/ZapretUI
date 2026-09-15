@@ -13,7 +13,7 @@ namespace ZapretUI.Helpers;
 /// </summary>
 public sealed class AnsiTerminalRenderer
 {
-    private static readonly FontFamily TerminalFont = new("Consolas, Courier New, Lucida Console");
+    private static readonly FontFamily TerminalFont = TerminalFonts.Mono;
     private const double TerminalFontSize = 13;
 
     private static readonly Regex CsiSequence = new(
@@ -52,9 +52,32 @@ public sealed class AnsiTerminalRenderer
         RemoveLiveParagraph(box);
         var p = CreateLineParagraph();
         foreach (var (text, fg) in segments)
-            p.Inlines.Add(CreateRun(text, fg));
+            p.Inlines.Add(CreateIsolatedSegment(text, fg));
         box.Document.Blocks.Add(p);
         box.ScrollToEnd();
+    }
+
+    /// <summary>
+    /// Separate visual elements per color span. Adjacent Runs with font-fallback
+    /// glyphs overlap on Windows 11 DirectWrite.
+    /// </summary>
+    private Inline CreateIsolatedSegment(string text, Brush foreground)
+    {
+        var block = new TextBlock
+        {
+            Text = text.Replace('\u00A0', ' '),
+            FontFamily = TerminalFont,
+            FontSize = TerminalFontSize,
+            Foreground = foreground,
+            TextWrapping = TextWrapping.NoWrap,
+            Margin = new Thickness(0),
+            Padding = new Thickness(0)
+        };
+        TerminalFonts.ApplyDisplayMode(block);
+        return new InlineUIContainer(block)
+        {
+            BaselineAlignment = BaselineAlignment.Center
+        };
     }
 
     public static void ApplyTerminalLayout(FlowDocument document)
@@ -68,7 +91,9 @@ public sealed class AnsiTerminalRenderer
         document.FontFamily = TerminalFont;
         document.FontSize = TerminalFontSize;
         document.PagePadding = new Thickness(4);
+        document.LineHeight = TerminalFontSize * 1.45;
         XmlAttributeProperties.SetXmlSpace(document, "preserve");
+        TerminalFonts.ApplyDisplayMode(document);
 
         if (!document.Resources.Contains(typeof(TextElement)))
         {
@@ -172,13 +197,14 @@ public sealed class AnsiTerminalRenderer
         foreach (var run in _lineRuns)
         {
             var text = run.Text.Replace('\u00A0', ' ');
-            _liveParagraph.Inlines.Add(CreateRun(TestOutputLocalizer.TranslateLine(text), run.Foreground));
+            _liveParagraph.Inlines.Add(CreateIsolatedSegment(
+                TestOutputLocalizer.TranslateLine(text), run.Foreground));
         }
 
         if (_segmentText.Length > 0)
         {
             var partial = TestOutputLocalizer.TranslateLine(_segmentText.ToString());
-            _liveParagraph.Inlines.Add(CreateRun(partial, _foreground));
+            _liveParagraph.Inlines.Add(CreateIsolatedSegment(partial, _foreground));
         }
 
         box.Document.Blocks.Add(_liveParagraph);
@@ -242,8 +268,8 @@ public sealed class AnsiTerminalRenderer
         foreach (var run in _lineRuns)
         {
             var text = run.Text.Replace('\u00A0', ' ');
-            run.Text = PreserveTerminalSpaces(TestOutputLocalizer.TranslateLine(text));
-            p.Inlines.Add(run);
+            p.Inlines.Add(CreateIsolatedSegment(
+                TestOutputLocalizer.TranslateLine(text), run.Foreground));
         }
         _lineRuns.Clear();
         box.Document.Blocks.Add(p);
@@ -302,8 +328,6 @@ public sealed class AnsiTerminalRenderer
         {
             Margin = new Thickness(0),
             Padding = new Thickness(0),
-            LineHeight = TerminalFontSize + 3,
-            LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
             FontFamily = TerminalFont,
             FontSize = TerminalFontSize
         };

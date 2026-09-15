@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Media;
 using ZapretUI.Models;
 
@@ -18,11 +17,16 @@ public static class TestTargetTableRenderer
         var table = new Grid
         {
             HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(0, 0, 8, 0)
+            Margin = new Thickness(0, 0, 8, 0),
+            UseLayoutRounding = true
         };
         Grid.SetIsSharedSizeScope(table, true);
-        table.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, SharedSizeGroup = "Name" });
-        table.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        table.ColumnDefinitions.Add(AutoCol("Name"));
+        table.ColumnDefinitions.Add(AutoCol("Http"));
+        table.ColumnDefinitions.Add(AutoCol("Tls12"));
+        table.ColumnDefinitions.Add(AutoCol("Tls13"));
+        table.ColumnDefinitions.Add(AutoCol("PingLabel"));
+        table.ColumnDefinitions.Add(AutoCol("PingValue"));
 
         for (var i = 0; i < rows.Count; i++)
         {
@@ -33,77 +37,58 @@ public static class TestTargetTableRenderer
         host.Children.Add(table);
     }
 
+    private static ColumnDefinition AutoCol(string group) => new()
+    {
+        Width = GridLength.Auto,
+        SharedSizeGroup = group
+    };
+
     private static void AddRow(Grid table, TestTargetRow row, int rowIndex)
     {
-        var name = new TextBlock
-        {
-            Text = row.Name,
-            FontFamily = new FontFamily("Consolas"),
-            FontSize = 12.5,
-            Foreground = (Brush)Application.Current.FindResource("TextBrush"),
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, 0, 10, 4)
-        };
-        Grid.SetRow(name, rowIndex);
-        Grid.SetColumn(name, 0);
-        table.Children.Add(name);
-
-        var details = new TextBlock
-        {
-            FontFamily = new FontFamily("Consolas"),
-            FontSize = 12.5,
-            TextWrapping = TextWrapping.NoWrap,
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, 0, 0, 4)
-        };
+        AddCell(table, row.Name, TestTableLineFormatter.TextBrush(), rowIndex, 0, trailingPad: 10);
 
         if (row.PingOnly)
         {
-            details.Inlines.Add(new Run(" | " + TestTargetRowFormatter.FormatPingLabel())
-            {
-                Foreground = (Brush)Application.Current.FindResource("TextMutedBrush")
-            });
-            details.Inlines.Add(new Run(TestTargetRowFormatter.FormatPingValue(row.Ping))
-            {
-                Foreground = TestTargetRowFormatter.PingBrush(row.Ping),
-                FontWeight = FontWeights.SemiBold
-            });
-        }
-        else
-        {
-            AppendToken(details, row.Http);
-            AppendToken(details, row.Tls12);
-            AppendToken(details, row.Tls13);
-            if (!IsPingHidden(row.Ping))
-            {
-                details.Inlines.Add(new Run(" | " + TestTargetRowFormatter.FormatPingLabel())
-                {
-                    Foreground = (Brush)Application.Current.FindResource("TextMutedBrush")
-                });
-                details.Inlines.Add(new Run(TestTargetRowFormatter.FormatPingValue(row.Ping))
-                {
-                    Foreground = TestTargetRowFormatter.PingBrush(row.Ping),
-                    FontWeight = FontWeights.SemiBold
-                });
-            }
+            AddCell(table, " | " + TestTargetRowFormatter.FormatPingLabel(),
+                TestTableLineFormatter.MutedBrush(), rowIndex, 1);
+            AddCell(table, TestTargetRowFormatter.FormatPingValue(row.Ping),
+                TestTargetRowFormatter.PingBrush(row.Ping), rowIndex, 2);
+            return;
         }
 
-        Grid.SetRow(details, rowIndex);
-        Grid.SetColumn(details, 1);
-        table.Children.Add(details);
+        AddToken(table, row.Http, rowIndex, 1);
+        AddToken(table, row.Tls12, rowIndex, 2);
+        AddToken(table, row.Tls13, rowIndex, 3);
+
+        if (IsPingHidden(row.Ping))
+            return;
+
+        AddCell(table, " | " + TestTargetRowFormatter.FormatPingLabel(),
+            TestTableLineFormatter.MutedBrush(), rowIndex, 4);
+        AddCell(table, TestTargetRowFormatter.FormatPingValue(row.Ping),
+            TestTargetRowFormatter.PingBrush(row.Ping), rowIndex, 5);
     }
 
-    private static void AppendToken(TextBlock block, string rawToken)
+    private static void AddToken(Grid table, string rawToken, int row, int column) =>
+        AddCell(table, " | " + TestTargetRowFormatter.FormatProtocolToken(rawToken),
+            TestTargetRowFormatter.TokenBrush(rawToken), row, column);
+
+    private static void AddCell(Grid table, string text, Brush foreground, int row, int column, double trailingPad = 0)
     {
-        block.Inlines.Add(new Run(" | ")
+        var block = new TextBlock
         {
-            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush")
-        });
-        block.Inlines.Add(new Run(TestTargetRowFormatter.FormatProtocolToken(rawToken))
-        {
-            Foreground = TestTargetRowFormatter.TokenBrush(rawToken),
-            FontWeight = FontWeights.SemiBold
-        });
+            Text = text,
+            FontFamily = TerminalFonts.Mono,
+            FontSize = TerminalFonts.Size,
+            Foreground = foreground,
+            TextWrapping = TextWrapping.NoWrap,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, trailingPad, 4)
+        };
+        TerminalFonts.ApplyDisplayMode(block);
+        Grid.SetRow(block, row);
+        Grid.SetColumn(block, column);
+        table.Children.Add(block);
     }
 
     private static bool IsPingHidden(string? ping) =>
