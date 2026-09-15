@@ -208,6 +208,8 @@ switch ($Action) {
     }
 
     "RunDiagnostics" {
+        Write-Color "[OK] Zapret is installed in: '$Root'" Green
+
         $bfe = Get-Service BFE -ErrorAction SilentlyContinue
         if ($bfe -and $bfe.Status -eq 'Running') { Write-Color "[OK] Base Filtering Engine check passed" Green }
         else { Write-Color "[X] Base Filtering Engine is not running. This service is required for zapret to work" Red }
@@ -273,6 +275,20 @@ switch ($Action) {
             Write-Color "[X] Try to uninstall or disable SmartByte through services.msc" Red
         } else {
             Write-Color "[OK] SmartByte check passed" Green
+        }
+
+        if ($Root -match '[\u0430-\u044f\u0410-\u042f\u0451\u0401]') {
+            Write-Color "[?] The path where Zapret is installed contains Cyrillic characters" Yellow
+            Write-Color "[?] If bypass doesn't work, try to move Zapret to another directory, for example in C:\zapret" Yellow
+        } else {
+            Write-Color "[OK] Cyrillic path check passed" Green
+        }
+
+        if ($env:OneDrive -and $Root.StartsWith($env:OneDrive, [StringComparison]::OrdinalIgnoreCase)) {
+            Write-Color "[X] Zapret is installed in a OneDrive folder" Red
+            Write-Color "[X] If bypass doesn't work, try to move Zapret to another directory, for example in C:\zapret" Red
+        } else {
+            Write-Color "[OK] OneDrive check passed" Green
         }
 
         $sys = Get-ChildItem $BinPath -Filter "*.sys" -ErrorAction SilentlyContinue
@@ -391,7 +407,7 @@ switch ($Action) {
         }
         if (-not $downloaded) {
             $fallbacks = @(
-                (Join-Path $ZapretRoot ".service\hosts"),
+                (Join-Path $Root ".service\hosts"),
                 (Join-Path (Split-Path $PSScriptRoot -Parent) "packaging\zapret\.service\hosts")
             )
             foreach ($fallback in $fallbacks) {

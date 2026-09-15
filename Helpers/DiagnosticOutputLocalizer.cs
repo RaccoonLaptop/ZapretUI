@@ -32,6 +32,12 @@ internal static class DiagnosticOutputLocalizer
         ["[X] SmartByte services found. SmartByte conflicts with zapret"] = "diag.smartbyte_fail",
         ["[X] Try to uninstall or disable SmartByte through services.msc"] = "diag.smartbyte_hint",
         ["[OK] SmartByte check passed"] = "diag.smartbyte_ok",
+        ["[?] The path where Zapret is installed contains Cyrillic characters"] = "diag.cyrillic_warn",
+        ["[?] If bypass doesn't work, try to move Zapret to another directory, for example in C:\\zapret"] = "diag.move_hint",
+        ["[OK] Cyrillic path check passed"] = "diag.cyrillic_ok",
+        ["[X] Zapret is installed in a OneDrive folder"] = "diag.onedrive_fail",
+        ["[X] If bypass doesn't work, try to move Zapret to another directory, for example in C:\\zapret"] = "diag.move_hint_error",
+        ["[OK] OneDrive check passed"] = "diag.onedrive_ok",
         ["[X] WinDivert64.sys file NOT found."] = "diag.windivert_missing",
         ["[OK] WinDivert driver present"] = "diag.windivert_ok",
         ["[?] Make sure that all VPNs are disabled"] = "diag.vpn_hint",
@@ -61,6 +67,7 @@ internal static class DiagnosticOutputLocalizer
         (new(@"^  Stopping and removing service: (.+)$", RegexOptions.Compiled | RegexOptions.CultureInvariant), "diag.service_stopping"),
         (new(@"^\[OK\] Successfully removed service: (.+)$", RegexOptions.Compiled | RegexOptions.CultureInvariant), "diag.removed_ok"),
         (new(@"^\[X\] Failed to remove service: (.+)$", RegexOptions.Compiled | RegexOptions.CultureInvariant), "diag.removed_fail"),
+        (new(@"^\[OK\] Zapret is installed in: (.+)$", RegexOptions.Compiled | RegexOptions.CultureInvariant), "diag.install_path"),
     ];
 
     public static string Localize(string? raw)

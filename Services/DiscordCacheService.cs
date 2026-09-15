@@ -9,7 +9,9 @@ public static class DiscordCacheService
     private static readonly (string Process, string Name, string CacheDir)[] Targets =
     [
         ("Discord.exe", "Discord", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "discord")),
-        ("DiscordPTB.exe", "Discord PTB", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "discordptb"))
+        ("DiscordPTB.exe", "Discord PTB", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "discordptb")),
+        ("DiscordCanary.exe", "Discord Canary", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "discordcanary")),
+        ("DiscordDevelopment.exe", "Discord Development", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "discorddevelopment"))
     ];
 
     public static IReadOnlyList<string> ClearCaches()
