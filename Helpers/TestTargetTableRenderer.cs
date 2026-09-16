@@ -75,9 +75,10 @@ public static class TestTargetTableRenderer
 
     private static void AddCell(Grid table, string text, Brush foreground, int row, int column, double trailingPad = 0)
     {
+        var visible = text.Replace(' ', '\u00A0');
         var block = new TextBlock
         {
-            Text = text,
+            Text = visible,
             FontFamily = TerminalFonts.Mono,
             FontSize = TerminalFonts.Size,
             Foreground = foreground,

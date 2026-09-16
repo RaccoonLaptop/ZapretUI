@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
+using ZapretUI.Models;
 
 namespace ZapretUI.Helpers;
 
@@ -74,23 +76,19 @@ internal sealed class TerminalTableBuffer
     {
         if (_testRows.Count == 0) return;
 
-        var displayRows = _testRows.Select(TestOutputLocalizer.ToDisplayRow).ToList();
-        var nameW = displayRows.Max(r => r.Name.Length);
-        var urlRows = displayRows.Where(r => !r.PingOnly).ToList();
-        var httpW = urlRows.Count > 0 ? urlRows.Max(r => r.Http!.Length) : 0;
-        var tls12W = urlRows.Count > 0 ? urlRows.Max(r => r.Tls12!.Length) : 0;
-        var tls13W = urlRows.Count > 0 ? urlRows.Max(r => r.Tls13!.Length) : 0;
-        var pingLabel = TestOutputLocalizer.IsActive ? " | Пинг: " : " | Ping: ";
-
-        foreach (var row in displayRows)
+        var targets = _testRows.Select(row => new TestTargetRow
         {
-            var segments = row.PingOnly
-                ? FormatPingOnlyRow(row, nameW, pingLabel)
-                : FormatUrlRow(row, nameW, httpW, tls12W, tls13W, pingLabel);
+            Name = row.Name,
+            Http = row.Http ?? "…",
+            Tls12 = row.Tls12 ?? "…",
+            Tls13 = row.Tls13 ?? "…",
+            Ping = row.Ping,
+            PingOnly = row.PingOnly
+        }).ToList();
 
-            renderer.AppendFormattedLine(box, segments);
-        }
-
+        var host = new StackPanel { Orientation = Orientation.Vertical };
+        TestTargetTableRenderer.Render(host, targets);
+        renderer.AppendUi(box, host);
         _testRows.Clear();
     }
 
@@ -122,35 +120,20 @@ internal sealed class TerminalTableBuffer
 
         _analyticsRows.Clear();
     }
-
-    private static List<(string Text, Brush Foreground)> FormatUrlRow(
-        TestTableRow row, int nameW, int httpW, int tls12W, int tls13W, string pingLabel) =>
-    [
-        (Indent + row.Name.PadRight(nameW), TestTableLineFormatter.TextBrush()),
-        (" | " + row.Http!.PadRight(httpW), TestTableLineFormatter.TokenBrush(row.Http)),
-        (" | " + row.Tls12!.PadRight(tls12W), TestTableLineFormatter.TokenBrush(row.Tls12)),
-        (" | " + row.Tls13!.PadRight(tls13W), TestTableLineFormatter.TokenBrush(row.Tls13)),
-        (pingLabel, TestTableLineFormatter.MutedBrush()),
-        (row.Ping, TestTableLineFormatter.PingBrush(row.Ping))
-    ];
-
-    private static List<(string Text, Brush Foreground)> FormatPingOnlyRow(
-        TestTableRow row, int nameW, string pingLabel) =>
-    [
-        (Indent + row.Name.PadRight(nameW), TestTableLineFormatter.TextBrush()),
-        (pingLabel, TestTableLineFormatter.MutedBrush()),
-        (row.Ping, TestTableLineFormatter.PingBrush(row.Ping))
-    ];
 }
 
 internal static class TestTableLineFormatter
 {
     private static readonly Regex UrlTestRow = new(
-        @"^\s*(?<name>.+?)\s+(?<http>HTTP:\S+)\s+(?<tls12>TLS1\.2:\S+)\s+(?<tls13>TLS1\.3:\S+)\s*\|\s*Ping:\s*(?<ping>.+)$",
+        @"^\s*(?<name>[A-Za-z][A-Za-z0-9_]*)\s*(?<http>HTTP:\S+)\s*(?<tls12>TLS1\.2:\S+)\s*(?<tls13>TLS1\.3:\S+)\s*\|\s*(?:Ping|Пинг):\s*(?<ping>.+)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex PingOnlyRow = new(
-        @"^\s*(?<name>.+?)\s+Ping:\s*(?<ping>.+)$",
+        @"^\s*(?<name>[A-Za-z][A-Za-z0-9_]*)\s*(?:Ping|Пинг):\s*(?<ping>.+)$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex GluedProtocol = new(
+        @"(?<=\w)(?=HTTP:|TLS1\.|Ping:|Пинг:)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex StandardAnalyticsRow = new(
@@ -162,8 +145,10 @@ internal static class TestTableLineFormatter
 
     public static bool ShouldFlushTestTable(string plainLine) =>
         IsAnalyticsHeader(plainLine)
+        || plainLine.Contains("=== АНАЛИТИКА ===", StringComparison.Ordinal)
         || ConfigHeader.IsMatch(plainLine)
-        || plainLine.Contains("All tests finished", StringComparison.OrdinalIgnoreCase);
+        || plainLine.Contains("All tests finished", StringComparison.OrdinalIgnoreCase)
+        || plainLine.Contains("Все тесты завершены", StringComparison.OrdinalIgnoreCase);
 
     private static readonly Regex ConfigHeader = new(
         @"^\s*\[\d+/\d+\]",
@@ -172,31 +157,33 @@ internal static class TestTableLineFormatter
     public static bool TryParseTestRow(string plainLine, out TestTableRow row)
     {
         row = null!;
+        var line = NormalizeParseLine(plainLine);
+        if (line.Length == 0) return false;
 
-        var m = UrlTestRow.Match(plainLine);
+        var m = UrlTestRow.Match(line);
         if (m.Success)
         {
             row = new TestTableRow
             {
                 Name = m.Groups["name"].Value.Trim(),
-                Http = NormalizeToken(m.Groups["http"].Value),
-                Tls12 = NormalizeToken(m.Groups["tls12"].Value),
-                Tls13 = NormalizeToken(m.Groups["tls13"].Value),
-                Ping = m.Groups["ping"].Value.Trim()
+                Http = CanonicalToken(m.Groups["http"].Value),
+                Tls12 = CanonicalToken(m.Groups["tls12"].Value),
+                Tls13 = CanonicalToken(m.Groups["tls13"].Value),
+                Ping = CanonicalPing(m.Groups["ping"].Value)
             };
             return true;
         }
 
-        if (!plainLine.Contains("HTTP:", StringComparison.Ordinal)
-            && !plainLine.Contains("TLS1.2:", StringComparison.Ordinal))
+        if (!line.Contains("HTTP:", StringComparison.Ordinal)
+            && !line.Contains("TLS1.2:", StringComparison.Ordinal))
         {
-            m = PingOnlyRow.Match(plainLine);
+            m = PingOnlyRow.Match(line);
             if (m.Success)
             {
                 row = new TestTableRow
                 {
                     Name = m.Groups["name"].Value.Trim(),
-                    Ping = m.Groups["ping"].Value.Trim()
+                    Ping = CanonicalPing(m.Groups["ping"].Value)
                 };
                 return true;
             }
@@ -204,6 +191,28 @@ internal static class TestTableLineFormatter
 
         return false;
     }
+
+    private static string NormalizeParseLine(string plainLine)
+    {
+        var line = plainLine.Replace('\u00A0', ' ').Trim();
+        if (line.Length == 0) return line;
+        return GluedProtocol.Replace(line, " ");
+    }
+
+    private static string CanonicalToken(string token)
+    {
+        var value = NormalizeToken(token).Replace(" ", "", StringComparison.Ordinal);
+        return value
+            .Replace("ОШИБКА", "ERROR", StringComparison.Ordinal)
+            .Replace("НЕПОДД", "UNSUP", StringComparison.Ordinal)
+            .Replace("БЛОК", "BLOCKED", StringComparison.Ordinal)
+            .Replace("ОК", "OK", StringComparison.Ordinal);
+    }
+
+    private static string CanonicalPing(string ping) =>
+        ping.Replace('\u00A0', ' ').Trim()
+            .Replace("Таймаут", "Timeout", StringComparison.OrdinalIgnoreCase)
+            .Replace(" мс", " ms", StringComparison.Ordinal);
 
     public static bool TryParseAnalyticsRow(string plainLine, out AnalyticsTableRow row)
     {

@@ -54,6 +54,17 @@ public sealed class AnsiTerminalRenderer
         box.ScrollToEnd();
     }
 
+    public void AppendUi(RichTextBox box, UIElement content)
+    {
+        RemoveLiveBlock(box);
+        box.Document.Blocks.Add(new BlockUIContainer(content)
+        {
+            Margin = new Thickness(0),
+            Padding = new Thickness(0)
+        });
+        box.ScrollToEnd();
+    }
+
     public static void ApplyTerminalLayout(FlowDocument document)
     {
         // Prevent soft-wrap like PowerShell: one long line stays on one row (horizontal scroll).
@@ -151,10 +162,8 @@ public sealed class AnsiTerminalRenderer
                 CommitLine(box);
                 break;
             case '\r':
-                FlushSegment();
-                _lineRuns.Clear();
-                _segmentText.Clear();
-                RemoveLiveBlock(box);
+                // ConPTY on Win11 often emits CR between Write-Host -NoNewline
+                // pieces. Keep the line instead of wiping it.
                 break;
             default:
                 _segmentText.Append(c);
@@ -293,7 +302,8 @@ public sealed class AnsiTerminalRenderer
     private static string LocalizeSegment(string text)
     {
         var plain = text.Replace('\u00A0', ' ');
-        return TestOutputLocalizer.TranslateToken(TestOutputLocalizer.TranslateLine(plain));
+        return TestOutputLocalizer.TranslatePing(
+            TestOutputLocalizer.TranslateToken(TestOutputLocalizer.TranslateLine(plain)));
     }
 
     private Block CreateHorizontalLine(IEnumerable<(string Text, Brush Foreground)> segments)
@@ -315,19 +325,40 @@ public sealed class AnsiTerminalRenderer
 
     private TextBlock CreatePlainBlock(string text, Brush foreground)
     {
+        var visible = PreserveTerminalSpaces(text.Replace('\u00A0', ' '));
         var block = new TextBlock
         {
-            Text = PreserveTerminalSpaces(text.Replace('\u00A0', ' ')),
+            Text = visible,
             FontFamily = TerminalFont,
             FontSize = TerminalFontSize,
             Foreground = foreground,
             TextWrapping = TextWrapping.NoWrap,
             Margin = new Thickness(0),
-            Padding = new Thickness(0)
+            Padding = new Thickness(0),
+            MinWidth = MeasureMonoWidth(visible)
         };
         TerminalFonts.ApplyDisplayMode(block);
         XmlAttributeProperties.SetXmlSpace(block, "preserve");
         return block;
+    }
+
+    private static double MeasureMonoWidth(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return 0;
+
+        var dpi = 1.0;
+        if (Application.Current?.MainWindow is { } window)
+            dpi = VisualTreeHelper.GetDpi(window).PixelsPerDip;
+
+        var formatted = new FormattedText(
+            text,
+            System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            new Typeface(TerminalFont, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal),
+            TerminalFontSize,
+            Brushes.Black,
+            dpi);
+        return Math.Ceiling(formatted.WidthIncludingTrailingWhitespace);
     }
 
     private static Paragraph CreateLineParagraph()

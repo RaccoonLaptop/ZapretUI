@@ -84,7 +84,9 @@ public sealed class TestRunTracker
     {
         if (string.IsNullOrEmpty(chunk)) return;
 
-        var plain = StripAnsi(chunk);
+        var plain = StripAnsi(chunk)
+            .Replace("\r\n", "\n")
+            .Replace("\r", "");
         _lineBuffer.Append(plain);
 
         while (true)
@@ -92,10 +94,7 @@ public sealed class TestRunTracker
             var text = _lineBuffer.ToString();
             var nl = text.IndexOf('\n');
             if (nl < 0)
-            {
-                TrimCarriageReturnOverwrite();
                 break;
-            }
 
             var line = NormalizePhysicalLine(text[..nl]);
             _lineBuffer.Clear();
@@ -407,24 +406,7 @@ public sealed class TestRunTracker
         _lineBuffer.Clear();
     }
 
-    private void TrimCarriageReturnOverwrite()
-    {
-        var text = _lineBuffer.ToString();
-        var idx = text.LastIndexOf('\r');
-        if (idx < 0) return;
-
-        _lineBuffer.Clear();
-        _lineBuffer.Append(text[(idx + 1)..]);
-    }
-
-    private static string NormalizePhysicalLine(string line)
-    {
-        line = line.TrimEnd('\r');
-        var idx = line.LastIndexOf('\r');
-        if (idx >= 0)
-            line = line[(idx + 1)..];
-        return line.Trim();
-    }
+    private static string NormalizePhysicalLine(string line) => line.Trim();
 
     private void Notify() => Changed?.Invoke();
 
@@ -434,6 +416,10 @@ public sealed class TestRunTracker
         if (string.IsNullOrEmpty(rawName))
             return rawName;
 
+        var cut = Regex.Match(rawName, @"^(.*?)(?:HTTP:|TLS1\.|Ping:|Пинг:)", RegexOptions.CultureInvariant);
+        if (cut.Success && cut.Groups[1].Value.Trim().Length > 0)
+            rawName = cut.Groups[1].Value.Trim();
+
         var leading = Regex.Match(rawName, @"^(\w+)");
         if (!leading.Success)
             return rawName;
@@ -442,7 +428,17 @@ public sealed class TestRunTracker
         if (_templateNames.TryGetValue(key, out var templateName))
             return templateName;
 
-        return leading.Groups[1].Value;
+        string? best = null;
+        foreach (var kv in _templateNames)
+        {
+            if (!key.StartsWith(kv.Key, StringComparison.OrdinalIgnoreCase)
+                && !kv.Key.StartsWith(key, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (best is null || kv.Key.Length > best.Length)
+                best = kv.Value;
+        }
+
+        return best ?? leading.Groups[1].Value;
     }
 
     private static Dictionary<string, string> BuildTemplateNameMap(IReadOnlyList<TestTargetDefinition> template)
