@@ -28,7 +28,7 @@ public sealed class AnsiTerminalRenderer
     private Brush? _background;
     private bool _skipNextBlankLine;
     private readonly TerminalTableBuffer _tableBuffer = new();
-    private Paragraph? _liveParagraph;
+    private Block? _liveBlock;
 
     public AnsiTerminalRenderer()
     {
@@ -44,40 +44,14 @@ public sealed class AnsiTerminalRenderer
         _background = null;
         _skipNextBlankLine = false;
         _tableBuffer.Clear();
-        _liveParagraph = null;
+        _liveBlock = null;
     }
 
     public void AppendFormattedLine(RichTextBox box, IReadOnlyList<(string Text, Brush Foreground)> segments)
     {
-        RemoveLiveParagraph(box);
-        var p = CreateLineParagraph();
-        foreach (var (text, fg) in segments)
-            p.Inlines.Add(CreateIsolatedSegment(text, fg));
-        box.Document.Blocks.Add(p);
+        RemoveLiveBlock(box);
+        box.Document.Blocks.Add(CreateHorizontalLine(segments.Select(s => (s.Text, s.Foreground))));
         box.ScrollToEnd();
-    }
-
-    /// <summary>
-    /// Separate visual elements per color span. Adjacent Runs with font-fallback
-    /// glyphs overlap on Windows 11 DirectWrite.
-    /// </summary>
-    private Inline CreateIsolatedSegment(string text, Brush foreground)
-    {
-        var block = new TextBlock
-        {
-            Text = text.Replace('\u00A0', ' '),
-            FontFamily = TerminalFont,
-            FontSize = TerminalFontSize,
-            Foreground = foreground,
-            TextWrapping = TextWrapping.NoWrap,
-            Margin = new Thickness(0),
-            Padding = new Thickness(0)
-        };
-        TerminalFonts.ApplyDisplayMode(block);
-        return new InlineUIContainer(block)
-        {
-            BaselineAlignment = BaselineAlignment.Center
-        };
     }
 
     public static void ApplyTerminalLayout(FlowDocument document)
@@ -111,7 +85,7 @@ public sealed class AnsiTerminalRenderer
         Reset();
         box.Document.Blocks.Clear();
         ApplyTerminalLayout(box.Document);
-        _liveParagraph = null;
+        _liveBlock = null;
     }
 
     public void Append(RichTextBox box, string chunk)
@@ -133,8 +107,8 @@ public sealed class AnsiTerminalRenderer
 
     private void ProcessPending(RichTextBox box)
     {
-        // PowerShell uses CR+LF; a lone CR was clearing the line buffer before LF — text never appeared.
-        var text = _pending.ToString().Replace("\r\n", "\n").Replace("\r", "");
+        // Keep lone CR so in-place updates can replace the current line.
+        var text = _pending.ToString().Replace("\r\n", "\n");
         _pending.Clear();
         var i = 0;
 
@@ -176,6 +150,12 @@ public sealed class AnsiTerminalRenderer
                 FlushSegment();
                 CommitLine(box);
                 break;
+            case '\r':
+                FlushSegment();
+                _lineRuns.Clear();
+                _segmentText.Clear();
+                RemoveLiveBlock(box);
+                break;
             default:
                 _segmentText.Append(c);
                 break;
@@ -187,36 +167,28 @@ public sealed class AnsiTerminalRenderer
     {
         if (_segmentText.Length == 0 && _lineRuns.Count == 0)
         {
-            RemoveLiveParagraph(box);
+            RemoveLiveBlock(box);
             return;
         }
 
-        RemoveLiveParagraph(box);
-        _liveParagraph = CreateLineParagraph();
-
-        foreach (var run in _lineRuns)
-        {
-            var text = run.Text.Replace('\u00A0', ' ');
-            _liveParagraph.Inlines.Add(CreateIsolatedSegment(
-                TestOutputLocalizer.TranslateLine(text), run.Foreground));
-        }
-
+        var segments = _lineRuns
+            .Select(run => (LocalizeSegment(run.Text), run.Foreground))
+            .ToList();
         if (_segmentText.Length > 0)
-        {
-            var partial = TestOutputLocalizer.TranslateLine(_segmentText.ToString());
-            _liveParagraph.Inlines.Add(CreateIsolatedSegment(partial, _foreground));
-        }
+            segments.Add((LocalizeSegment(_segmentText.ToString()), _foreground));
 
-        box.Document.Blocks.Add(_liveParagraph);
+        RemoveLiveBlock(box);
+        _liveBlock = CreateHorizontalLine(segments);
+        box.Document.Blocks.Add(_liveBlock);
         box.ScrollToEnd();
     }
 
-    private void RemoveLiveParagraph(RichTextBox box)
+    private void RemoveLiveBlock(RichTextBox box)
     {
-        if (_liveParagraph is null) return;
-        if (box.Document.Blocks.Contains(_liveParagraph))
-            box.Document.Blocks.Remove(_liveParagraph);
-        _liveParagraph = null;
+        if (_liveBlock is null) return;
+        if (box.Document.Blocks.Contains(_liveBlock))
+            box.Document.Blocks.Remove(_liveBlock);
+        _liveBlock = null;
     }
 
     private void HandleCsi(RichTextBox box, string sequence)
@@ -235,7 +207,7 @@ public sealed class AnsiTerminalRenderer
 
     private void CommitLine(RichTextBox box)
     {
-        RemoveLiveParagraph(box);
+        RemoveLiveBlock(box);
         FlushSegment();
 
         var isEmpty = _lineRuns.Count == 0;
@@ -264,15 +236,11 @@ public sealed class AnsiTerminalRenderer
 
         _tableBuffer.FlushBeforeNonTableLine(box, this);
 
-        var p = CreateLineParagraph();
-        foreach (var run in _lineRuns)
-        {
-            var text = run.Text.Replace('\u00A0', ' ');
-            p.Inlines.Add(CreateIsolatedSegment(
-                TestOutputLocalizer.TranslateLine(text), run.Foreground));
-        }
+        var segments = _lineRuns
+            .Select(run => (LocalizeSegment(run.Text), run.Foreground))
+            .ToList();
         _lineRuns.Clear();
-        box.Document.Blocks.Add(p);
+        box.Document.Blocks.Add(CreateHorizontalLine(segments));
         box.ScrollToEnd();
     }
 
@@ -321,6 +289,46 @@ public sealed class AnsiTerminalRenderer
     /// <summary>WPF collapses normal spaces between colored Runs; NBSP keeps column padding.</summary>
     private static string PreserveTerminalSpaces(string text) =>
         text.Replace(' ', '\u00A0');
+
+    private static string LocalizeSegment(string text)
+    {
+        var plain = text.Replace('\u00A0', ' ');
+        return TestOutputLocalizer.TranslateToken(TestOutputLocalizer.TranslateLine(plain));
+    }
+
+    private Block CreateHorizontalLine(IEnumerable<(string Text, Brush Foreground)> segments)
+    {
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+        foreach (var (text, fg) in segments)
+            row.Children.Add(CreatePlainBlock(text, fg));
+
+        return new BlockUIContainer(row)
+        {
+            Margin = new Thickness(0),
+            Padding = new Thickness(0)
+        };
+    }
+
+    private TextBlock CreatePlainBlock(string text, Brush foreground)
+    {
+        var block = new TextBlock
+        {
+            Text = PreserveTerminalSpaces(text.Replace('\u00A0', ' ')),
+            FontFamily = TerminalFont,
+            FontSize = TerminalFontSize,
+            Foreground = foreground,
+            TextWrapping = TextWrapping.NoWrap,
+            Margin = new Thickness(0),
+            Padding = new Thickness(0)
+        };
+        TerminalFonts.ApplyDisplayMode(block);
+        XmlAttributeProperties.SetXmlSpace(block, "preserve");
+        return block;
+    }
 
     private static Paragraph CreateLineParagraph()
     {

@@ -50,9 +50,9 @@ public static class TestTargetTableRenderer
         if (row.PingOnly)
         {
             AddCell(table, " | " + TestTargetRowFormatter.FormatPingLabel(),
-                TestTableLineFormatter.MutedBrush(), rowIndex, 1);
+                TestTableLineFormatter.MutedBrush(), rowIndex, 4);
             AddCell(table, TestTargetRowFormatter.FormatPingValue(row.Ping),
-                TestTargetRowFormatter.PingBrush(row.Ping), rowIndex, 2);
+                TestTargetRowFormatter.PingBrush(row.Ping), rowIndex, 5);
             return;
         }
 
