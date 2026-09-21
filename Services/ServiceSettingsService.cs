@@ -115,7 +115,7 @@ public sealed class ServiceSettingsService
         if (string.IsNullOrWhiteSpace(value))
             return false;
 
-        var compact = value.Replace(" ", "", StringComparison.Ordinal);
+        var compact = CompactPortRange(value);
         if (compact.Length == 0)
             return false;
 
@@ -127,6 +127,69 @@ public sealed class ServiceSettingsService
 
         normalized = compact;
         return true;
+    }
+
+    public static string CompactPortRange(string? value) =>
+        string.IsNullOrEmpty(value) ? "" : value.Replace(" ", "", StringComparison.Ordinal);
+
+    public static string SanitizePortRangeInput(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "";
+
+        var chars = value.Where(static c => c is >= '0' and <= '9' or '-' or ',').ToArray();
+        return new string(chars);
+    }
+
+    public static bool IsAllowedPortRangeDraft(string? value)
+    {
+        var compact = CompactPortRange(value);
+        if (compact.Length == 0)
+            return true;
+        if (compact.Any(static c => c is not (>= '0' and <= '9') and not '-' and not ','))
+            return false;
+
+        var parts = compact.Split(',');
+        for (var i = 0; i < parts.Length; i++)
+        {
+            var part = parts[i];
+            var isLast = i == parts.Length - 1;
+            if (part.Length == 0)
+                return isLast && i > 0;
+
+            var dash = part.IndexOf('-');
+            if (dash < 0)
+            {
+                if (!IsDraftPortNumber(part, complete: true))
+                    return false;
+                continue;
+            }
+
+            if (dash == 0 || part.IndexOf('-', dash + 1) >= 0)
+                return false;
+
+            var start = part[..dash];
+            var end = part[(dash + 1)..];
+            if (!IsDraftPortNumber(start, complete: true))
+                return false;
+            if (end.Length == 0)
+                return isLast;
+            if (!IsDraftPortNumber(end, complete: true))
+                return false;
+            if (!int.TryParse(start, out var startPort) || !int.TryParse(end, out var endPort) || startPort > endPort)
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsDraftPortNumber(string text, bool complete)
+    {
+        if (text.Length is < 1 or > 5 || text[0] is < '1' or > '9' || text.Any(static c => c is < '0' or > '9'))
+            return false;
+        if (!complete)
+            return true;
+        return int.TryParse(text, out var port) && port is >= 1 and <= 65535;
     }
 
     private void WriteGameFilter(GameFilterState state)

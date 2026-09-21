@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using ZapretUI;
 using ZapretUI.Helpers;
@@ -27,6 +28,7 @@ public partial class ServicePage : UserControl
     private Button _gameUdpBtn = null!;
     private TextBox _gameTcpPorts = null!;
     private TextBox _gameUdpPorts = null!;
+    private bool _updatingPortBoxes;
     private Button _ipsetLoadedBtn = null!;
     private Button _ipsetNoneBtn = null!;
     private Button _ipsetAnyBtn = null!;
@@ -541,8 +543,12 @@ public partial class ServicePage : UserControl
         var game = _settingsSvc.GetGameFilter();
         SetStatusText(_gameFilterStatus, "Game Filter", _settingsSvc.GetGameFilterStatus());
         SetStatusText(_ipsetStatus, "IPSet Filter", _settingsSvc.GetIpsetStatus());
+        _updatingPortBoxes = true;
         _gameTcpPorts.Text = game.TcpRange;
         _gameUdpPorts.Text = game.UdpRange;
+        _updatingPortBoxes = false;
+        UpdatePortBoxVisual(_gameTcpPorts);
+        UpdatePortBoxVisual(_gameUdpPorts);
 
         var gameMode = game.Mode;
         ApplyActiveStyle(_gameDisabledBtn, gameMode == "disabled");
@@ -576,12 +582,96 @@ public partial class ServicePage : UserControl
 
     private static TextBlock Label(string text) => new() { Text = text, Margin = new Thickness(0, 0, 0, 4) };
 
-    private static TextBox PortRangeBox() => new()
+    private TextBox PortRangeBox()
     {
-        MinWidth = 260,
-        Padding = new Thickness(8, 6, 8, 6),
-        VerticalContentAlignment = VerticalAlignment.Center
-    };
+        var box = new TextBox
+        {
+            MinWidth = 260,
+            MaxLength = 80,
+            Padding = new Thickness(8, 6, 8, 6),
+            VerticalContentAlignment = VerticalAlignment.Center
+        };
+        InputMethod.SetIsInputMethodEnabled(box, false);
+        box.PreviewTextInput += OnPortRangePreviewTextInput;
+        box.PreviewKeyDown += OnPortRangePreviewKeyDown;
+        DataObject.AddPastingHandler(box, OnPortRangePasting);
+        box.TextChanged += OnPortRangeTextChanged;
+        return box;
+    }
+
+    private void OnPortRangePreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (sender is not TextBox box)
+            return;
+
+        e.Handled = !WouldBeAllowedPortRange(box, e.Text);
+    }
+
+    private static void OnPortRangePreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Space)
+            e.Handled = true;
+    }
+
+    private static void OnPortRangePasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (sender is not TextBox box)
+            return;
+
+        if (!e.SourceDataObject.GetDataPresent(DataFormats.UnicodeText))
+        {
+            e.CancelCommand();
+            return;
+        }
+
+        var pasted = e.SourceDataObject.GetData(DataFormats.UnicodeText) as string ?? "";
+        var sanitized = ServiceSettingsService.SanitizePortRangeInput(pasted);
+        if (!WouldBeAllowedPortRange(box, sanitized) || sanitized.Length == 0 && pasted.Length > 0)
+            e.CancelCommand();
+        else if (sanitized != pasted)
+        {
+            e.CancelCommand();
+            var start = box.SelectionStart;
+            var next = box.Text.Remove(start, box.SelectionLength).Insert(start, sanitized);
+            box.Text = next;
+            box.CaretIndex = start + sanitized.Length;
+        }
+    }
+
+    private void OnPortRangeTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_updatingPortBoxes || sender is not TextBox box)
+            return;
+
+        var sanitized = ServiceSettingsService.SanitizePortRangeInput(box.Text);
+        if (sanitized != box.Text)
+        {
+            var caret = Math.Min(box.CaretIndex, sanitized.Length);
+            _updatingPortBoxes = true;
+            box.Text = sanitized;
+            box.CaretIndex = caret;
+            _updatingPortBoxes = false;
+        }
+
+        UpdatePortBoxVisual(box);
+    }
+
+    private static bool WouldBeAllowedPortRange(TextBox box, string incoming)
+    {
+        var start = box.SelectionStart;
+        var next = box.Text.Remove(start, box.SelectionLength).Insert(start, incoming);
+        return ServiceSettingsService.IsAllowedPortRangeDraft(next);
+    }
+
+    private static void UpdatePortBoxVisual(TextBox box)
+    {
+        var compact = ServiceSettingsService.CompactPortRange(box.Text);
+        var valid = compact.Length == 0
+            || ServiceSettingsService.IsAllowedPortRangeDraft(compact);
+        box.BorderBrush = valid
+            ? (Brush)Application.Current.FindResource("BorderBrush")
+            : (Brush)Application.Current.FindResource("WarningBrush");
+    }
 
     private static StackPanel PortRangeRow(string label, TextBox box)
     {
