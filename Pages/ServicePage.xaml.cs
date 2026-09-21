@@ -599,13 +599,8 @@ public partial class ServicePage : UserControl
         return box;
     }
 
-    private void OnPortRangePreviewTextInput(object sender, TextCompositionEventArgs e)
-    {
-        if (sender is not TextBox box)
-            return;
-
-        e.Handled = !WouldBeAllowedPortRange(box, e.Text);
-    }
+    private void OnPortRangePreviewTextInput(object sender, TextCompositionEventArgs e) =>
+        e.Handled = !ServiceSettingsService.IsPortRangeInputChar(e.Text);
 
     private static void OnPortRangePreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -626,16 +621,20 @@ public partial class ServicePage : UserControl
 
         var pasted = e.SourceDataObject.GetData(DataFormats.UnicodeText) as string ?? "";
         var sanitized = ServiceSettingsService.SanitizePortRangeInput(pasted);
-        if (!WouldBeAllowedPortRange(box, sanitized) || sanitized.Length == 0 && pasted.Length > 0)
-            e.CancelCommand();
-        else if (sanitized != pasted)
+        if (sanitized.Length == 0)
         {
             e.CancelCommand();
-            var start = box.SelectionStart;
-            var next = box.Text.Remove(start, box.SelectionLength).Insert(start, sanitized);
-            box.Text = next;
-            box.CaretIndex = start + sanitized.Length;
+            return;
         }
+
+        if (sanitized == pasted)
+            return;
+
+        e.CancelCommand();
+        var start = box.SelectionStart;
+        var next = box.Text.Remove(start, box.SelectionLength).Insert(start, sanitized);
+        box.Text = next;
+        box.CaretIndex = start + sanitized.Length;
     }
 
     private void OnPortRangeTextChanged(object sender, TextChangedEventArgs e)
@@ -656,18 +655,11 @@ public partial class ServicePage : UserControl
         UpdatePortBoxVisual(box);
     }
 
-    private static bool WouldBeAllowedPortRange(TextBox box, string incoming)
-    {
-        var start = box.SelectionStart;
-        var next = box.Text.Remove(start, box.SelectionLength).Insert(start, incoming);
-        return ServiceSettingsService.IsAllowedPortRangeDraft(next);
-    }
-
     private static void UpdatePortBoxVisual(TextBox box)
     {
         var compact = ServiceSettingsService.CompactPortRange(box.Text);
-        var valid = compact.Length == 0
-            || ServiceSettingsService.IsAllowedPortRangeDraft(compact);
+        var looksComplete = compact.Length > 0 && compact[^1] is not '-' and not ',';
+        var valid = !looksComplete || ServiceSettingsService.TryNormalizePortRange(compact, out _);
         box.BorderBrush = valid
             ? (Brush)Application.Current.FindResource("BorderBrush")
             : (Brush)Application.Current.FindResource("WarningBrush");
