@@ -27,16 +27,60 @@ function Write-Color($Text, $Color = "White") {
     }
 }
 
+function Test-GameFilterPortRange {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+    $compact = $Value -replace '\s', ''
+    if (-not $compact) { return $false }
+    foreach ($item in ($compact -split ',')) {
+        if ($item -notmatch '^[1-9]\d*(?:-[1-9]\d*)?$') { return $false }
+        $parts = $item -split '-', 2
+        $start = [int]$parts[0]
+        $end = if ($parts.Count -gt 1) { [int]$parts[1] } else { $start }
+        if ($start -lt 1 -or $end -lt 1 -or $start -gt 65535 -or $end -gt 65535 -or $start -gt $end) {
+            return $false
+        }
+        if ($parts[0].Length -gt 5 -or ($parts.Count -gt 1 -and $parts[1].Length -gt 5)) {
+            return $false
+        }
+    }
+    return $true
+}
+
 function Get-GameFilterVars {
     $flag = Join-Path $Root "utils\game_filter.enabled"
-    if (-not (Test-Path $flag)) {
-        return @{ GameFilter = "12"; GameFilterTCP = "12"; GameFilterUDP = "12" }
+    $mode = "disabled"
+    $tcp = "1024-65535"
+    $udp = "1024-65535"
+    if (Test-Path $flag) {
+        foreach ($raw in Get-Content $flag) {
+            $line = $raw.Trim()
+            if (-not $line) { continue }
+            $eq = $line.IndexOf('=')
+            if ($eq -ge 0) {
+                $key = $line.Substring(0, $eq).Trim().ToLower()
+                $val = $line.Substring($eq + 1).Trim()
+            } else {
+                $key = $line.ToLower()
+                $val = ""
+            }
+            if ($key -eq "mode" -and $val) { $mode = $val.ToLower() }
+            elseif ($key -eq "all" -and -not $val) { $mode = "all" }
+            elseif ($key -eq "udp") {
+                if ($val) { if (Test-GameFilterPortRange $val) { $udp = ($val -replace '\s', '') } }
+                else { $mode = "udp" }
+            }
+            elseif ($key -eq "tcp") {
+                if ($val) { if (Test-GameFilterPortRange $val) { $tcp = ($val -replace '\s', '') } }
+                else { $mode = "tcp" }
+            }
+        }
     }
-    $mode = (Get-Content $flag -Raw).Trim().ToLower()
+
     switch ($mode) {
-        "all" { return @{ GameFilter = "1024-65535"; GameFilterTCP = "1024-65535"; GameFilterUDP = "1024-65535" } }
-        "tcp" { return @{ GameFilter = "1024-65535"; GameFilterTCP = "1024-65535"; GameFilterUDP = "12" } }
-        "udp" { return @{ GameFilter = "1024-65535"; GameFilterTCP = "12"; GameFilterUDP = "1024-65535" } }
+        "all" { return @{ GameFilter = $tcp; GameFilterTCP = $tcp; GameFilterUDP = $udp } }
+        "tcp" { return @{ GameFilter = $tcp; GameFilterTCP = $tcp; GameFilterUDP = "12" } }
+        "udp" { return @{ GameFilter = $udp; GameFilterTCP = "12"; GameFilterUDP = $udp } }
         default { return @{ GameFilter = "12"; GameFilterTCP = "12"; GameFilterUDP = "12" } }
     }
 }

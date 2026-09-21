@@ -14,7 +14,7 @@ public static class StrategyBatParser
         if (!File.Exists(batPath))
             return "";
 
-        var gf = GetGameFilterVars(paths.Root);
+        var gf = ServiceSettingsService.ReadGameFilter(paths.Utils);
         var binPath = paths.Bin.TrimEnd('\\') + "\\";
         var listsPath = paths.Lists.TrimEnd('\\') + "\\";
         var capture = false;
@@ -53,9 +53,9 @@ public static class StrategyBatParser
                     mergeArgs = 0;
 
                 var a = arg
-                    .Replace("%GameFilterTCP%", gf.GameFilterTcp)
-                    .Replace("%GameFilterUDP%", gf.GameFilterUdp)
-                    .Replace("%GameFilter%", gf.GameFilter)
+                    .Replace("%GameFilterTCP%", gf.ResolvedTcp)
+                    .Replace("%GameFilterUDP%", gf.ResolvedUdp)
+                    .Replace("%GameFilter%", gf.ResolvedFilter)
                     .Replace("%BIN%", binPath)
                     .Replace("%LISTS%", listsPath);
 
@@ -97,21 +97,5 @@ public static class StrategyBatParser
         }
 
         return result.ToString().Replace('\u0001', '!').Trim();
-    }
-
-    private static (string GameFilter, string GameFilterTcp, string GameFilterUdp) GetGameFilterVars(string root)
-    {
-        var flag = Path.Combine(root, "utils", "game_filter.enabled");
-        if (!File.Exists(flag))
-            return ("12", "12", "12");
-
-        var mode = File.ReadAllText(flag).Trim().ToLowerInvariant();
-        return mode switch
-        {
-            "all" => ("1024-65535", "1024-65535", "1024-65535"),
-            "tcp" => ("1024-65535", "1024-65535", "12"),
-            "udp" => ("1024-65535", "12", "1024-65535"),
-            _ => ("12", "12", "12")
-        };
     }
 }

@@ -16,6 +16,7 @@ public sealed class TestScriptAutoResponder
     private bool _testTypeAnswered;
     private bool _modeAnswered;
     private bool _configSelectionAnswered;
+    private bool _closePromptAnswered;
 
     public TestScriptAutoResponder(
         PresetTestKind kind,
@@ -35,6 +36,7 @@ public sealed class TestScriptAutoResponder
         _testTypeAnswered = false;
         _modeAnswered = false;
         _configSelectionAnswered = false;
+        _closePromptAnswered = false;
     }
 
     public async Task FeedAsync(string chunk)
@@ -78,17 +80,26 @@ public sealed class TestScriptAutoResponder
                 return;
             }
 
-            if (text.Contains("Press any key", StringComparison.OrdinalIgnoreCase)
-                || text.Contains("Нажмите любую клавишу", StringComparison.OrdinalIgnoreCase))
+            if (!_closePromptAnswered
+                && (text.Contains("Press any key", StringComparison.OrdinalIgnoreCase)
+                    || text.Contains("Нажмите любую клавишу", StringComparison.OrdinalIgnoreCase)))
             {
-                await _terminal.SendKeyAsync(' ');
+                _closePromptAnswered = true;
                 _buffer.Clear();
+                _ = RespondClosePromptAsync();
             }
         }
         finally
         {
             _inputLock.Release();
         }
+    }
+
+    private async Task RespondClosePromptAsync()
+    {
+        // Flowseal 1.10.3 drains leftover keys before waiting, so send after a short delay.
+        await Task.Delay(400);
+        await _terminal.SendKeyAsync(' ');
     }
 
     private static bool ContainsEnterOneOrTwo(string text) =>

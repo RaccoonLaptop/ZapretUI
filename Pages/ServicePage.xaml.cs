@@ -25,6 +25,8 @@ public partial class ServicePage : UserControl
     private Button _gameTcpUdpBtn = null!;
     private Button _gameTcpBtn = null!;
     private Button _gameUdpBtn = null!;
+    private TextBox _gameTcpPorts = null!;
+    private TextBox _gameUdpPorts = null!;
     private Button _ipsetLoadedBtn = null!;
     private Button _ipsetNoneBtn = null!;
     private Button _ipsetAnyBtn = null!;
@@ -63,15 +65,29 @@ public partial class ServicePage : UserControl
         _gameFilterStatus = StatusLine(Loc.T("service.game_filter"));
         setStack.Children.Add(_gameFilterStatus);
         var gameBtns = new WrapPanel { Margin = new Thickness(0, 4, 0, 12) };
-        _gameDisabledBtn = SettingsBtn(Loc.T("service.disable"), () => _settingsSvc.SetGameFilter("disabled"));
-        _gameTcpUdpBtn = SettingsBtn(Loc.T("service.tcp_udp"), () => _settingsSvc.SetGameFilter("all"));
-        _gameTcpBtn = SettingsBtn(Loc.T("service.tcp_only"), () => _settingsSvc.SetGameFilter("tcp"));
-        _gameUdpBtn = SettingsBtn(Loc.T("service.udp_only"), () => _settingsSvc.SetGameFilter("udp"));
+        _gameDisabledBtn = SettingsBtn(Loc.T("service.disable"), () => ApplyGameFilterMode("disabled"));
+        _gameTcpUdpBtn = SettingsBtn(Loc.T("service.tcp_udp"), () => ApplyGameFilterMode("all"));
+        _gameTcpBtn = SettingsBtn(Loc.T("service.tcp_only"), () => ApplyGameFilterMode("tcp"));
+        _gameUdpBtn = SettingsBtn(Loc.T("service.udp_only"), () => ApplyGameFilterMode("udp"));
         gameBtns.Children.Add(_gameDisabledBtn);
         gameBtns.Children.Add(_gameTcpUdpBtn);
         gameBtns.Children.Add(_gameTcpBtn);
         gameBtns.Children.Add(_gameUdpBtn);
         setStack.Children.Add(gameBtns);
+
+        setStack.Children.Add(new TextBlock
+        {
+            Text = Loc.T("service.game_filter_ports_hint"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            FontSize = 12,
+            Margin = new Thickness(0, 0, 0, 8)
+        });
+        _gameTcpPorts = PortRangeBox();
+        _gameUdpPorts = PortRangeBox();
+        setStack.Children.Add(PortRangeRow(Loc.T("service.game_filter_tcp_ports"), _gameTcpPorts));
+        setStack.Children.Add(PortRangeRow(Loc.T("service.game_filter_udp_ports"), _gameUdpPorts));
+        setStack.Children.Add(new WrapPanel { Margin = new Thickness(0, 0, 0, 12), Children = { ActionBtn(Loc.T("service.game_filter_apply_ports"), ApplyGameFilterPorts) } });
 
         _ipsetStatus = StatusLine(Loc.T("service.ipset_filter"));
         setStack.Children.Add(_ipsetStatus);
@@ -476,6 +492,36 @@ public partial class ServicePage : UserControl
         return btn;
     }
 
+    private void ApplyGameFilterMode(string mode)
+    {
+        TrySaveGameFilterPorts(showError: false);
+        _settingsSvc.SetGameFilter(mode);
+    }
+
+    private void ApplyGameFilterPorts()
+    {
+        if (!TrySaveGameFilterPorts(showError: true))
+            return;
+
+        RefreshStatuses();
+        ConsoleLog.Instance.Write(Loc.T("service.game_filter_ports_saved"));
+    }
+
+    private bool TrySaveGameFilterPorts(bool showError)
+    {
+        try
+        {
+            _settingsSvc.SetGameFilterPorts(_gameTcpPorts.Text, _gameUdpPorts.Text);
+            return true;
+        }
+        catch
+        {
+            if (showError)
+                UiHelpers.ShowError(Loc.T("service.game_filter_ports_invalid"));
+            return false;
+        }
+    }
+
     private void SetIpsetMode(string mode)
     {
         try
@@ -492,10 +538,13 @@ public partial class ServicePage : UserControl
 
     private void RefreshStatuses()
     {
+        var game = _settingsSvc.GetGameFilter();
         SetStatusText(_gameFilterStatus, "Game Filter", _settingsSvc.GetGameFilterStatus());
         SetStatusText(_ipsetStatus, "IPSet Filter", _settingsSvc.GetIpsetStatus());
+        _gameTcpPorts.Text = game.TcpRange;
+        _gameUdpPorts.Text = game.UdpRange;
 
-        var gameMode = _settingsSvc.GetGameFilterMode();
+        var gameMode = game.Mode;
         ApplyActiveStyle(_gameDisabledBtn, gameMode == "disabled");
         ApplyActiveStyle(_gameTcpUdpBtn, gameMode == "all");
         ApplyActiveStyle(_gameTcpBtn, gameMode == "tcp");
@@ -527,6 +576,26 @@ public partial class ServicePage : UserControl
 
     private static TextBlock Label(string text) => new() { Text = text, Margin = new Thickness(0, 0, 0, 4) };
 
+    private static TextBox PortRangeBox() => new()
+    {
+        MinWidth = 260,
+        Padding = new Thickness(8, 6, 8, 6),
+        VerticalContentAlignment = VerticalAlignment.Center
+    };
+
+    private static StackPanel PortRangeRow(string label, TextBox box)
+    {
+        var row = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+        row.Children.Add(new TextBlock
+        {
+            Text = label,
+            Margin = new Thickness(0, 0, 0, 4),
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush")
+        });
+        row.Children.Add(box);
+        return row;
+    }
+
     private static TextBlock StatusLine(string name) => new()
     {
         FontWeight = FontWeights.SemiBold,
@@ -550,7 +619,7 @@ public partial class ServicePage : UserControl
     private static Brush GetStatusValueBrush(string value)
     {
         var normalized = value.Trim().ToLowerInvariant();
-        if (normalized is "enabled" or "on" or "yes" or "true")
+        if (normalized.StartsWith("enabled", StringComparison.Ordinal) || normalized is "on" or "yes" or "true")
             return (Brush)Application.Current.FindResource("SuccessBrush");
         if (normalized is "disabled" or "off" or "no" or "false")
             return (Brush)Application.Current.FindResource("WarningBrush");
