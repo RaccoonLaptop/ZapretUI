@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using ZapretUI;
 using ZapretUI.Helpers;
 using ZapretUI.Services;
@@ -29,6 +30,10 @@ public partial class ServicePage : UserControl
     private TextBox _gameTcpPorts = null!;
     private TextBox _gameUdpPorts = null!;
     private bool _updatingPortBoxes;
+    private TextBlock _gameFilterPortsApplied = null!;
+    private TextBlock _gameFilterPortsFeedback = null!;
+    private Button _gameApplyPortsBtn = null!;
+    private DispatcherTimer? _portsFeedbackTimer;
     private Button _ipsetLoadedBtn = null!;
     private Button _ipsetNoneBtn = null!;
     private Button _ipsetAnyBtn = null!;
@@ -42,6 +47,7 @@ public partial class ServicePage : UserControl
         _updates = new UpdateService(paths);
         BuildUi();
         RefreshStatuses();
+        Unloaded += (_, _) => _portsFeedbackTimer?.Stop();
     }
 
     private Window? OwnerWindow => Window.GetWindow(this);
@@ -66,6 +72,14 @@ public partial class ServicePage : UserControl
 
         _gameFilterStatus = StatusLine(Loc.T("service.game_filter"));
         setStack.Children.Add(_gameFilterStatus);
+        _gameFilterPortsApplied = new TextBlock
+        {
+            FontSize = 12,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+        setStack.Children.Add(_gameFilterPortsApplied);
         var gameBtns = new WrapPanel { Margin = new Thickness(0, 4, 0, 12) };
         _gameDisabledBtn = SettingsBtn(Loc.T("service.disable"), () => ApplyGameFilterMode("disabled"));
         _gameTcpUdpBtn = SettingsBtn(Loc.T("service.tcp_udp"), () => ApplyGameFilterMode("all"));
@@ -89,7 +103,19 @@ public partial class ServicePage : UserControl
         _gameUdpPorts = PortRangeBox();
         setStack.Children.Add(PortRangeRow(Loc.T("service.game_filter_tcp_ports"), _gameTcpPorts));
         setStack.Children.Add(PortRangeRow(Loc.T("service.game_filter_udp_ports"), _gameUdpPorts));
-        setStack.Children.Add(new WrapPanel { Margin = new Thickness(0, 0, 0, 12), Children = { ActionBtn(Loc.T("service.game_filter_apply_ports"), ApplyGameFilterPorts) } });
+        _gameApplyPortsBtn = ActionBtn(Loc.T("service.game_filter_apply_ports"), ApplyGameFilterPorts);
+        _gameFilterPortsFeedback = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 6, 0, 0),
+            Visibility = Visibility.Collapsed
+        };
+        var applyPorts = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+        applyPorts.Children.Add(_gameApplyPortsBtn);
+        applyPorts.Children.Add(_gameFilterPortsFeedback);
+        setStack.Children.Add(applyPorts);
 
         _ipsetStatus = StatusLine(Loc.T("service.ipset_filter"));
         setStack.Children.Add(_ipsetStatus);
@@ -506,7 +532,29 @@ public partial class ServicePage : UserControl
             return;
 
         RefreshStatuses();
+        ShowPortsAppliedFeedback();
         ConsoleLog.Instance.Write(Loc.T("service.game_filter_ports_saved"));
+    }
+
+    private void ShowPortsAppliedFeedback()
+    {
+        _gameFilterPortsFeedback.Text = Loc.T("service.game_filter_ports_saved");
+        _gameFilterPortsFeedback.Foreground = (Brush)Application.Current.FindResource("SuccessBrush");
+        _gameFilterPortsFeedback.Visibility = Visibility.Visible;
+        _gameApplyPortsBtn.Style = (Style)Application.Current.FindResource("SuccessButton");
+
+        _portsFeedbackTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+        _portsFeedbackTimer.Stop();
+        _portsFeedbackTimer.Tick -= OnPortsFeedbackTick;
+        _portsFeedbackTimer.Tick += OnPortsFeedbackTick;
+        _portsFeedbackTimer.Start();
+    }
+
+    private void OnPortsFeedbackTick(object? sender, EventArgs e)
+    {
+        _portsFeedbackTimer?.Stop();
+        _gameFilterPortsFeedback.Visibility = Visibility.Collapsed;
+        _gameApplyPortsBtn.Style = (Style)Application.Current.FindResource("SecondaryButton");
     }
 
     private bool TrySaveGameFilterPorts(bool showError)
@@ -542,6 +590,7 @@ public partial class ServicePage : UserControl
     {
         var game = _settingsSvc.GetGameFilter();
         SetStatusText(_gameFilterStatus, "Game Filter", _settingsSvc.GetGameFilterStatus());
+        _gameFilterPortsApplied.Text = Loc.F("service.game_filter_ports_applied", game.TcpRange, game.UdpRange);
         SetStatusText(_ipsetStatus, "IPSet Filter", _settingsSvc.GetIpsetStatus());
         _updatingPortBoxes = true;
         _gameTcpPorts.Text = game.TcpRange;

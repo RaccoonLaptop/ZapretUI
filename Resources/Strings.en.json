@@ -108,6 +108,7 @@
   "service.game_filter_ports_hint": "You can set custom port ranges. Example to exclude RTMP: 1024-1934,1936-65535",
   "service.game_filter_apply_ports": "Apply ports",
   "service.game_filter_ports_saved": "Game Filter ports saved. Restart bypass to apply.",
+  "service.game_filter_ports_applied": "Applied: TCP {0} · UDP {1}",
   "service.game_filter_ports_invalid": "Invalid port range. Example: 1024-65535 or 1024-1934,1936-65535",
   "service.ipset_loaded": "loaded",
   "service.ipset_none": "none",

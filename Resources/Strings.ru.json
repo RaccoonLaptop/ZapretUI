@@ -108,6 +108,7 @@
   "service.game_filter_ports_hint": "Можно задать диапазоны портов. Например, чтобы исключить RTMP: 1024-1934,1936-65535",
   "service.game_filter_apply_ports": "Применить порты",
   "service.game_filter_ports_saved": "Порты Game Filter сохранены. Перезапустите обход, чтобы применить.",
+  "service.game_filter_ports_applied": "Применены: TCP {0} · UDP {1}",
   "service.game_filter_ports_invalid": "Неверный диапазон портов. Пример: 1024-65535 или 1024-1934,1936-65535",
   "service.ipset_loaded": "loaded",
   "service.ipset_none": "none",
