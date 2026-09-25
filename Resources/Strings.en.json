@@ -20,6 +20,8 @@
   "nav.service": "Service",
   "nav.diagnostics": "Diagnostics",
   "nav.test": "Strategy test",
+  "nav.telegram": "Telegram",
+  "nav.telegram_tip": "Zapret UI on Telegram",
   "status.label": "Status",
   "status.running": "Running",
   "status.stopped": "Stopped",

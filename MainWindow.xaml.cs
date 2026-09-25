@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private readonly TrayIconService _tray;
     private readonly PowerResumeService _powerResume;
     private readonly bool _startInTray;
+    private const string TelegramChannelUrl = "https://t.me/+59hjtRf2yXYyNTZi";
     private Button? _activeNav;
     private string _activeSection = "home";
     private HomePage? _homePage;
@@ -366,6 +367,46 @@ public partial class MainWindow : Window
         AddNav(Loc.T("nav.service"), "service", () => Navigate(new ServicePage(_paths, _strategy, _settings)));
         AddNav(Loc.T("nav.diagnostics"), "diagnostics", () => Navigate(new DiagnosticsPage(_runner)));
         AddNav(Loc.T("nav.test"), "test", NavigateTest);
+        AddTelegramButton();
+    }
+
+    private void AddTelegramButton()
+    {
+        var plane = new System.Windows.Shapes.Path
+        {
+            Data = Geometry.Parse("M2.01,21 L23,12 L2.01,3 L2,10 L17,12 L2,14 Z"),
+            Fill = Brushes.White,
+            Stretch = Stretch.Uniform,
+            Width = 16,
+            Height = 16,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var label = new TextBlock
+        {
+            Text = Loc.T("nav.telegram"),
+            Foreground = Brushes.White,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 0, 0)
+        };
+        var content = new StackPanel { Orientation = Orientation.Horizontal };
+        content.Children.Add(plane);
+        content.Children.Add(label);
+
+        var btn = new Button
+        {
+            Content = content,
+            Style = (Style)FindResource("TelegramButton"),
+            Margin = new Thickness(0, 8, 0, 2),
+            ToolTip = Loc.T("nav.telegram_tip")
+        };
+        btn.Click += (_, _) =>
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(TelegramChannelUrl)
+            {
+                UseShellExecute = true
+            });
+        };
+        NavPanel.Children.Add(btn);
     }
 
     private void NavigateToSection(string sectionId)
