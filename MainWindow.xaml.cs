@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private readonly bool _startInTray;
     private const string TelegramChannelUrl = "https://t.me/ZapretUI";
     private const string GitHubUrl = "https://github.com/RaccoonLaptop/ZapretUI";
+    private const string DonateUrl = "https://raccoonlaptop.github.io/ZapretUI/donate.html";
     private Button? _activeNav;
     private string _activeSection = "home";
     private HomePage? _homePage;
@@ -370,6 +371,7 @@ public partial class MainWindow : Window
         AddNav(Loc.T("nav.test"), "test", NavigateTest);
         AddTelegramButton();
         AddGitHubButton();
+        AddDonateButton();
     }
 
     private void AddTelegramButton()
@@ -391,6 +393,17 @@ public partial class MainWindow : Window
             Loc.T("nav.github"),
             Loc.T("nav.github_tip"),
             GitHubUrl,
+            new Thickness(0, 6, 0, 2));
+    }
+
+    private void AddDonateButton()
+    {
+        AddExternalButton(
+            "DonateButton",
+            Geometry.Parse("M12,21.35 L10.55,20.03 C5.4,15.36 2,12.28 2,8.5 C2,5.42 4.42,3 7.5,3 C9.24,3 10.91,3.81 12,5.09 C13.09,3.81 14.76,3 16.5,3 C19.58,3 22,5.42 22,8.5 C22,12.28 18.6,15.36 13.45,20.03 L12,21.35 Z"),
+            Loc.T("nav.donate"),
+            Loc.T("nav.donate_tip"),
+            DonateUrl,
             new Thickness(0, 6, 0, 2));
     }
 

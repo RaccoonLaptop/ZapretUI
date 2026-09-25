@@ -24,6 +24,8 @@
   "nav.telegram_tip": "Zapret UI в Telegram",
   "nav.github": "GitHub",
   "nav.github_tip": "Репозиторий Zapret UI на GitHub",
+  "nav.donate": "Донат",
+  "nav.donate_tip": "Добровольная поддержка Zapret UI",
   "status.label": "Статус",
   "status.running": "Работает",
   "status.stopped": "Остановлен",

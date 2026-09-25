@@ -11,6 +11,7 @@
 | **Скачать** | [ZapretUI-Setup.exe](https://github.com/RaccoonLaptop/ZapretUI/releases/latest) |
 | **GitHub** | https://github.com/RaccoonLaptop/ZapretUI |
 | **Telegram** | https://t.me/ZapretUI |
+| **Донат** | https://raccoonlaptop.github.io/ZapretUI/donate.html |
 | **Руководство** | https://raccoonlaptop.github.io/ZapretUI/ |
 
 ## Быстрый старт

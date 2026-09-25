@@ -17,6 +17,7 @@ public partial class ServicePage : UserControl
     private const string FlowsealUrl = "https://github.com/Flowseal/zapret-discord-youtube";
     private const string AppUrl = "https://github.com/RaccoonLaptop/ZapretUI";
     private const string TelegramUrl = "https://t.me/ZapretUI";
+    private const string DonateUrl = "https://raccoonlaptop.github.io/ZapretUI/donate.html";
 
     private readonly ZapretPaths _paths;
     private readonly AppSettings _settings;
@@ -277,6 +278,7 @@ public partial class ServicePage : UserControl
         linksRow.Children.Add(LinkButton("Flowseal/zapret-discord-youtube", FlowsealUrl));
         linksRow.Children.Add(LinkButton("GitHub", AppUrl));
         linksRow.Children.Add(LinkButton("Telegram", TelegramUrl));
+        linksRow.Children.Add(LinkButton("Донат", DonateUrl));
         linksCard.Child = linksRow;
         root.Children.Add(linksCard);
 
