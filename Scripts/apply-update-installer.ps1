@@ -36,9 +36,26 @@ function Write-Log($Message) {
 
 function Get-InstallerErrorMessage([int]$ExitCode) {
     switch ($ExitCode) {
-        5 { return "UPDATE_ACCESS_DENIED" }
+        5 { return "Installer was aborted (exit code 5)" }
         default { return "Installer exited with code $ExitCode" }
     }
+}
+
+function Stop-ZapretUiProcess {
+    Write-Log "Closing Zapret UI so files can be replaced..."
+    Get-Process -Name 'ZapretUI' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    $deadline = (Get-Date).AddSeconds(15)
+    while ((Get-Process -Name 'ZapretUI' -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 200
+    }
+}
+
+function Start-ZapretUi {
+    $launch = Join-Path $TargetDir "ZapretUI.exe"
+    if (-not (Test-Path -LiteralPath $launch)) { return }
+    Write-Log "Starting Zapret UI..."
+    Write-Log "Starting: $launch"
+    Start-Process -FilePath $launch -WorkingDirectory $TargetDir
 }
 
 . (Join-Path $PSScriptRoot 'stop-bypass.ps1')
@@ -64,12 +81,14 @@ try {
     }
 
     Stop-BypassForUpdate -LogAction { param($Message) Write-Log $Message }
+    Stop-ZapretUiProcess
 
     $args = @(
         "/VERYSILENT",
         "/SUPPRESSMSGBOXES",
         "/NORESTART",
         "/CLOSEAPPLICATIONS",
+        "/FORCECLOSEAPPLICATIONS",
         "/DIR=`"$TargetDir`""
     )
     Write-Log "Installing update..."
@@ -83,21 +102,12 @@ try {
         Remove-Item -LiteralPath $StagingDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 
-    $launch = $ExePath
-    if (-not (Test-Path -LiteralPath $launch)) {
-        $launch = Join-Path $TargetDir "ZapretUI.exe"
-    }
-
-    if (Test-Path -LiteralPath $launch) {
-        Write-Log "Starting Zapret UI..."
-        Write-Log "Starting: $launch"
-        Start-Process -FilePath $launch -WorkingDirectory $TargetDir -Verb RunAs
-    }
-
+    Start-ZapretUi
     Write-Log "Installer update completed"
     exit 0
 }
 catch {
     Write-Log "ERROR: $($_.Exception.Message)"
+    Start-ZapretUi
     exit 1
 }

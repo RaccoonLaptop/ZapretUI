@@ -63,6 +63,23 @@ function Copy-Tree {
     }
 }
 
+function Stop-ZapretUiProcess {
+    Write-Log "Closing Zapret UI so files can be replaced..."
+    Get-Process -Name 'ZapretUI' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    $deadline = (Get-Date).AddSeconds(15)
+    while ((Get-Process -Name 'ZapretUI' -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 200
+    }
+}
+
+function Start-ZapretUi {
+    $launch = Join-Path $TargetDir "ZapretUI.exe"
+    if (-not (Test-Path -LiteralPath $launch)) { return }
+    Write-Log "Запуск Zapret UI..."
+    Write-Log "Starting: $launch"
+    Start-Process -FilePath $launch -WorkingDirectory $TargetDir
+}
+
 . (Join-Path $PSScriptRoot 'stop-bypass.ps1')
 
 try {
@@ -82,6 +99,7 @@ try {
     }
 
     Stop-BypassForUpdate -LogAction { param($Message) Write-Log $Message }
+    Stop-ZapretUiProcess
 
     if (-not (Test-Path -LiteralPath $SourceDir)) {
         throw "Source folder not found: $SourceDir"
@@ -149,20 +167,11 @@ try {
         }
     }
 
-    $launch = $ExePath
-    if (-not (Test-Path -LiteralPath $launch)) {
-        $launch = Join-Path $TargetDir "ZapretUI.exe"
-    }
-
-    if (Test-Path -LiteralPath $launch) {
-        Write-Log "Запуск Zapret UI..."
-        Write-Log "Starting: $launch"
-        Start-Process -FilePath $launch -WorkingDirectory $TargetDir -Verb RunAs
-    }
-
+    Start-ZapretUi
     exit 0
 }
 catch {
     Write-Log "ERROR: $($_.Exception.Message)"
+    Start-ZapretUi
     exit 1
 }
