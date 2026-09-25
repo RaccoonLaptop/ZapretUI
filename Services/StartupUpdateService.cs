@@ -142,6 +142,7 @@ public static class FlowsealReinstallService
 
             backup.TryRestore(target);
             BundledStrategiesService.DeployTo(target);
+            backup.RestoreCustomStrategies(target);
 
             if (installedStrategy is not null)
             {
@@ -158,7 +159,10 @@ public static class FlowsealReinstallService
                 }
             }
 
-            UiHelpers.ShowResult(owner, "Flowseal", Loc.T("update.flowseal_done_restart"));
+            var done = Loc.T("update.flowseal_done_restart");
+            if (!string.IsNullOrWhiteSpace(backup.Warning))
+                done += Environment.NewLine + Environment.NewLine + backup.Warning;
+            UiHelpers.ShowResult(owner, "Flowseal", done);
             return true;
         }
         catch (Exception ex)
@@ -177,6 +181,9 @@ public static class FlowsealReinstallService
 internal sealed class FlowsealUserDataBackup : IDisposable
 {
     private readonly string _tempDir;
+    private readonly List<string> _warnings = [];
+
+    public string Warning => string.Join(Environment.NewLine, _warnings);
 
     private FlowsealUserDataBackup(string tempDir) => _tempDir = tempDir;
 
@@ -187,14 +194,60 @@ internal sealed class FlowsealUserDataBackup : IDisposable
 
         var tempDir = Path.Combine(Path.GetTempPath(), "zapretui-backup-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
+        var backup = new FlowsealUserDataBackup(tempDir);
 
-        CopyListsDirIfExists(Path.Combine(zapretRoot, "lists"), tempDir, "lists");
+        backup.CopyListsDirIfExists(Path.Combine(zapretRoot, "lists"), tempDir, "lists");
         CopyUtilsFileIfExists(Path.Combine(zapretRoot, "utils", "game_filter.enabled"),
             Path.Combine(tempDir, "utils"), "game_filter.enabled");
         CopyUtilsFileIfExists(Path.Combine(zapretRoot, "utils", "check_updates.enabled"),
             Path.Combine(tempDir, "utils"), "check_updates.enabled");
+        backup.CopyCustomBats(zapretRoot);
 
-        return new FlowsealUserDataBackup(tempDir);
+        return backup;
+    }
+
+    public void RestoreCustomStrategies(string zapretRoot)
+    {
+        var batsBackup = Path.Combine(_tempDir, "bats");
+        if (!Directory.Exists(batsBackup) || !Directory.Exists(zapretRoot))
+            return;
+
+        foreach (var file in Directory.GetFiles(batsBackup, "*.bat"))
+        {
+            var name = Path.GetFileName(file);
+            var dest = Path.Combine(zapretRoot, name);
+            if (File.Exists(dest))
+                continue;
+
+            try
+            {
+                File.Copy(file, dest, false);
+            }
+            catch (Exception ex)
+            {
+                _warnings.Add(name + ": " + ex.Message);
+            }
+        }
+    }
+
+    private void CopyCustomBats(string zapretRoot)
+    {
+        var destDir = Path.Combine(_tempDir, "bats");
+        Directory.CreateDirectory(destDir);
+        foreach (var file in Directory.GetFiles(zapretRoot, "*.bat"))
+        {
+            var name = Path.GetFileName(file);
+            if (name.StartsWith("service", StringComparison.OrdinalIgnoreCase))
+                continue;
+            try
+            {
+                File.Copy(file, Path.Combine(destDir, name), true);
+            }
+            catch (Exception ex)
+            {
+                _warnings.Add(name + ": " + ex.Message);
+            }
+        }
     }
 
     public void TryRestore(string zapretRoot)
@@ -215,12 +268,14 @@ internal sealed class FlowsealUserDataBackup : IDisposable
 
                 var dest = Path.Combine(listsTarget, rel);
                 Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
-                try { File.Copy(file, dest, true); } catch { /* ignore */ }
+                try { File.Copy(file, dest, true); }
+                catch (Exception ex) { _warnings.Add(rel + ": " + ex.Message); }
             }
         }
 
         RestoreUtilsFile(zapretRoot, "game_filter.enabled");
         RestoreUtilsFile(zapretRoot, "check_updates.enabled");
+        RestoreCustomStrategies(zapretRoot);
     }
 
     public void Dispose()
@@ -250,7 +305,7 @@ internal sealed class FlowsealUserDataBackup : IDisposable
         File.Copy(sourceFile, Path.Combine(destDir, destName), true);
     }
 
-    private static void CopyListsDirIfExists(string sourceDir, string destRoot, string destSubDir)
+    private void CopyListsDirIfExists(string sourceDir, string destRoot, string destSubDir)
     {
         if (!Directory.Exists(sourceDir))
             return;
@@ -265,7 +320,8 @@ internal sealed class FlowsealUserDataBackup : IDisposable
 
             var dest = Path.Combine(destDir, rel);
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
-            try { File.Copy(file, dest, true); } catch { /* ignore */ }
+            try { File.Copy(file, dest, true); }
+            catch (Exception ex) { _warnings.Add(rel + ": " + ex.Message); }
         }
     }
 
@@ -277,6 +333,7 @@ internal sealed class FlowsealUserDataBackup : IDisposable
 
         var utilsDir = Path.Combine(zapretRoot, "utils");
         Directory.CreateDirectory(utilsDir);
-        try { File.Copy(source, Path.Combine(utilsDir, fileName), true); } catch { /* ignore */ }
+        try { File.Copy(source, Path.Combine(utilsDir, fileName), true); }
+        catch (Exception ex) { _warnings.Add(fileName + ": " + ex.Message); }
     }
 }

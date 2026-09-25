@@ -10,7 +10,7 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <AssemblyName>ZapretUI</AssemblyName>
     <RootNamespace>ZapretUI</RootNamespace>
-    <Version>1.10.31</Version>
+    <Version>1.10.32</Version>
     <Authors>Niko</Authors>
     <Company>Niko</Company>
     <Product>Zapret UI</Product>
@@ -30,6 +30,10 @@
     <None Remove="tools/**" />
     <Content Remove="tools/**" />
     <EmbeddedResource Remove="tools/**" />
+    <Compile Remove="tests/**" />
+    <None Remove="tests/**" />
+    <Content Remove="tests/**" />
+    <EmbeddedResource Remove="tests/**" />
   </ItemGroup>
 
   <ItemGroup>

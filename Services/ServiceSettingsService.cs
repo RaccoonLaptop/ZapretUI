@@ -235,13 +235,18 @@ public sealed class ServiceSettingsService
     public bool IsAutoUpdateEnabled() =>
         File.Exists(Path.Combine(_paths.Utils, "check_updates.enabled"));
 
-    public void ToggleAutoUpdate()
+    public void SetAutoUpdate(bool enabled)
     {
         var flag = Path.Combine(_paths.Utils, "check_updates.enabled");
         Directory.CreateDirectory(_paths.Utils);
+        if (enabled)
+        {
+            if (!File.Exists(flag))
+                File.WriteAllText(flag, "ENABLED");
+            return;
+        }
+
         if (File.Exists(flag))
             File.Delete(flag);
-        else
-            File.WriteAllText(flag, "ENABLED");
     }
 }

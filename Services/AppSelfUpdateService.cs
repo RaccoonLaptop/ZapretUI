@@ -58,7 +58,7 @@ public sealed class AppSelfUpdateService
             }
 
             var remote = manifest.Version.Trim();
-            var hasUpdate = IsNewerVersion(remote, local);
+            var hasUpdate = AppVersionCompare.IsNewer(remote, local);
             return new AppUpdateCheckResult
             {
                 LocalVersion = local,
@@ -369,7 +369,7 @@ public sealed class AppSelfUpdateService
 
         foreach (var m in manifests)
         {
-            if (!Version.TryParse(NormalizeVersion(m.Version), out var v))
+            if (!Version.TryParse(AppVersionCompare.Normalize(m.Version), out var v))
                 continue;
             if (bestVersion is null || v > bestVersion)
             {
@@ -521,22 +521,6 @@ public sealed class AppSelfUpdateService
     {
         UpdateProgressLauncher.Start(logFile, version);
         Thread.Sleep(450);
-    }
-
-    private static bool IsNewerVersion(string remote, string local)
-    {
-        if (Version.TryParse(NormalizeVersion(remote), out var r) &&
-            Version.TryParse(NormalizeVersion(local), out var l))
-            return r > l;
-        return !string.Equals(remote, local, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string NormalizeVersion(string v)
-    {
-        var parts = v.Trim().Split('.');
-        var list = parts.ToList();
-        while (list.Count < 3) list.Add("0");
-        return string.Join('.', list.Take(3));
     }
 
     private async Task DownloadFileWithProgressAsync(

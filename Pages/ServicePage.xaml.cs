@@ -37,6 +37,8 @@ public partial class ServicePage : UserControl
     private Button _ipsetLoadedBtn = null!;
     private Button _ipsetNoneBtn = null!;
     private Button _ipsetAnyBtn = null!;
+    private ComboBox _serviceStrategy = null!;
+    private TextBlock _componentStatus = null!;
 
     public ServicePage(ZapretPaths paths, StrategyService strategy, AppSettings settings)
     {
@@ -64,6 +66,35 @@ public partial class ServicePage : UserControl
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 0, 0, 20)
         });
+
+        root.Children.Add(Section(Loc.T("service.section_service")));
+        var svcCard = Card();
+        var svcStack = new StackPanel();
+        svcStack.Children.Add(new TextBlock
+        {
+            Text = Loc.T("service.strategy_autostart"),
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            Margin = new Thickness(0, 0, 0, 8)
+        });
+        _serviceStrategy = new ComboBox
+        {
+            MinWidth = 280,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 0, 0, 12),
+            DisplayMemberPath = nameof(StrategyItem.DisplayName)
+        };
+        foreach (var item in StrategyDisplayHelper.LoadItems(_paths.Root, _paths.GetStrategyFiles()))
+            _serviceStrategy.Items.Add(item);
+        if (_serviceStrategy.Items.Count > 0)
+            _serviceStrategy.SelectedIndex = 0;
+        svcStack.Children.Add(_serviceStrategy);
+        var svcBtns = new WrapPanel();
+        svcBtns.Children.Add(ActionBtn(Loc.T("service.install_service"), InstallServiceAsync));
+        svcBtns.Children.Add(ActionBtn(Loc.T("service.remove_services"), RemoveServicesAsync));
+        svcBtns.Children.Add(ActionBtn(Loc.T("service.check_status"), CheckServiceStatusAsync));
+        svcStack.Children.Add(svcBtns);
+        svcCard.Child = svcStack;
+        root.Children.Add(svcCard);
 
         // Settings
         root.Children.Add(Section(Loc.T("service.section_settings")));
@@ -157,10 +188,20 @@ public partial class ServicePage : UserControl
         startupCheck.Checked += (_, _) => { _settings.CheckUpdatesOnStartup = true; _settings.Save(); };
         startupCheck.Unchecked += (_, _) => { _settings.CheckUpdatesOnStartup = false; _settings.Save(); };
         updStack.Children.Add(startupCheck);
+        var flowsealAuto = new CheckBox
+        {
+            Content = Loc.T("service.auto_update"),
+            IsChecked = _settingsSvc.IsAutoUpdateEnabled(),
+            Margin = new Thickness(0, 0, 0, 12)
+        };
+        flowsealAuto.Checked += (_, _) => _settingsSvc.SetAutoUpdate(true);
+        flowsealAuto.Unchecked += (_, _) => _settingsSvc.SetAutoUpdate(false);
+        updStack.Children.Add(flowsealAuto);
         var updBtns = new WrapPanel();
         updBtns.Children.Add(ActionBtn(Loc.T("service.check_app_update"), async () => await CheckAppUpdateAsync()));
         updBtns.Children.Add(ActionBtn(Loc.T("service.check_flowseal_update"), async () => await CheckFlowsealUpdateAsync()));
         updBtns.Children.Add(ActionBtn(Loc.T("service.reinstall_flowseal"), async () => await ReinstallFlowsealAsync()));
+        updBtns.Children.Add(ActionBtn(Loc.T("service.open_flowseal_release"), () => new UpdateService(_paths).OpenReleasePage()));
         updStack.Children.Add(updBtns);
         updCard.Child = updStack;
         root.Children.Add(updCard);
@@ -187,6 +228,30 @@ public partial class ServicePage : UserControl
         netStack.Children.Add(ActionBtn(Loc.T("service.reset_network"), async () => await ResetNetworkAsync()));
         netCard.Child = netStack;
         root.Children.Add(netCard);
+
+        root.Children.Add(Section(Loc.T("service.section_exclusions")));
+        var exCard = Card();
+        var exStack = new StackPanel();
+        exStack.Children.Add(new TextBlock
+        {
+            Text = Loc.T("service.exclusions_desc"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            Margin = new Thickness(0, 0, 0, 12)
+        });
+        _componentStatus = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12)
+        };
+        exStack.Children.Add(_componentStatus);
+        var exBtns = new WrapPanel();
+        exBtns.Children.Add(LinkButton(Loc.T("health.open_guide"), ZapretHealth.GuideUrl));
+        exBtns.Children.Add(ActionBtn(Loc.T("service.export_user"), ExportUserData));
+        exBtns.Children.Add(ActionBtn(Loc.T("service.import_user"), ImportUserData));
+        exStack.Children.Add(exBtns);
+        exCard.Child = exStack;
+        root.Children.Add(exCard);
 
         // Language
         root.Children.Add(Section(Loc.T("service.section_language")));
@@ -554,6 +619,90 @@ public partial class ServicePage : UserControl
         ApplyActiveStyle(_ipsetLoadedBtn, ipsetMode == "loaded");
         ApplyActiveStyle(_ipsetNoneBtn, ipsetMode == "none");
         ApplyActiveStyle(_ipsetAnyBtn, ipsetMode == "any");
+
+        var missing = ZapretHealth.MissingFiles(_paths);
+        _componentStatus.Text = missing.Count == 0
+            ? Loc.T("service.files_ok")
+            : Loc.F("strategy.files_missing", string.Join(", ", missing));
+        _componentStatus.Foreground = (Brush)Application.Current.FindResource(
+            missing.Count == 0 ? "TextMutedBrush" : "ErrorBrush");
+    }
+
+    private async Task InstallServiceAsync()
+    {
+        if (_serviceStrategy.SelectedItem is not StrategyItem item)
+        {
+            UiHelpers.ShowError(Loc.T("strategies.select_first"));
+            return;
+        }
+
+        await RunServiceActionAsync("InstallService", item.FileName);
+    }
+
+    private Task RemoveServicesAsync() => RunServiceActionAsync("RemoveServices", null);
+
+    private Task CheckServiceStatusAsync() => RunServiceActionAsync("CheckStatus", null);
+
+    private async Task RunServiceActionAsync(string action, string? extra)
+    {
+        try
+        {
+            var runner = new ProcessRunner();
+            runner.SetZapretRoot(_paths.Root);
+            var output = await UiHelpers.RunWithLoadingAsync(
+                OwnerWindow,
+                Loc.T("common.loading"),
+                () => runner.RunBridgeAsync(action, extra));
+            UiHelpers.ShowResult(OwnerWindow, Loc.T("service.section_service"), output);
+        }
+        catch (Exception ex)
+        {
+            UiHelpers.ShowError(ex.Message);
+        }
+    }
+
+    private void ExportUserData()
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "Zip (*.zip)|*.zip",
+            FileName = "ZapretUI-user.zip"
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            UserDataPack.Export(_paths.Root, dialog.FileName);
+            UiHelpers.ShowInfo(Loc.T("service.export_done"));
+        }
+        catch (Exception ex)
+        {
+            UiHelpers.ShowError(ex.Message);
+        }
+    }
+
+    private void ImportUserData()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "Zip (*.zip)|*.zip"
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+        if (!UiHelpers.Confirm(Loc.T("service.import_confirm"), OwnerWindow))
+            return;
+
+        try
+        {
+            var count = UserDataPack.Import(_paths.Root, dialog.FileName);
+            UiHelpers.ShowInfo(Loc.F("service.import_done", count));
+            RefreshStatuses();
+        }
+        catch (Exception ex)
+        {
+            UiHelpers.ShowError(ex.Message);
+        }
     }
 
     private static TextBlock Section(string text) => new()

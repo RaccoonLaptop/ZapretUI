@@ -92,6 +92,9 @@ public partial class MainWindow : Window
                 return;
             }
 
+            if (!string.IsNullOrWhiteSpace(AppSettings.LoadError))
+                UiHelpers.ShowError(Loc.F("settings.load_failed", AppSettings.LoadError));
+
             if (_startInTray)
                 HideToTray();
 
@@ -103,6 +106,8 @@ public partial class MainWindow : Window
             ConsoleLog.Instance.Write(Loc.F("startup.error", ex.Message));
         }
     }
+
+    public void SyncHomeStrategy(string fileName) => _homePage?.RememberAppliedStrategy(fileName);
 
     public void ApplyLanguageChange()
     {

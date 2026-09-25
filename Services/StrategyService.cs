@@ -89,22 +89,39 @@ public sealed class StrategyService
         if (string.IsNullOrWhiteSpace(args))
             throw new InvalidOperationException(Loc.T("strategy.winws_not_started"));
 
-        var winwsPath = Path.Combine(_paths.Bin, "winws.exe");
-        if (!File.Exists(winwsPath))
-            throw new FileNotFoundException(Loc.T("strategy.winws_not_started"), winwsPath);
+        var missing = ZapretHealth.MissingFiles(_paths);
+        if (missing.Count > 0)
+            throw new FileNotFoundException(Loc.F("strategy.files_missing", string.Join(", ", missing)));
 
+        var winwsPath = Path.Combine(_paths.Bin, "winws.exe");
         var psi = new ProcessStartInfo
         {
             FileName = winwsPath,
             Arguments = args,
             WorkingDirectory = _paths.Bin,
-            UseShellExecute = false,
-            CreateNoWindow = true,
             WindowStyle = ProcessWindowStyle.Hidden
         };
 
-        if (Process.Start(psi) is null)
-            throw new InvalidOperationException(Loc.T("strategy.winws_not_started"));
+        if (WindowsAdmin.IsAdministrator())
+        {
+            psi.UseShellExecute = false;
+            psi.CreateNoWindow = true;
+        }
+        else
+        {
+            psi.UseShellExecute = true;
+            psi.Verb = "runas";
+        }
+
+        try
+        {
+            if (Process.Start(psi) is null)
+                throw new InvalidOperationException(Loc.T("strategy.winws_not_started"));
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            throw new InvalidOperationException(Loc.T("strategy.uac_cancelled"));
+        }
 
         _lastStartedStrategy = Path.GetFileNameWithoutExtension(batFileName);
 

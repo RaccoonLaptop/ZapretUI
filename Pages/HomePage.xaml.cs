@@ -18,6 +18,8 @@ public partial class HomePage : UserControl
     private Button _toggleBtn = null!;
     private TextBlock _presetHint = null!;
     private TextBlock _actionStatus = null!;
+    private TextBlock _healthBanner = null!;
+    private Button _healthGuideBtn = null!;
     private readonly DispatcherTimer _statusTimer;
     private bool _isStarting;
     private bool _suppressComboChange;
@@ -40,6 +42,13 @@ public partial class HomePage : UserControl
     }
 
     public string? GetSelectedStrategy() => GetSelectedFileName();
+
+    public void RememberAppliedStrategy(string fileName)
+    {
+        TrySelectStrategy(fileName);
+        UpdatePresetHint();
+        RefreshToggleUi();
+    }
 
     public async Task SwitchStrategyAsync(string strategy)
     {
@@ -128,6 +137,27 @@ public partial class HomePage : UserControl
             HorizontalAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 0, 0, 24)
         });
+
+        _healthBanner = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            TextAlignment = TextAlignment.Center,
+            Foreground = (Brush)Application.Current.FindResource("ErrorBrush"),
+            Margin = new Thickness(0, 0, 0, 8),
+            Visibility = Visibility.Collapsed
+        };
+        center.Children.Add(_healthBanner);
+        _healthGuideBtn = new Button
+        {
+            Content = Loc.T("health.open_guide"),
+            Style = (Style)Application.Current.FindResource("SecondaryButton"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 16),
+            Visibility = Visibility.Collapsed
+        };
+        _healthGuideBtn.Click += (_, _) =>
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(ZapretHealth.GuideUrl) { UseShellExecute = true });
+        center.Children.Add(_healthGuideBtn);
 
         _strategyCombo = new ComboBox
         {
@@ -361,6 +391,12 @@ public partial class HomePage : UserControl
 
         _toggleBtn.Style = (Style)Application.Current.FindResource(
             running && !_isStarting ? "SuccessButton" : "PrimaryButton");
+
+        var missing = ZapretHealth.MissingFiles(_paths);
+        var filesMissing = missing.Count > 0;
+        _healthBanner.Text = filesMissing ? Loc.F("strategy.files_missing", string.Join(", ", missing)) : "";
+        _healthBanner.Visibility = filesMissing ? Visibility.Visible : Visibility.Collapsed;
+        _healthGuideBtn.Visibility = filesMissing ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public Task ToggleBypassAsync() => ToggleAsync();

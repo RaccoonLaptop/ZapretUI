@@ -32,8 +32,11 @@ public sealed class AppSettings
     public double? WindowTop { get; set; }
     public bool WindowMaximized { get; set; }
 
+    public static string? LoadError { get; private set; }
+
     public static AppSettings Load()
     {
+        LoadError = null;
         try
         {
             if (File.Exists(SettingsPath))
@@ -54,7 +57,10 @@ public sealed class AppSettings
                 return settings;
             }
         }
-        catch { /* ignore */ }
+        catch (Exception ex)
+        {
+            LoadError = ex.Message;
+        }
         return new AppSettings();
     }
 

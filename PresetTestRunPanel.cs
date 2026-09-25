@@ -629,6 +629,8 @@ public sealed class PresetTestRunPanel : UserControl
             if (_strategy.IsRunning())
                 await _strategy.StopStrategyAsync();
             await _strategy.StartStrategyAsync(fileName);
+            if (Application.Current.MainWindow is MainWindow main)
+                main.SyncHomeStrategy(fileName);
             UiHelpers.ShowInfo(Loc.F("tools.test_applied", StrategyDisplayHelper.ToDisplayName(fileName)), owner);
         }
         catch (Exception ex)

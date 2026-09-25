@@ -33,6 +33,7 @@ public partial class App : Application
             return;
         }
 
+        WindowsAdmin.ClearForcedRunAs();
         AppStartupService.SyncWithSettings(settings.StartUiOnLogin);
 
         DispatcherUnhandledException += (_, args) =>
@@ -100,7 +101,10 @@ public partial class App : Application
                     .ApplyFreshInstallDefaultsAsync()
                     .ConfigureAwait(false);
             }
-            catch { /* ignore */ }
+            catch (Exception ex)
+            {
+                ConsoleLog.Instance.Write(LocalizationService.F("startup.error", ex.Message));
+            }
         });
     }
 

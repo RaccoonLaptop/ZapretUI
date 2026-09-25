@@ -79,7 +79,7 @@ public static class AppStartupService
 
             var definition = taskService.NewTask();
             definition.RegistrationInfo.Description =
-                "Zapret UI — запуск в трее при входе в Windows (с правами администратора).";
+                "Zapret UI — запуск в трее при входе в Windows.";
             definition.Settings.DisallowStartIfOnBatteries = false;
             definition.Settings.StopIfGoingOnBatteries = false;
             definition.Settings.ExecutionTimeLimit = TimeSpan.Zero;
@@ -93,7 +93,7 @@ public static class AppStartupService
             var workDir = Path.GetDirectoryName(exePath) ?? AppContext.BaseDirectory;
             definition.Actions.Add(new ExecAction(exePath, "--tray", workDir));
 
-            definition.Principal.RunLevel = TaskRunLevel.Highest;
+            definition.Principal.RunLevel = TaskRunLevel.LUA;
             definition.Principal.UserId = WindowsIdentity.GetCurrent().Name;
             definition.Principal.LogonType = TaskLogonType.InteractiveToken;
 
