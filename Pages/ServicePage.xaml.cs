@@ -188,21 +188,6 @@ public partial class ServicePage : UserControl
         netCard.Child = netStack;
         root.Children.Add(netCard);
 
-        // Security
-        root.Children.Add(Section(Loc.T("service.section_security")));
-        var secCard = Card();
-        var secStack = new StackPanel();
-        secStack.Children.Add(new TextBlock
-        {
-            Text = Loc.T("service.security_desc"),
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-            Margin = new Thickness(0, 0, 0, 12)
-        });
-        secStack.Children.Add(ActionBtn(Loc.T("service.setup_security"), async () => await HandleSecurityAsync()));
-        secCard.Child = secStack;
-        root.Children.Add(secCard);
-
         // Language
         root.Children.Add(Section(Loc.T("service.section_language")));
         var langCard = Card();
@@ -247,46 +232,6 @@ public partial class ServicePage : UserControl
 
         scroll.Content = root;
         Content = scroll;
-    }
-
-    private async Task HandleSecurityAsync()
-    {
-        var security = new SecuritySetupService(_paths);
-        var status = await UiHelpers.RunWithLoadingAsync(
-            OwnerWindow,
-            Loc.T("common.loading"),
-            () => security.CheckStatusAsync());
-
-        if (status.IsFullyConfigured)
-        {
-            UiHelpers.ShowInfo(Loc.F("service.security_all_ok", status.Summary));
-            return;
-        }
-
-        if (!status.CheckSucceeded)
-        {
-            if (UiHelpers.Confirm(Loc.F("service.security_check_failed", status.Summary)))
-            {
-                if (Application.Current.MainWindow is MainWindow mw)
-                    mw.RunSecuritySetup();
-            }
-            return;
-        }
-
-        var details = status.Summary;
-        if (status.MissingExclusions.Count > 0)
-            details += "\n\n" + Loc.F("service.security_defender", string.Join(", ", status.MissingExclusions));
-        if (status.MissingFirewallPrograms.Count > 0)
-            details += "\n\n" + Loc.F("service.security_firewall", string.Join(", ", status.MissingFirewallPrograms));
-
-        if (UiHelpers.Confirm(Loc.F("service.security_issues", details)))
-        {
-            if (Application.Current.MainWindow is MainWindow mw)
-                mw.RunSecuritySetup();
-            return;
-        }
-
-        UiHelpers.ShowInfo(security.GetManualInstructions());
     }
 
     private async Task CheckAppUpdateAsync()

@@ -18,8 +18,6 @@ public sealed class AppSettings
     public bool AutoUpdateApp { get; set; } = false;
     public string? UpdateManifestUrl { get; set; }
     public string? LastInstalledVersion { get; set; }
-    public bool SecuritySetupCompleted { get; set; }
-    public bool SecuritySetupSkipped { get; set; }
     /// <summary>ID фона главной страницы (см. HomeBackgroundCatalog).</summary>
     public string HomeBackground { get; set; } = "wavy";
     /// <summary>Язык интерфейса: ru или en.</summary>

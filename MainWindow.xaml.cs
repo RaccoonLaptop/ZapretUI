@@ -92,9 +92,6 @@ public partial class MainWindow : Window
                 return;
             }
 
-            if (!_settings.SecuritySetupCompleted && !_settings.SecuritySetupSkipped && !_startInTray)
-                ShowSecuritySetup();
-
             if (_startInTray)
                 HideToTray();
 
@@ -106,14 +103,6 @@ public partial class MainWindow : Window
             ConsoleLog.Instance.Write(Loc.F("startup.error", ex.Message));
         }
     }
-
-    private void ShowSecuritySetup()
-    {
-        var setup = new SetupWindow(new SecuritySetupService(_paths), _settings) { Owner = this };
-        setup.ShowDialog();
-    }
-
-    public void RunSecuritySetup() => ShowSecuritySetup();
 
     public void ApplyLanguageChange()
     {
