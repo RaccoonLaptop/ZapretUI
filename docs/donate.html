@@ -11,6 +11,7 @@
     :root {
       --bg: #08090d;
       --surface: #10121a;
+      --surface-light: #181b26;
       --border: #2d3348;
       --accent: #6b9fff;
       --accent-hover: #8ab4ff;
@@ -28,16 +29,97 @@
     }
     a { color: var(--accent); text-decoration: none; }
     a:hover { color: var(--accent-hover); text-decoration: underline; }
-    .wrap { max-width: 560px; margin: 0 auto; padding: 32px 20px 64px; }
-    header { text-align: center; margin-bottom: 24px; }
-    header img { width: 72px; height: 72px; border-radius: 16px; margin-bottom: 12px; }
-    h1 { font-size: 1.7rem; margin: 0 0 8px; }
-    p { color: var(--muted); }
+    .wrap { max-width: 480px; margin: 0 auto; padding: 48px 20px 64px; }
+    header { text-align: center; margin-bottom: 28px; }
+    header img { width: 72px; height: 72px; border-radius: 18px; margin-bottom: 14px; }
+    h1 { font-size: 1.6rem; margin: 0 0 8px; font-weight: 650; }
+    .lead { color: var(--muted); margin: 0; }
     .card {
-      background: #fff;
-      color: #1a1a1a;
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 8px 16px 16px;
+      padding: 22px 22px 18px;
+    }
+    .yoomoney-payment-form {
+      max-width: none;
+      margin: 0;
+      padding: 0;
+      font-family: inherit;
+      color: var(--text);
+    }
+    .yoomoney-payment-form .ym-block-title {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0 0 8px;
+    }
+    .yoomoney-payment-form .ym-customer-info .ym-input { margin-top: 0; }
+    .yoomoney-payment-form .ym-input {
+      height: 44px;
+      line-height: 44px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface-light);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 15px;
+      padding: 0 14px;
+    }
+    .yoomoney-payment-form .ym-input::placeholder { color: #6d7894; }
+    .yoomoney-payment-form .ym-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .yoomoney-payment-form .ym-before-line { padding-top: 0; }
+    .yoomoney-payment-form .ym-before-line:before { display: none; }
+    .yoomoney-payment-form .ym-payment-btn-block {
+      height: auto;
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+    .yoomoney-payment-form .ym-input-icon-rub {
+      margin: 0;
+      min-width: 0;
+      width: 100%;
+    }
+    .yoomoney-payment-form .ym-input-icon-rub:after {
+      color: var(--muted);
+      height: 44px;
+      line-height: 44px;
+      right: 14px;
+    }
+    .yoomoney-payment-form .ym-input-icon-rub input { padding-right: 32px; }
+    .yoomoney-payment-form .ym-payment-btn-block .ym-btn-pay {
+      max-width: none;
+      width: 100%;
+      min-height: 44px;
+      height: 44px;
+      margin: 0;
+      padding: 0 16px;
+      border-radius: 8px;
+      background: #E2556A;
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 650;
+      justify-content: center;
+      text-transform: none;
+    }
+    .yoomoney-payment-form .ym-payment-btn-block .ym-btn-pay:hover { background: #C94458; }
+    .yoomoney-payment-form .ym-payment-btn-block .ym-btn-pay .ym-text-crop {
+      flex: 0 0 auto;
+      margin: 0;
+      text-align: center;
+    }
+    .yoomoney-payment-form .ym-logo { display: none; }
+    .note {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
     }
     footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 28px; }
   </style>
@@ -47,12 +129,11 @@
     <header>
       <img src="https://raw.githubusercontent.com/RaccoonLaptop/ZapretUI/main/Assets/icon-readme.png" alt="Zapret UI">
       <h1>Поддержать Zapret UI</h1>
-      <p>Сумму выбираете сами. Оплата проходит на странице ЮKassa. Для чека укажите телефон или почту.</p>
+      <p class="lead">Сумму выбираете сами. Оплата откроется на странице ЮKassa.</p>
     </header>
     <div class="card">
       <form class="yoomoney-payment-form" action="https://yookassa.ru/integration/simplepay/payment" method="post" accept-charset="utf-8">
         <div class="ym-products ym-display-none">
-          <div class="ym-block-title ym-products-title">Товары</div>
           <div class="ym-product">
             <div class="ym-product-line">
               <span class="ym-product-description"><span class="ym-product-count">1×</span>Поддержка</span>
@@ -68,20 +149,22 @@
         </div>
         <input value="" type="hidden" name="ym_merchant_receipt">
         <div class="ym-customer-info">
-          <div class="ym-block-title">О покупателе</div>
-          <input class="ym-input" name="email" placeholder="Телефон или Email для чека" type="text">
+          <div class="ym-block-title">Телефон или почта для чека</div>
+          <input class="ym-input" name="email" placeholder="mail@example.com" type="text">
         </div>
         <input name="customerNumber" type="hidden" value="Добровольная поддержка Zapret UI">
         <input name="sumEqualPrice" type="hidden" value="true">
         <div class="ym-payment-btn-block ym-before-line ym-align-space-between">
+          <div class="ym-block-title">Сумма</div>
           <div class="ym-input-icon-rub">
-            <input name="sum" placeholder="0.00" class="ym-input ym-sum-input ym-required-input" type="number" step="any">
+            <input name="sum" placeholder="100" class="ym-input ym-sum-input ym-required-input" type="number" step="any" min="1">
           </div>
           <button data-text="Поддержать" class="ym-btn-pay ym-result-price"><span class="ym-text-crop">Поддержать</span> <span class="ym-price-output"></span></button>
           <img src="https://yookassa.ru/integration/simplepay/img/iokassa-gray.svg?v=1.35.0" class="ym-logo" width="114" height="27" alt="ЮKassa">
         </div>
         <input name="shopId" type="hidden" value="1219833">
       </form>
+      <p class="note">Деньги приходят в ЮKassa. Это добровольная поддержка, без подписки.</p>
     </div>
     <footer>
       <a href="./">К руководству</a>
