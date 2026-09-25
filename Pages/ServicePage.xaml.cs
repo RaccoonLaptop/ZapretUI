@@ -37,7 +37,6 @@ public partial class ServicePage : UserControl
     private Button _ipsetLoadedBtn = null!;
     private Button _ipsetNoneBtn = null!;
     private Button _ipsetAnyBtn = null!;
-    private ComboBox _serviceStrategy = null!;
     private TextBlock _componentStatus = null!;
 
     public ServicePage(ZapretPaths paths, StrategyService strategy, AppSettings settings)
@@ -66,35 +65,6 @@ public partial class ServicePage : UserControl
             Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
             Margin = new Thickness(0, 0, 0, 20)
         });
-
-        root.Children.Add(Section(Loc.T("service.section_service")));
-        var svcCard = Card();
-        var svcStack = new StackPanel();
-        svcStack.Children.Add(new TextBlock
-        {
-            Text = Loc.T("service.strategy_autostart"),
-            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
-            Margin = new Thickness(0, 0, 0, 8)
-        });
-        _serviceStrategy = new ComboBox
-        {
-            MinWidth = 280,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(0, 0, 0, 12),
-            DisplayMemberPath = nameof(StrategyItem.DisplayName)
-        };
-        foreach (var item in StrategyDisplayHelper.LoadItems(_paths.Root, _paths.GetStrategyFiles()))
-            _serviceStrategy.Items.Add(item);
-        if (_serviceStrategy.Items.Count > 0)
-            _serviceStrategy.SelectedIndex = 0;
-        svcStack.Children.Add(_serviceStrategy);
-        var svcBtns = new WrapPanel();
-        svcBtns.Children.Add(ActionBtn(Loc.T("service.install_service"), InstallServiceAsync));
-        svcBtns.Children.Add(ActionBtn(Loc.T("service.remove_services"), RemoveServicesAsync));
-        svcBtns.Children.Add(ActionBtn(Loc.T("service.check_status"), CheckServiceStatusAsync));
-        svcStack.Children.Add(svcBtns);
-        svcCard.Child = svcStack;
-        root.Children.Add(svcCard);
 
         // Settings
         root.Children.Add(Section(Loc.T("service.section_settings")));
@@ -245,13 +215,26 @@ public partial class ServicePage : UserControl
             Margin = new Thickness(0, 0, 0, 12)
         };
         exStack.Children.Add(_componentStatus);
-        var exBtns = new WrapPanel();
-        exBtns.Children.Add(LinkButton(Loc.T("health.open_guide"), ZapretHealth.GuideUrl));
-        exBtns.Children.Add(ActionBtn(Loc.T("service.export_user"), ExportUserData));
-        exBtns.Children.Add(ActionBtn(Loc.T("service.import_user"), ImportUserData));
-        exStack.Children.Add(exBtns);
+        exStack.Children.Add(LinkButton(Loc.T("health.open_guide"), ZapretHealth.GuideUrl));
         exCard.Child = exStack;
         root.Children.Add(exCard);
+
+        root.Children.Add(Section(Loc.T("service.section_user_files")));
+        var userCard = Card();
+        var userStack = new StackPanel();
+        userStack.Children.Add(new TextBlock
+        {
+            Text = Loc.T("service.user_files_desc"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)Application.Current.FindResource("TextMutedBrush"),
+            Margin = new Thickness(0, 0, 0, 12)
+        });
+        var userBtns = new WrapPanel();
+        userBtns.Children.Add(ActionBtn(Loc.T("service.export_user"), ExportUserData));
+        userBtns.Children.Add(ActionBtn(Loc.T("service.import_user"), ImportUserData));
+        userStack.Children.Add(userBtns);
+        userCard.Child = userStack;
+        root.Children.Add(userCard);
 
         // Language
         root.Children.Add(Section(Loc.T("service.section_language")));
@@ -621,43 +604,15 @@ public partial class ServicePage : UserControl
         ApplyActiveStyle(_ipsetAnyBtn, ipsetMode == "any");
 
         var missing = ZapretHealth.MissingFiles(_paths);
-        _componentStatus.Text = missing.Count == 0
-            ? Loc.T("service.files_ok")
-            : Loc.F("strategy.files_missing", string.Join(", ", missing));
-        _componentStatus.Foreground = (Brush)Application.Current.FindResource(
-            missing.Count == 0 ? "TextMutedBrush" : "ErrorBrush");
-    }
-
-    private async Task InstallServiceAsync()
-    {
-        if (_serviceStrategy.SelectedItem is not StrategyItem item)
+        if (missing.Count == 0)
         {
-            UiHelpers.ShowError(Loc.T("strategies.select_first"));
-            return;
+            _componentStatus.Visibility = Visibility.Collapsed;
         }
-
-        await RunServiceActionAsync("InstallService", item.FileName);
-    }
-
-    private Task RemoveServicesAsync() => RunServiceActionAsync("RemoveServices", null);
-
-    private Task CheckServiceStatusAsync() => RunServiceActionAsync("CheckStatus", null);
-
-    private async Task RunServiceActionAsync(string action, string? extra)
-    {
-        try
+        else
         {
-            var runner = new ProcessRunner();
-            runner.SetZapretRoot(_paths.Root);
-            var output = await UiHelpers.RunWithLoadingAsync(
-                OwnerWindow,
-                Loc.T("common.loading"),
-                () => runner.RunBridgeAsync(action, extra));
-            UiHelpers.ShowResult(OwnerWindow, Loc.T("service.section_service"), output);
-        }
-        catch (Exception ex)
-        {
-            UiHelpers.ShowError(ex.Message);
+            _componentStatus.Visibility = Visibility.Visible;
+            _componentStatus.Text = Loc.F("strategy.files_missing", string.Join(", ", missing));
+            _componentStatus.Foreground = (Brush)Application.Current.FindResource("ErrorBrush");
         }
     }
 

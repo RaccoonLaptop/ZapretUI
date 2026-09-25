@@ -37,6 +37,7 @@ public partial class MainWindow : Window
         RestoreWindowBounds();
         ApplyShellLocalization();
         AppIcon.ApplyTo(this);
+        MaximizedWorkArea.Attach(this);
 
         InitAppBackground();
         _paths = new ZapretPaths(_settings.ZapretRoot);

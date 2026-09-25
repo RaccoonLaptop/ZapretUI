@@ -44,7 +44,6 @@ public partial class DiagnosticsPage : UserControl
         var toolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
         DockPanel.SetDock(toolbar, Dock.Top);
         toolbar.Children.Add(MakeButton(Loc.T("tools.diagnostics"), async () => await RunDiagnosticsAsync()));
-        toolbar.Children.Add(MakeButton(Loc.T("service.check_status"), async () => await CheckStatusAsync()));
         toolbar.Children.Add(MakeButton(Loc.T("tools.clear"), () =>
         {
             _output.Document.Blocks.Clear();
@@ -106,27 +105,6 @@ public partial class DiagnosticsPage : UserControl
             }
             AppendLine(line);
         });
-    }
-
-    private async Task CheckStatusAsync()
-    {
-        AppendLine("--- " + Loc.T("service.check_status") + " ---");
-        try
-        {
-            var result = await UiHelpers.RunWithLoadingAsync(
-                Window.GetWindow(this),
-                Loc.T("common.loading"),
-                () => _runner.RunBridgeAsync("CheckStatus"));
-            if (!string.IsNullOrWhiteSpace(result))
-            {
-                foreach (var line in result.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries))
-                    AppendLine(line);
-            }
-        }
-        catch (Exception ex)
-        {
-            AppendLine($"{Loc.T("common.error_prefix")} {ex.Message}");
-        }
     }
 
     private async Task RunDiagnosticsAsync()
