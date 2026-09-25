@@ -10,8 +10,28 @@ param(
 $ErrorActionPreference = "Stop"
 
 function Write-Log($Message) {
+    if (-not $LogFile) { return }
     $line = "[$(Get-Date -Format 'HH:mm:ss')] $Message"
-    if ($LogFile) { Add-Content -LiteralPath $LogFile -Value $line -Encoding UTF8 }
+    for ($try = 0; $try -lt 10; $try++) {
+        try {
+            $stream = [System.IO.File]::Open(
+                $LogFile,
+                [System.IO.FileMode]::Append,
+                [System.IO.FileAccess]::Write,
+                [System.IO.FileShare]::ReadWrite)
+            try {
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes("$line`r`n")
+                $stream.Write($bytes, 0, $bytes.Length)
+            }
+            finally {
+                $stream.Dispose()
+            }
+            return
+        }
+        catch {
+            Start-Sleep -Milliseconds 100
+        }
+    }
 }
 
 function Get-InstallerErrorMessage([int]$ExitCode) {
