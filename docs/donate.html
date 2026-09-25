@@ -109,6 +109,22 @@
       text-transform: none;
     }
     .yoomoney-payment-form .ym-payment-btn-block .ym-btn-pay:hover { background: #C94458; }
+    .yoomoney-payment-form .ym-payment-btn-block .sbp-pay {
+      width: 100%;
+      min-height: 44px;
+      height: 44px;
+      margin: 0;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 8px;
+      background: #5B4BDB;
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .yoomoney-payment-form .ym-payment-btn-block .sbp-pay:hover { background: #4A3CC4; }
     .yoomoney-payment-form .ym-payment-btn-block .ym-btn-pay .ym-text-crop {
       flex: 0 0 auto;
       margin: 0;
@@ -163,7 +179,9 @@
           <div class="ym-input-icon-rub">
             <input name="sum" placeholder="100" class="ym-input ym-sum-input ym-required-input" type="number" step="any" min="1">
           </div>
-          <button data-text="Поддержать" class="ym-btn-pay ym-result-price"><span class="ym-text-crop">Поддержать</span> <span class="ym-price-output"></span></button>
+          <input name="paymentType" type="hidden" value="">
+          <button type="submit" data-text="Поддержать" class="ym-btn-pay ym-result-price" onclick="this.form.paymentType.value=''"><span class="ym-text-crop">Поддержать</span> <span class="ym-price-output"></span></button>
+          <button type="submit" class="sbp-pay" onclick="this.form.paymentType.value='CP'">СБП</button>
           <img src="https://yookassa.ru/integration/simplepay/img/iokassa-gray.svg?v=1.35.0" class="ym-logo" width="114" height="27" alt="ЮKassa">
         </div>
         <input name="shopId" type="hidden" value="1219833">
