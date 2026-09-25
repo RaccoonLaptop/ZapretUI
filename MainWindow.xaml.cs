@@ -23,7 +23,8 @@ public partial class MainWindow : Window
     private readonly TrayIconService _tray;
     private readonly PowerResumeService _powerResume;
     private readonly bool _startInTray;
-    private const string TelegramChannelUrl = "https://t.me/+59hjtRf2yXYyNTZi";
+    private const string TelegramChannelUrl = "https://t.me/ZapretUI";
+    private const string GitHubUrl = "https://github.com/RaccoonLaptop/ZapretUI";
     private Button? _activeNav;
     private string _activeSection = "home";
     private HomePage? _homePage;
@@ -368,13 +369,36 @@ public partial class MainWindow : Window
         AddNav(Loc.T("nav.diagnostics"), "diagnostics", () => Navigate(new DiagnosticsPage(_runner)));
         AddNav(Loc.T("nav.test"), "test", NavigateTest);
         AddTelegramButton();
+        AddGitHubButton();
     }
 
     private void AddTelegramButton()
     {
-        var plane = new System.Windows.Shapes.Path
+        AddExternalButton(
+            "TelegramButton",
+            Geometry.Parse("M2.01,21 L23,12 L2.01,3 L2,10 L17,12 L2,14 Z"),
+            Loc.T("nav.telegram"),
+            Loc.T("nav.telegram_tip"),
+            TelegramChannelUrl,
+            new Thickness(0, 8, 0, 2));
+    }
+
+    private void AddGitHubButton()
+    {
+        AddExternalButton(
+            "GitHubButton",
+            Geometry.Parse("M12,0.3 C5.37,0.3 0,5.67 0,12.3 C0,17.6 3.44,22.1 8.21,23.69 C8.81,23.8 9.02,23.43 9.02,23.11 C9.02,22.83 9.01,22.07 9,21.07 C5.67,21.79 4.96,19.46 4.96,19.46 C4.42,18.07 3.63,17.7 3.63,17.7 C2.55,16.96 3.72,16.97 3.72,16.97 C4.92,17.06 5.56,18.21 5.56,18.21 C6.63,20.04 8.37,19.51 9.05,19.21 C9.16,18.43 9.47,17.9 9.81,17.6 C7.15,17.3 4.35,16.27 4.35,11.67 C4.35,10.36 4.81,9.29 5.58,8.45 C5.45,8.15 5.04,6.93 5.69,5.27 C5.69,5.27 6.69,4.95 8.99,6.5 C9.95,6.23 10.97,6.1 12,6.1 C13.02,6.1 14.04,6.24 15,6.5 C17.28,4.95 18.29,5.27 18.29,5.27 C18.93,6.93 18.53,8.15 18.4,8.45 C19.16,9.29 19.62,10.36 19.62,11.67 C19.62,16.28 16.82,17.3 14.15,17.59 C14.57,17.95 14.96,18.69 14.96,19.82 C14.96,21.42 14.94,22.71 14.94,23.1 C14.94,23.42 15.16,23.79 15.77,23.68 C20.57,22.09 24,17.59 24,12.3 C24,5.67 18.63,0.3 12,0.3 Z"),
+            Loc.T("nav.github"),
+            Loc.T("nav.github_tip"),
+            GitHubUrl,
+            new Thickness(0, 6, 0, 2));
+    }
+
+    private void AddExternalButton(string styleKey, Geometry icon, string text, string tip, string url, Thickness margin)
+    {
+        var mark = new System.Windows.Shapes.Path
         {
-            Data = Geometry.Parse("M2.01,21 L23,12 L2.01,3 L2,10 L17,12 L2,14 Z"),
+            Data = icon,
             Fill = Brushes.White,
             Stretch = Stretch.Uniform,
             Width = 16,
@@ -383,25 +407,25 @@ public partial class MainWindow : Window
         };
         var label = new TextBlock
         {
-            Text = Loc.T("nav.telegram"),
+            Text = text,
             Foreground = Brushes.White,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(8, 0, 0, 0)
         };
         var content = new StackPanel { Orientation = Orientation.Horizontal };
-        content.Children.Add(plane);
+        content.Children.Add(mark);
         content.Children.Add(label);
 
         var btn = new Button
         {
             Content = content,
-            Style = (Style)FindResource("TelegramButton"),
-            Margin = new Thickness(0, 8, 0, 2),
-            ToolTip = Loc.T("nav.telegram_tip")
+            Style = (Style)FindResource(styleKey),
+            Margin = margin,
+            ToolTip = tip
         };
         btn.Click += (_, _) =>
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(TelegramChannelUrl)
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url)
             {
                 UseShellExecute = true
             });

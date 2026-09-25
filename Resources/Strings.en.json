@@ -22,6 +22,8 @@
   "nav.test": "Strategy test",
   "nav.telegram": "Telegram",
   "nav.telegram_tip": "Zapret UI on Telegram",
+  "nav.github": "GitHub",
+  "nav.github_tip": "Zapret UI repository on GitHub",
   "status.label": "Status",
   "status.running": "Running",
   "status.stopped": "Stopped",
