@@ -1,4 +1,4 @@
-# Build multi-size app.ico + source.png for Zapret UI (taskbar, tray, installer).
+# Build multi-size app.ico + source.png for Aeroway (taskbar, tray, installer).
 $ErrorActionPreference = "Stop"
 $ProjectDir = $PSScriptRoot
 $SourcePng = Join-Path $ProjectDir "Assets\source.png"

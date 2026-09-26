@@ -10,12 +10,12 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <AssemblyName>ZapretUI</AssemblyName>
     <RootNamespace>ZapretUI</RootNamespace>
-    <Version>1.10.38</Version>
+    <Version>1.11.0</Version>
     <Authors>Niko</Authors>
     <Company>Niko</Company>
-    <Product>Zapret UI</Product>
+    <Product>Aeroway</Product>
     <Copyright>Copyright © Niko</Copyright>
-    <Description>Modern UI for Zapret (Flowseal configs)</Description>
+    <Description>Aeroway — интерфейс для zapret и конфигов Flowseal</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <SatelliteResourceLanguages>en;ru</SatelliteResourceLanguages>
   </PropertyGroup>

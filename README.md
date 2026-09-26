@@ -1,22 +1,24 @@
 <p align="center">
-  <img src="Assets/icon-readme.png" alt="Zapret UI" width="128">
+  <img src="Assets/icon-readme.png" alt="Aeroway" width="128">
 </p>
 
-# Zapret UI
+# Aeroway
+
+Aeroway раньше назывался Zapret UI. Имя сменили, потому что проектов с названием Zapret UI слишком много. Уже установленная программа обновляется сама и остаётся в прежней папке.
 
 Современный интерфейс для запуска конфигов [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube) на Windows — Discord, YouTube и другие сервисы.
 
 | | |
 |---|---|
-| **Скачать** | [ZapretUI-Setup.exe](https://github.com/RaccoonLaptop/ZapretUI/releases/latest) |
-| **GitHub** | https://github.com/RaccoonLaptop/ZapretUI |
+| **Скачать** | [Aeroway-Setup.exe](https://github.com/RaccoonLaptop/Aeroway/releases/latest) |
+| **GitHub** | https://github.com/RaccoonLaptop/Aeroway |
 | **Telegram** | https://t.me/ZapretUI |
-| **Донат** | https://raccoonlaptop.github.io/ZapretUI/donate.html |
-| **Руководство** | https://raccoonlaptop.github.io/ZapretUI/ |
+| **Донат** | https://raccoonlaptop.github.io/Aeroway/donate.html |
+| **Руководство** | https://raccoonlaptop.github.io/Aeroway/ |
 
 ## Быстрый старт
 
-1. Скачайте и установите **ZapretUI-Setup.exe**
+1. Скачайте и установите **Aeroway-Setup.exe**
 2. При первом запуске дождитесь загрузки компонентов Flowseal
 3. Добавьте папку программы в исключения антивируса и разрешите `ZapretUI.exe` и `winws.exe` в брандмауэре — [инструкция ниже](#антивирус-и-брандмауэр)
 4. Выберите стратегию на главной и нажмите **ЗАПУСТИТЬ**

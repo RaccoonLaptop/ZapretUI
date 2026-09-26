@@ -1,4 +1,4 @@
-# Build ZapretUI-Setup.exe (self-contained, no .NET install required)
+# Build Aeroway-Setup.exe (self-contained, no .NET install required)
 $ErrorActionPreference = "Stop"
 $ProjectDir = $PSScriptRoot
 $StagingDir = Join-Path $ProjectDir "build\staging"
@@ -10,7 +10,7 @@ $IssFile = Join-Path $ProjectDir "installer\ZapretUI.iss"
 $version = $csproj.Project.PropertyGroup.Version | Select-Object -First 1
 if (-not $version) { $version = "1.0.0" }
 
-Write-Host "Building Zapret UI v$version (self-contained installer)..." -ForegroundColor Cyan
+Write-Host "Building Aeroway v$version (self-contained installer)..." -ForegroundColor Cyan
 
 & (Join-Path $ProjectDir "build-icon.ps1")
 & (Join-Path $ProjectDir "build-installer-art.ps1")
@@ -61,12 +61,12 @@ $distAbs = (Resolve-Path $DistDir).Path
 & $iscc "/DAppVersion=$version" "/DSourceDir=$stagingAbs" "/DOutputDir=$distAbs" $IssFile
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
-$setupExe = Join-Path $DistDir "ZapretUI-Setup.exe"
+$setupExe = Join-Path $DistDir "Aeroway-Setup.exe"
 
 # Манифест обновлений (только Setup.exe на GitHub)
 $manifest = @{
     version = $version
-    installerUrl = "https://github.com/RaccoonLaptop/ZapretUI/releases/download/v$version/ZapretUI-Setup.exe"
+    installerUrl = "https://github.com/RaccoonLaptop/Aeroway/releases/download/v$version/Aeroway-Setup.exe"
 } | ConvertTo-Json -Depth 3
 Set-Content -Path (Join-Path $ProjectDir "update.json") -Value $manifest -Encoding UTF8
 
@@ -76,4 +76,4 @@ if (Test-Path $staleManifest) { Remove-Item $staleManifest -Force }
 
 Write-Host ""
 Write-Host "Done: $setupExe" -ForegroundColor Green
-Write-Host "Give users ZapretUI-Setup.exe - one file, no .NET install." -ForegroundColor Yellow
+Write-Host "Give users Aeroway-Setup.exe - one file, no .NET install." -ForegroundColor Yellow

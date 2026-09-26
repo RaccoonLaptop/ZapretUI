@@ -24,8 +24,8 @@ public partial class MainWindow : Window
     private readonly PowerResumeService _powerResume;
     private readonly bool _startInTray;
     private const string TelegramChannelUrl = "https://t.me/ZapretUI";
-    private const string GitHubUrl = "https://github.com/RaccoonLaptop/ZapretUI";
-    private const string DonateUrl = "https://raccoonlaptop.github.io/ZapretUI/donate.html";
+    private const string GitHubUrl = "https://github.com/RaccoonLaptop/Aeroway";
+    private const string DonateUrl = "https://raccoonlaptop.github.io/Aeroway/donate.html";
     private Button? _activeNav;
     private string _activeSection = "home";
     private HomePage? _homePage;

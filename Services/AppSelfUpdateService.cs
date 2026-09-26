@@ -12,10 +12,10 @@ public sealed class AppSelfUpdateService
 {
     // URL манифеста обновлений (можно переопределить в settings.json)
     public const string DefaultManifestUrl =
-        "https://raw.githubusercontent.com/RaccoonLaptop/ZapretUI/main/update.json";
+        "https://raw.githubusercontent.com/RaccoonLaptop/Aeroway/main/update.json";
 
     private const string GitHubReleasesApi =
-        "https://api.github.com/repos/RaccoonLaptop/ZapretUI/releases/latest";
+        "https://api.github.com/repos/RaccoonLaptop/Aeroway/releases/latest";
 
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromMinutes(5) };
     private readonly AppSettings _settings;
@@ -68,7 +68,7 @@ public sealed class AppSelfUpdateService
                 Manifest = manifest,
                 Message = hasUpdate
                     ? $"Доступна версия {remote}"
-                    : $"Zapret UI актуален ({local})"
+                    : $"Aeroway актуален ({local})"
             };
         }
         catch (Exception ex)
@@ -95,7 +95,7 @@ public sealed class AppSelfUpdateService
 
             if (!string.IsNullOrWhiteSpace(manifest.InstallerUrl))
             {
-                var setupPath = Path.Combine(tempRoot, "ZapretUI-Setup.exe");
+                var setupPath = Path.Combine(tempRoot, "Aeroway-Setup.exe");
                 await DownloadFileWithProgressAsync(manifest.InstallerUrl.Trim(), setupPath, progress, ct);
                 return AppUpdatePrepareResult.Ok(new PreparedAppUpdate
                 {
@@ -228,7 +228,7 @@ public sealed class AppSelfUpdateService
             return AppUpdateInstallResult.Ok(check.Message ?? "Обновление не требуется");
 
         if (!Helpers.UiHelpers.Confirm(
-                $"Доступна новая версия Zapret UI: {check.RemoteVersion} (у вас {check.LocalVersion}).\n\nУстановить сейчас?"))
+                $"Доступна новая версия Aeroway: {check.RemoteVersion} (у вас {check.LocalVersion}).\n\nУстановить сейчас?"))
         {
             return AppUpdateInstallResult.Ok("Обновление отложено");
         }
@@ -336,7 +336,7 @@ public sealed class AppSelfUpdateService
                     var name = asset.GetProperty("name").GetString() ?? "";
                     var url = asset.GetProperty("browser_download_url").GetString();
                     if (string.IsNullOrEmpty(url)) continue;
-                    if (name.Equals("ZapretUI-Setup.exe", StringComparison.OrdinalIgnoreCase))
+                    if (name.Equals("Aeroway-Setup.exe", StringComparison.OrdinalIgnoreCase))
                         setupUrl = url;
                 }
             }

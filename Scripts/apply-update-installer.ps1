@@ -42,7 +42,7 @@ function Get-InstallerErrorMessage([int]$ExitCode) {
 }
 
 function Stop-ZapretUiProcess {
-    Write-Log "Closing Zapret UI so files can be replaced..."
+    Write-Log "Closing Aeroway so files can be replaced..."
     Get-Process -Name 'ZapretUI' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     $deadline = (Get-Date).AddSeconds(15)
     while ((Get-Process -Name 'ZapretUI' -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {
@@ -53,7 +53,7 @@ function Stop-ZapretUiProcess {
 function Start-ZapretUi {
     $launch = Join-Path $TargetDir "ZapretUI.exe"
     if (-not (Test-Path -LiteralPath $launch)) { return }
-    Write-Log "Starting Zapret UI..."
+    Write-Log "Starting Aeroway..."
     Write-Log "Starting: $launch"
     Start-Process -FilePath $launch -WorkingDirectory $TargetDir
 }

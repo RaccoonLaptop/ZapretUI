@@ -1,4 +1,4 @@
-; Zapret UI — Windows installer (Inno Setup 6)
+; Aeroway — Windows installer (Inno Setup 6)
 ; Build: ..\build-installer.ps1
 
 #ifndef AppVersion
@@ -15,18 +15,18 @@
 
 [Setup]
 AppId={{8F4E2A91-3C7D-4B6E-9F12-0A1B2C3D4E5F}
-AppName=Zapret UI
+AppName=Aeroway
 AppVersion={#AppVersion}
-AppVerName=Zapret UI {#AppVersion}
+AppVerName=Aeroway {#AppVersion}
 AppPublisher=Niko
-AppPublisherURL=https://github.com/RaccoonLaptop/ZapretUI
-AppSupportURL=https://github.com/RaccoonLaptop/ZapretUI
-AppUpdatesURL=https://github.com/RaccoonLaptop/ZapretUI/releases
+AppPublisherURL=https://github.com/RaccoonLaptop/Aeroway
+AppSupportURL=https://github.com/RaccoonLaptop/Aeroway
+AppUpdatesURL=https://github.com/RaccoonLaptop/Aeroway/releases
 DefaultDirName={localappdata}\ZapretUI
 DisableDirPage=yes
 PrivilegesRequired=lowest
 OutputDir={#OutputDir}
-OutputBaseFilename=ZapretUI-Setup
+OutputBaseFilename=Aeroway-Setup
 SetupIconFile=..\Assets\app.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -50,13 +50,17 @@ Name: "desktopicon"; Description: "Создать ярлык на рабочем
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[InstallDelete]
+Type: files; Name: "{autoprograms}\Zapret UI.lnk"
+Type: files; Name: "{autodesktop}\Zapret UI.lnk"
+
 [Icons]
-Name: "{autoprograms}\Zapret UI"; Filename: "{app}\ZapretUI.exe"; Comment: "Zapret UI — обход блокировок Discord, YouTube и др."
-Name: "{autodesktop}\Zapret UI"; Filename: "{app}\ZapretUI.exe"; Tasks: desktopicon; Comment: "Zapret UI"
+Name: "{autoprograms}\Aeroway"; Filename: "{app}\ZapretUI.exe"; Comment: "Aeroway — обход блокировок Discord, YouTube и др."
+Name: "{autodesktop}\Aeroway"; Filename: "{app}\ZapretUI.exe"; Tasks: desktopicon; Comment: "Aeroway"
 
 [Run]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Scripts\bootstrap-zapret.ps1"" -TargetDir ""{app}\zapret"""; StatusMsg: "Скачивание zapret (Flowseal)..."; Flags: waituntilterminated
-Filename: "{app}\ZapretUI.exe"; Description: "Запустить Zapret UI"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\ZapretUI.exe"; Description: "Запустить Aeroway"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\zapret"

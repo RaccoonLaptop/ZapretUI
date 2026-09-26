@@ -532,7 +532,7 @@ switch ($Action) {
         Start-Sleep -Milliseconds $initialWait
         $running = Get-Process winws -ErrorAction SilentlyContinue
         if (-not $running) {
-            Write-Color "winws.exe завершился сразу. Запустите Zapret UI от имени администратора." Red
+            Write-Color "winws.exe завершился сразу. Запустите Aeroway от имени администратора." Red
             exit 1
         }
 
@@ -540,7 +540,7 @@ switch ($Action) {
         while ((Get-Date) -lt $stableDeadline) {
             Start-Sleep -Milliseconds 200
             if (-not (Get-Process winws -ErrorAction SilentlyContinue)) {
-                Write-Color "winws.exe завершился сразу. Запустите Zapret UI от имени администратора." Red
+                Write-Color "winws.exe завершился сразу. Запустите Aeroway от имени администратора." Red
                 exit 1
             }
         }

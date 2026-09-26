@@ -12,7 +12,7 @@ public sealed class AppSettings
     public string? ZapretRoot { get; set; }
     public string? LastStrategy { get; set; }
     public bool MinimizeToTray { get; set; }
-    /// <summary>Проверять Zapret UI и Flowseal при запуске (только с подтверждением пользователя).</summary>
+    /// <summary>Проверять Aeroway и Flowseal при запуске (только с подтверждением пользователя).</summary>
     public bool CheckUpdatesOnStartup { get; set; } = true;
     /// <summary>Устарело: авто-установка без подтверждения отключена.</summary>
     public bool AutoUpdateApp { get; set; } = false;
@@ -22,7 +22,7 @@ public sealed class AppSettings
     public string HomeBackground { get; set; } = "wavy";
     /// <summary>Язык интерфейса: ru или en.</summary>
     public string Language { get; set; } = "ru";
-    /// <summary>Автозапуск: Zapret UI в трее и последний выбранный пресет при входе в Windows.</summary>
+    /// <summary>Автозапуск: Aeroway в трее и последний выбранный пресет при входе в Windows.</summary>
     public bool StartUiOnLogin { get; set; }
     /// <summary>Устарело: объединено с StartUiOnLogin.</summary>
     public bool StartBypassOnLogin { get; set; }

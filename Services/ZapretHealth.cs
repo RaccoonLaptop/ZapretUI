@@ -2,7 +2,7 @@ namespace ZapretUI.Services;
 
 public static class ZapretHealth
 {
-    public const string GuideUrl = "https://raccoonlaptop.github.io/ZapretUI/";
+    public const string GuideUrl = "https://raccoonlaptop.github.io/Aeroway/";
 
     public static IReadOnlyList<string> MissingFiles(ZapretPaths paths)
     {

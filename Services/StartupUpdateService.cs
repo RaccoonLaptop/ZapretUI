@@ -26,7 +26,7 @@ public sealed class StartupUpdateService
             Loc.F("startup.log_check", appCheck.LocalVersion, flowCheck.LocalVersion));
 
         if (appCheck.Error is not null)
-            ConsoleLog.Instance.Write($"Zapret UI: {appCheck.Error}");
+            ConsoleLog.Instance.Write($"Aeroway: {appCheck.Error}");
         if (flowCheck.Error is not null)
             ConsoleLog.Instance.Write($"Flowseal: {flowCheck.Error}");
 

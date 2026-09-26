@@ -35,7 +35,7 @@ function New-WizardBitmap {
         $titleBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(232, 235, 244))
         $font = New-Object System.Drawing.Font("Segoe UI Semibold", 14, [System.Drawing.FontStyle]::Bold)
         $subFont = New-Object System.Drawing.Font("Segoe UI", 9)
-        $g.DrawString("Zapret UI", $font, $titleBrush, 22, 14)
+        $g.DrawString("Aeroway", $font, $titleBrush, 22, 14)
         $g.DrawString("Niko", $subFont, $titleBrush, 24, 38)
 
         $linePen.Dispose()

@@ -79,7 +79,7 @@ public static class AppStartupService
 
             var definition = taskService.NewTask();
             definition.RegistrationInfo.Description =
-                "Zapret UI — запуск в трее при входе в Windows.";
+                "Aeroway — запуск в трее при входе в Windows.";
             definition.Settings.DisallowStartIfOnBatteries = false;
             definition.Settings.StopIfGoingOnBatteries = false;
             definition.Settings.ExecutionTimeLimit = TimeSpan.Zero;

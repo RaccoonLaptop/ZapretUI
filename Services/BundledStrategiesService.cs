@@ -3,7 +3,7 @@ using System.IO;
 namespace ZapretUI.Services;
 
 /// <summary>
-/// Встроенные стратегии Zapret UI (копируются в папку zapret при установке/запуске).
+/// Встроенные стратегии Aeroway (копируются в папку zapret при установке/запуске).
 /// </summary>
 public static class BundledStrategiesService
 {

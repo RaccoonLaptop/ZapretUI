@@ -172,7 +172,7 @@ public sealed class UpdateInstallProgressWindow : Window
             return Loc.T("update.install_updating_files");
 
         if (line.Contains("Starting:", StringComparison.OrdinalIgnoreCase) ||
-            line.Contains("Запуск Zapret UI", StringComparison.OrdinalIgnoreCase))
+            line.Contains("Запуск Aeroway", StringComparison.OrdinalIgnoreCase))
             return Loc.T("update.install_restarting");
 
         return null;

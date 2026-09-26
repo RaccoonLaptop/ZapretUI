@@ -3,7 +3,7 @@ using System.IO;
 namespace ZapretUI.Services;
 
 /// <summary>
-/// Pre-bundled Flowseal/zapret package shipped with Zapret UI (offline install fallback).
+/// Pre-bundled Flowseal/zapret package shipped with Aeroway (offline install fallback).
 /// </summary>
 public static class BundledZapretService
 {
