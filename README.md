@@ -12,7 +12,7 @@ Aeroway раньше назывался Zapret UI. Имя сменили, пот
 |---|---|
 | **Скачать** | [Aeroway-Setup.exe](https://github.com/RaccoonLaptop/Aeroway/releases/latest) |
 | **GitHub** | https://github.com/RaccoonLaptop/Aeroway |
-| **Telegram** | https://t.me/ZapretUI |
+| **Telegram** | https://t.me/AerowayUI |
 | **Донат** | https://raccoonlaptop.github.io/Aeroway/donate.html |
 | **Руководство** | https://raccoonlaptop.github.io/Aeroway/ |
 

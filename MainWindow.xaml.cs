@@ -23,7 +23,7 @@ public partial class MainWindow : Window
     private readonly TrayIconService _tray;
     private readonly PowerResumeService _powerResume;
     private readonly bool _startInTray;
-    private const string TelegramChannelUrl = "https://t.me/ZapretUI";
+    private const string TelegramChannelUrl = "https://t.me/AerowayUI";
     private const string GitHubUrl = "https://github.com/RaccoonLaptop/Aeroway";
     private const string DonateUrl = "https://raccoonlaptop.github.io/Aeroway/donate.html";
     private Button? _activeNav;

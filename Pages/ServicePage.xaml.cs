@@ -16,7 +16,7 @@ public partial class ServicePage : UserControl
 {
     private const string FlowsealUrl = "https://github.com/Flowseal/zapret-discord-youtube";
     private const string AppUrl = "https://github.com/RaccoonLaptop/Aeroway";
-    private const string TelegramUrl = "https://t.me/ZapretUI";
+    private const string TelegramUrl = "https://t.me/AerowayUI";
     private const string DonateUrl = "https://raccoonlaptop.github.io/Aeroway/donate.html";
 
     private readonly ZapretPaths _paths;
