@@ -158,12 +158,13 @@
     .pay-choice:hover { border-color: var(--accent); background: #222636; }
     .pay-choice:last-child { margin-bottom: 0; }
     .form-hint {
-      min-height: 18px;
+      display: none;
       margin: 8px 0 0;
       color: #f0a0ae;
       font-size: 13px;
       text-align: center;
     }
+    .form-hint:not(:empty) { display: block; }
     .yoomoney-payment-form .ym-payment-btn-block .ym-btn-pay .ym-text-crop {
       flex: 0 0 auto;
       margin: 0;
@@ -229,7 +230,7 @@
     </div>
     <div class="pay-dialog" id="payDialog" hidden>
       <div class="pay-panel" role="dialog" aria-modal="true" aria-labelledby="payTitle">
-        <h2 id="payTitle">Как оплатить?</h2>
+        <h2 id="payTitle">Выберите способ оплаты</h2>
         <button type="button" class="pay-choice" data-type="AC">
           <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6.5A2.5 2.5 0 015.5 4h13A2.5 2.5 0 0121 6.5v11a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 17.5v-11zM5.5 6a.5.5 0 00-.5.5V8h14V6.5a.5.5 0 00-.5-.5h-13zM5 15.5V10h14v5.5a.5.5 0 01-.5.5h-13a.5.5 0 01-.5-.5z"/></svg>
           Карта
