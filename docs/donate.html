@@ -92,15 +92,17 @@
       right: 14px;
     }
     .yoomoney-payment-form .ym-input-icon-rub input { padding-right: 32px; }
-    .yoomoney-payment-form .ym-payment-btn-block .ym-btn-pay,
-    .yoomoney-payment-form .ym-payment-btn-block .sbp-pay {
+    .yoomoney-payment-form .ym-payment-btn-block .ym-btn-pay {
       max-width: none;
       width: 100%;
       min-height: 46px;
       height: 46px;
       margin: 0;
       padding: 0 16px;
+      border: 0;
       border-radius: 10px;
+      background: #6b9fff;
+      color: #10121a;
       font-family: inherit;
       font-size: 15px;
       font-weight: 650;
@@ -110,22 +112,58 @@
       text-transform: none;
       cursor: pointer;
     }
-    .yoomoney-payment-form .ym-payment-btn-block .ym-btn-pay {
-      border: 0;
-      background: #6b9fff;
-      color: #10121a;
-    }
     .yoomoney-payment-form .ym-payment-btn-block .ym-btn-pay:hover { background: #8ab4ff; }
-    .yoomoney-payment-form .ym-payment-btn-block .sbp-pay {
+    .btn-icon { width: 18px; height: 18px; flex: 0 0 auto; }
+    .pay-dialog {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(8, 9, 13, 0.72);
+      z-index: 20;
+    }
+    .pay-dialog.open { display: flex; }
+    .pay-panel {
+      width: min(320px, 100%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+    }
+    .pay-panel h2 {
+      margin: 0 0 14px;
+      font-size: 16px;
+      font-weight: 650;
+      text-align: center;
+    }
+    .pay-choice {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 46px;
+      margin: 0 0 8px;
+      border-radius: 10px;
       border: 1px solid #3a4260;
       background: #181b26;
-      color: #e8ebf4;
+      color: var(--text);
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
     }
-    .yoomoney-payment-form .ym-payment-btn-block .sbp-pay:hover {
-      background: #222636;
-      border-color: #6b9fff;
+    .pay-choice:hover { border-color: var(--accent); background: #222636; }
+    .pay-choice:last-child { margin-bottom: 0; }
+    .form-hint {
+      min-height: 18px;
+      margin: 8px 0 0;
+      color: #f0a0ae;
+      font-size: 13px;
+      text-align: center;
     }
-    .btn-icon { width: 16px; height: 16px; flex: 0 0 auto; }
     .yoomoney-payment-form .ym-payment-btn-block .ym-btn-pay .ym-text-crop {
       flex: 0 0 auto;
       margin: 0;
@@ -181,13 +219,26 @@
             <input name="sum" placeholder="100" class="ym-input ym-sum-input ym-required-input" type="number" step="any" min="1">
           </div>
           <input name="paymentType" type="hidden" value="">
-          <button type="submit" data-text="Поддержать" class="ym-btn-pay ym-result-price" onclick="this.form.paymentType.value=''"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span class="ym-text-crop">Поддержать</span> <span class="ym-price-output"></span></button>
-          <button type="submit" class="sbp-pay" onclick="this.form.paymentType.value='CP'"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 2h10a2 2 0 012 2v16a2 2 0 01-2 2H7a2 2 0 01-2-2V4a2 2 0 012-2zm0 2v14h10V4H7zm5 16.2a1.2 1.2 0 100-2.4 1.2 1.2 0 000 2.4zM9 6h6v2H9V6zm0 3.5h6v2H9v-2z"/></svg>СБП</button>
+          <button type="button" id="openPay" data-text="Поддержать" class="ym-btn-pay ym-result-price"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span class="ym-text-crop">Поддержать</span> <span class="ym-price-output"></span></button>
+          <p class="form-hint" id="formHint"></p>
           <img src="https://yookassa.ru/integration/simplepay/img/iokassa-gray.svg?v=1.35.0" class="ym-logo" width="114" height="27" alt="ЮKassa">
         </div>
         <input name="shopId" type="hidden" value="1219833">
       </form>
       <p class="note">Деньги приходят в ЮKassa. Это добровольная поддержка, без подписки.</p>
+    </div>
+    <div class="pay-dialog" id="payDialog" hidden>
+      <div class="pay-panel" role="dialog" aria-modal="true" aria-labelledby="payTitle">
+        <h2 id="payTitle">Как оплатить?</h2>
+        <button type="button" class="pay-choice" data-type="AC">
+          <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6.5A2.5 2.5 0 015.5 4h13A2.5 2.5 0 0121 6.5v11a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 17.5v-11zM5.5 6a.5.5 0 00-.5.5V8h14V6.5a.5.5 0 00-.5-.5h-13zM5 15.5V10h14v5.5a.5.5 0 01-.5.5h-13a.5.5 0 01-.5-.5z"/></svg>
+          Карта
+        </button>
+        <button type="button" class="pay-choice" data-type="CP">
+          <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 2h10a2 2 0 012 2v16a2 2 0 01-2 2H7a2 2 0 01-2-2V4a2 2 0 012-2zm0 2v14h10V4H7zm5 16.2a1.2 1.2 0 100-2.4 1.2 1.2 0 000 2.4z"/></svg>
+          СБП
+        </button>
+      </div>
     </div>
     <footer>
       <a href="./">К руководству</a>
@@ -196,5 +247,49 @@
     </footer>
   </div>
   <script src="https://yookassa.ru/integration/simplepay/js/yookassa_construct_form.js?v=1.35.0"></script>
+  <script>
+    const form = document.querySelector(".yoomoney-payment-form");
+    const dialog = document.getElementById("payDialog");
+    const hint = document.getElementById("formHint");
+
+    function closePay() {
+      dialog.classList.remove("open");
+      dialog.hidden = true;
+    }
+
+    document.getElementById("openPay").addEventListener("click", function () {
+      const email = form.email.value.trim();
+      const sum = parseFloat(form.sum.value);
+      if (!email) {
+        hint.textContent = "Укажите телефон или почту для чека";
+        form.email.focus();
+        return;
+      }
+      if (!sum || sum <= 0) {
+        hint.textContent = "Укажите сумму";
+        form.sum.focus();
+        return;
+      }
+      hint.textContent = "";
+      dialog.hidden = false;
+      dialog.classList.add("open");
+    });
+
+    dialog.addEventListener("click", function (event) {
+      if (event.target === dialog) closePay();
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") closePay();
+    });
+
+    dialog.querySelectorAll(".pay-choice").forEach(function (button) {
+      button.addEventListener("click", function () {
+        form.paymentType.value = button.dataset.type;
+        closePay();
+        form.requestSubmit();
+      });
+    });
+  </script>
 </body>
 </html>
