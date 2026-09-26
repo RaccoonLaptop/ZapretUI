@@ -20,29 +20,29 @@ function New-ZapretIconPng {
 
         $outer = New-Object System.Drawing.Rectangle 8, 8, ($size - 16), ($size - 16)
         $grad = New-Object System.Drawing.Drawing2D.LinearGradientBrush $outer,
-            ([System.Drawing.Color]::FromArgb(12, 14, 22)),
-            ([System.Drawing.Color]::FromArgb(32, 38, 58)),
+            ([System.Drawing.Color]::FromArgb(5, 11, 27)),
+            ([System.Drawing.Color]::FromArgb(18, 53, 91)),
             135
         $g.FillEllipse($grad, $outer)
         $grad.Dispose()
 
-        $ring = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(107, 159, 255), 10)
+        $ring = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(224, 178, 64), 10)
         $g.DrawEllipse($ring, 24, 24, $size - 48, $size - 48)
         $ring.Dispose()
 
-        $arcPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(143, 212, 96), 9)
+        $arcPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(244, 231, 198), 9)
         $arcPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
         $arcPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
         $g.DrawArc($arcPen, 72, 72, 368, 368, 210, 95)
         $arcPen.Dispose()
 
-        $font = New-Object System.Drawing.Font("Segoe UI", 248, [System.Drawing.FontStyle]::Bold)
-        $textBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(235, 238, 248))
+        $font = New-Object System.Drawing.Font("Segoe UI", 210, [System.Drawing.FontStyle]::Bold)
+        $textBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(244, 231, 198))
         $format = New-Object System.Drawing.StringFormat
         $format.Alignment = [System.Drawing.StringAlignment]::Center
         $format.LineAlignment = [System.Drawing.StringAlignment]::Center
-        $textRect = New-Object System.Drawing.RectangleF 0, 18, $size, $size
-        $g.DrawString("Z", $font, $textBrush, $textRect, $format)
+        $textRect = New-Object System.Drawing.RectangleF 0, 46, $size, $size
+        $g.DrawString("A", $font, $textBrush, $textRect, $format)
         $font.Dispose()
         $textBrush.Dispose()
         $format.Dispose()
@@ -94,6 +94,7 @@ function Convert-PngToIcoBytes {
 }
 
 New-ZapretIconPng -Path $SourcePng
+Copy-Item -LiteralPath $SourcePng -Destination (Join-Path $ProjectDir "Assets\icon-readme.png") -Force
 $bytes = Convert-PngToIcoBytes -Path $SourcePng
 [System.IO.File]::WriteAllBytes($OutIco, $bytes)
 Write-Host "Icon created: $OutIco ($($bytes.Length) bytes)" -ForegroundColor Green

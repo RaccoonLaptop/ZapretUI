@@ -271,7 +271,7 @@ public sealed class RippleBackground : AnimatedBackgroundBase
         foreach (var r in _ripples)
         {
             var opacity = 1 - r.Radius / r.MaxRadius;
-            var pen = new Pen(new SolidColorBrush(Color.FromArgb((byte)(opacity * 80), 129, 140, 248)), 1.5);
+            var pen = new Pen(new SolidColorBrush(Color.FromArgb((byte)(opacity * 80), 224, 178, 64)), 1.5);
             pen.Freeze();
             dc.DrawEllipse(null, pen, new Point(r.X, r.Y), r.Radius, r.Radius);
         }
@@ -299,7 +299,7 @@ public sealed class WavyBackground : AnimatedBackgroundBase
                 ctx.LineTo(new Point(AreaWidth, AreaHeight), true, false);
             }
             geometry.Freeze();
-            var brush = new SolidColorBrush(Color.FromArgb(18, 107, 159, 255));
+            var brush = new SolidColorBrush(Color.FromArgb(18, 224, 178, 64));
             brush.Freeze();
             dc.DrawGeometry(brush, null, geometry);
         }
@@ -312,9 +312,9 @@ public sealed class GradientAnimationBackground : AnimatedBackgroundBase
     {
         if (AreaWidth <= 0 || AreaHeight <= 0) return;
         var t = timeMs / 5000.0 * Speed;
-        var c1 = ParseColor("#1271FF");
-        var c2 = ParseColor("#DD4AFF");
-        var c3 = ParseColor("#64DCFF");
+        var c1 = ParseColor("#e0b240");
+        var c2 = ParseColor("#12355b");
+        var c3 = ParseColor("#f4e7c6");
         var brush = new LinearGradientBrush(c1, c2, 45 + t * 90);
         brush.GradientStops.Add(new GradientStop(c3, 0.5 + 0.2 * Math.Sin(t)));
         brush.Opacity = 0.18;
@@ -335,7 +335,7 @@ public sealed class LinesBackground : AnimatedBackgroundBase
         {
             var angle = t * 0.15 + i * (Math.PI * 2 / 40);
             var len = Math.Max(AreaWidth, AreaHeight) * 0.6;
-            var pen = new Pen(new SolidColorBrush(Color.FromArgb(22, 129, 140, 248)), 1);
+            var pen = new Pen(new SolidColorBrush(Color.FromArgb(22, 224, 178, 64)), 1);
             pen.Freeze();
             dc.DrawLine(pen, new Point(cx, cy), new Point(cx + Math.Cos(angle) * len, cy + Math.Sin(angle) * len));
         }
@@ -350,7 +350,7 @@ public sealed class SpotlightBackground : AnimatedBackgroundBase
         var t = ScaledTimeSec(timeMs);
         var x = AreaWidth * 0.5 + Math.Sin(t * 0.4) * AreaWidth * 0.25;
         var y = AreaHeight * 0.45 + Math.Cos(t * 0.35) * AreaHeight * 0.2;
-        var brush = new RadialGradientBrush(Color.FromArgb(55, 129, 140, 248), Color.FromArgb(0, 0, 0, 0));
+        var brush = new RadialGradientBrush(Color.FromArgb(55, 224, 178, 64), Color.FromArgb(0, 0, 0, 0));
         brush.Freeze();
         dc.DrawEllipse(brush, null, new Point(x, y), 220, 220);
     }
@@ -365,7 +365,7 @@ public sealed class BeamsBackground : AnimatedBackgroundBase
         for (var i = 0; i < 6; i++)
         {
             var offset = (t * 40 + i * 120) % (AreaWidth + 200) - 100;
-            var brush = new LinearGradientBrush(Color.FromArgb(0, 107, 159, 255), Color.FromArgb(35, 107, 159, 255), 90);
+            var brush = new LinearGradientBrush(Color.FromArgb(0, 224, 178, 64), Color.FromArgb(35, 224, 178, 64), 90);
             brush.Freeze();
             var rect = new Rect(offset, -50, 60, AreaHeight + 100);
             dc.PushTransform(new RotateTransform(-18, offset + 30, AreaHeight / 2));

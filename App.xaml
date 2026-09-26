@@ -5,24 +5,24 @@
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
         <!-- Dark palette (high contrast) -->
-        <Color x:Key="BgColor">#08090d</Color>
-        <Color x:Key="SurfaceColor">#10121a</Color>
-        <Color x:Key="SurfaceLightColor">#181b26</Color>
-        <Color x:Key="SurfaceElevatedColor">#222633</Color>
-        <Color x:Key="InputColor">#14161f</Color>
-        <Color x:Key="BorderColor">#2d3348</Color>
-        <Color x:Key="AccentColor">#6b9fff</Color>
-        <Color x:Key="AccentHoverColor">#8ab4ff</Color>
+        <Color x:Key="BgColor">#050b1b</Color>
+        <Color x:Key="SurfaceColor">#0d2240</Color>
+        <Color x:Key="SurfaceLightColor">#12355b</Color>
+        <Color x:Key="SurfaceElevatedColor">#1a4068</Color>
+        <Color x:Key="InputColor">#0a1c34</Color>
+        <Color x:Key="BorderColor">#2a4d73</Color>
+        <Color x:Key="AccentColor">#e0b240</Color>
+        <Color x:Key="AccentHoverColor">#f0cc62</Color>
         <Color x:Key="SuccessColor">#8fd460</Color>
         <Color x:Key="WarningColor">#e8b86a</Color>
         <Color x:Key="ErrorColor">#f07088</Color>
-        <Color x:Key="TextColor">#e8ebf4</Color>
-        <Color x:Key="TextMutedColor">#a8b3d0</Color>
+        <Color x:Key="TextColor">#f4e7c6</Color>
+        <Color x:Key="TextMutedColor">#c9b896</Color>
 
         <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}"/>
-        <SolidColorBrush x:Key="ShellOverlayBrush" Color="#A610121A"/>
-        <SolidColorBrush x:Key="TitleBarOverlayBrush" Color="#B210121A"/>
-        <SolidColorBrush x:Key="PanelOverlayBrush" Color="#8C10121A"/>
+        <SolidColorBrush x:Key="ShellOverlayBrush" Color="#A60D2240"/>
+        <SolidColorBrush x:Key="TitleBarOverlayBrush" Color="#B20D2240"/>
+        <SolidColorBrush x:Key="PanelOverlayBrush" Color="#8C0D2240"/>
         <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
         <SolidColorBrush x:Key="SurfaceLightBrush" Color="{StaticResource SurfaceLightColor}"/>
         <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="{StaticResource SurfaceElevatedColor}"/>
@@ -58,7 +58,7 @@
 
         <Style TargetType="Button" x:Key="PrimaryButton">
             <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
-            <Setter Property="Foreground" Value="#08090d"/>
+            <Setter Property="Foreground" Value="#050b1b"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="16,10"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -84,7 +84,7 @@
 
         <Style TargetType="Button" x:Key="DangerButton">
             <Setter Property="Background" Value="{StaticResource ErrorBrush}"/>
-            <Setter Property="Foreground" Value="#08090d"/>
+            <Setter Property="Foreground" Value="#050b1b"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="16,10"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -221,7 +221,8 @@
         </Style>
 
         <Style TargetType="Button" x:Key="DonateButton" BasedOn="{StaticResource TelegramButton}">
-            <Setter Property="Background" Value="#E2556A"/>
+            <Setter Property="Background" Value="#e0b240"/>
+            <Setter Property="Foreground" Value="#050b1b"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -234,10 +235,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#C94458"/>
+                                <Setter TargetName="bd" Property="Background" Value="#f0cc62"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#B33B4E"/>
+                                <Setter TargetName="bd" Property="Background" Value="#c99a2e"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -318,7 +319,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="bd" Property="Background" Value="{StaticResource ErrorBrush}"/>
-                                <Setter Property="Foreground" Value="#08090d"/>
+                                <Setter Property="Foreground" Value="#050b1b"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

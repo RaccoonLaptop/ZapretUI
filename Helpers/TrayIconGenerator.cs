@@ -17,9 +17,9 @@ namespace ZapretUI.Helpers;
 
 public static class TrayIconGenerator
 {
-    private static readonly DColor RingIdle = DColor.FromArgb(107, 159, 255);
+    private static readonly DColor RingIdle = DColor.FromArgb(224, 178, 64);
     private static readonly DColor RingActive = DColor.FromArgb(143, 212, 96);
-    private static readonly DColor ArcIdle = DColor.FromArgb(80, 120, 72);
+    private static readonly DColor ArcIdle = DColor.FromArgb(244, 231, 198);
     private static readonly DColor ArcActive = DColor.FromArgb(143, 212, 96);
 
     public static Icon Create(bool active)
@@ -38,8 +38,8 @@ public static class TrayIconGenerator
 
             using (var grad = new LinearGradientBrush(
                        outer,
-                       DColor.FromArgb(12, 14, 22),
-                       DColor.FromArgb(32, 38, 58),
+                       DColor.FromArgb(5, 11, 27),
+                       DColor.FromArgb(18, 53, 91),
                        135f))
                 g.FillEllipse(grad, outer);
 
@@ -58,14 +58,14 @@ public static class TrayIconGenerator
                 g.DrawArc(arcPen, 72f * scale, 72f * scale, 368f * scale, 368f * scale, 210, 95);
             }
 
-            using var font = new System.Drawing.Font("Segoe UI", 248f * scale, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Pixel);
-            using var textBrush = new SolidBrush(DColor.FromArgb(235, 238, 248));
+            using var font = new System.Drawing.Font("Segoe UI", 210f * scale, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Pixel);
+            using var textBrush = new SolidBrush(DColor.FromArgb(244, 231, 198));
             using var format = new StringFormat
             {
                 Alignment = StringAlignment.Center,
                 LineAlignment = StringAlignment.Center
             };
-            g.DrawString("Z", font, textBrush, new RectangleF(0, 18f * scale, size, size), format);
+            g.DrawString("A", font, textBrush, new RectangleF(0, 46f * scale, size, size), format);
         }
 
         var handle = bmp.GetHicon();

@@ -4,7 +4,7 @@
   canvas.className = "app-wavy";
   canvas.setAttribute("aria-hidden", "true");
   var css = document.createElement("style");
-  css.textContent = "html{background:#08090d}body{background:transparent}.app-wavy{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}";
+  css.textContent = "html{background:#050b1b}body{background:transparent}.app-wavy{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}";
   document.head.appendChild(css);
   document.body.prepend(canvas);
 
@@ -24,9 +24,9 @@
     var h = window.innerHeight;
     var t = reduce ? 0 : (now - start) / 1000;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "#08090d";
+    ctx.fillStyle = "#050b1b";
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "rgba(107, 159, 255, 0.0706)";
+    ctx.fillStyle = "rgba(224, 178, 64, 0.10)";
     for (var wave = 0; wave < 4; wave++) {
       ctx.beginPath();
       ctx.moveTo(0, h);

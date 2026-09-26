@@ -16,23 +16,23 @@ function New-WizardBitmap {
         $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
         $rect = New-Object System.Drawing.Rectangle 0, 0, $Width, $Height
 
-        $bg1 = [System.Drawing.Color]::FromArgb(16, 18, 26)
-        $bg2 = [System.Drawing.Color]::FromArgb(8, 9, 13)
+        $bg1 = [System.Drawing.Color]::FromArgb(13, 34, 64)
+        $bg2 = [System.Drawing.Color]::FromArgb(5, 11, 27)
         $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, $bg1, $bg2, 90
         $g.FillRectangle($brush, $rect)
         $brush.Dispose()
 
-        $accent = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(107, 159, 255))
-        $muted = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(143, 212, 96))
+        $accent = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(224, 178, 64))
+        $muted = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(244, 231, 198))
         $warn = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(232, 184, 106))
-        $linePen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(45, 51, 72), 2)
+        $linePen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(42, 77, 115), 2)
 
         $g.FillEllipse($accent, 38, [Math]::Max(24, $Height / 2 - 28), 56, 56)
         $g.FillEllipse($muted, [Math]::Max(104, $Width / 2 - 16), [Math]::Max(12, $Height / 2 - 20), 40, 40)
         $g.FillEllipse($warn, [Math]::Max(160, $Width - 76), [Math]::Max(24, $Height / 2 - 18), 36, 36)
         $g.DrawLine($linePen, 60, $Height / 2, $Width - 44, $Height / 2)
 
-        $titleBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(232, 235, 244))
+        $titleBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(244, 231, 198))
         $font = New-Object System.Drawing.Font("Segoe UI Semibold", 14, [System.Drawing.FontStyle]::Bold)
         $subFont = New-Object System.Drawing.Font("Segoe UI", 9)
         $g.DrawString("Aeroway", $font, $titleBrush, 22, 14)
